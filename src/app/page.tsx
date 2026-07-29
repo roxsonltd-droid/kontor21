@@ -15,16 +15,14 @@ export default function Home() {
       {/* Navigation */}
       <nav className="border-b border-zinc-800/50 bg-zinc-950/80 backdrop-blur-md fixed w-full top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-blue-400 flex items-center justify-center">
               <Blocks className="w-5 h-5 text-white" />
             </div>
             <span className="text-xl font-bold tracking-tight text-white">Kontor 21</span>
-          </div>
+          </Link>
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-zinc-400">
             <a href="#features" className="hover:text-white transition-colors">{t('hero.howItWorks')}</a>
-            <a href="#tech" className="hover:text-white transition-colors">{t('nav.tech')}</a>
-            <a href="#security" className="hover:text-white transition-colors">{t('nav.security')}</a>
           </div>
           <div className="flex items-center gap-4">
             <LanguageSwitcher />

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShieldAlert, Gavel, FileWarning, Search, ChevronRight, CheckCircle2, AlertTriangle, Blocks, Undo2, LogOut, ArrowRight, MessageSquareWarning } from 'lucide-react';
 import { useKontorEscrow } from '@/hooks/useKontorEscrow';
@@ -31,10 +32,10 @@ export default function ArbitrationDashboard() {
       <nav className="border-b border-red-900/30 bg-zinc-950/80 backdrop-blur-md sticky w-full top-0 z-40">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2 mr-4 opacity-50">
+            <Link href="/" className="flex items-center gap-2 mr-4 opacity-50">
               <Blocks className="w-4 h-4 text-zinc-400" />
               <span className="text-sm font-bold text-zinc-400 tracking-tight">Kontor 21</span>
-            </div>
+            </Link>
             <div className="h-4 w-px bg-zinc-800"></div>
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded bg-gradient-to-tr from-red-600 to-red-400 flex items-center justify-center shadow-[0_0_10px_rgba(220,38,38,0.3)]">

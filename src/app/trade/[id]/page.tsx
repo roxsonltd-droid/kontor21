@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { ShieldCheck, Truck, Clock, FileText, Download, CheckCircle, ArrowRight, ShieldAlert, CircleAlert, Wallet } from 'lucide-react';
 import { useKontorEscrow } from '@/hooks/useKontorEscrow';
 import { motion } from 'framer-motion';
@@ -28,12 +29,12 @@ export default function TradeView() {
     <div className="min-h-screen bg-zinc-950 text-zinc-200 font-sans selection:bg-emerald-500/30">
       <nav className="border-b border-emerald-900/30 bg-zinc-950/80 backdrop-blur-md sticky w-full top-0 z-40">
         <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2">
             <div className="w-8 h-8 rounded bg-gradient-to-tr from-emerald-600 to-emerald-400 flex items-center justify-center">
               <ShieldCheck className="w-5 h-5 text-white" />
             </div>
             <span className="text-xl font-bold text-white tracking-tight">Kontor 21</span>
-          </div>
+          </Link>
           
           <div className="flex items-center gap-4">
             <LanguageSwitcher />

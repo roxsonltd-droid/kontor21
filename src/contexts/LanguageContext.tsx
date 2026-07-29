@@ -68,8 +68,6 @@ const translations: Translations = {
   "footer.contact": { EN: "Contact", DE: "Kontakt", BG: "Контакти" },
 
   // Landing Page — Nav
-  "nav.tech": { EN: "Technology", DE: "Technologie", BG: "Технология" },
-  "nav.security": { EN: "Security", DE: "Sicherheit", BG: "Сигурност" },
   "nav.demo": { EN: "Demo Dashboard", DE: "Demo-Dashboard", BG: "Демо Дашборд" },
   "nav.team": { EN: "Talk to the team", DE: "Mit dem Team sprechen", BG: "Говори с екипа" },
 

@@ -167,10 +167,29 @@ export default function Home() {
       {/* Footer */}
       <footer className="border-t border-zinc-800/50 py-12">
         <div className="max-w-7xl mx-auto px-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8 pb-8 border-b border-zinc-800/50">
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <Blocks className="w-5 h-5 text-blue-500" />
+                <span className="font-bold text-white text-lg">Kontor 21</span>
+              </div>
+              <p className="text-sm text-zinc-400">
+                Търговия без граници. Доверие чрез код.
+              </p>
+            </div>
+            <div>
+              <h3 className="text-white font-semibold mb-4">{t('demo.title')}</h3>
+              <ul className="space-y-2 text-sm">
+                <li><Link href="/trade/123" className="text-zinc-400 hover:text-white transition-colors">{t('demo.buyer')}</Link></li>
+                <li><Link href="/oracle/dashboard" className="text-zinc-400 hover:text-white transition-colors">{t('demo.oracle')}</Link></li>
+                <li><Link href="/admin/accounting" className="text-zinc-400 hover:text-white transition-colors">{t('demo.accounting')}</Link></li>
+                <li><Link href="/admin/arbitration" className="text-zinc-400 hover:text-white transition-colors">{t('demo.arbitration')}</Link></li>
+              </ul>
+            </div>
+          </div>
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-2">
-              <Blocks className="w-5 h-5 text-blue-500" />
-              <span className="font-bold text-white">Kontor 21</span>
+            <div className="text-sm text-zinc-500">
+              © 2026 Kontor 21. Всички права запазени.
             </div>
             <div className="text-sm text-zinc-500 text-center md:text-right space-y-1">
               <p>

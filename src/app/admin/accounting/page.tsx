@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { FileSpreadsheet, Download, FileCheck2, ShieldCheck, Database, Calendar, Euro, Fingerprint, Activity, Clock } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useLanguage } from '@/contexts/LanguageContext';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 // Mock data for completed trades ready for accounting
 const completedTrades = [
@@ -34,6 +36,7 @@ const completedTrades = [
 ];
 
 export default function AccountingDashboard() {
+  const { t } = useLanguage();
   const [isExporting, setIsExporting] = useState(false);
 
   // Generates a mock DATEV CSV format
@@ -79,13 +82,15 @@ export default function AccountingDashboard() {
               <div className="w-6 h-6 rounded bg-gradient-to-tr from-blue-600 to-blue-400 flex items-center justify-center shadow-[0_0_10px_rgba(59,130,246,0.3)]">
                 <FileSpreadsheet className="w-3.5 h-3.5 text-white" />
               </div>
-              <span className="text-sm font-semibold text-white tracking-wide uppercase">Счетоводство & GoBD</span>
+              <span className="text-sm font-semibold text-white tracking-wide uppercase">{t('demo.accounting')}</span>
             </div>
           </div>
           
           <div className="flex items-center gap-3">
-            <span className="text-xs text-zinc-500 font-medium">Курс USDC/EUR: 0.916</span>
-            <div className="w-px h-4 bg-zinc-800 mx-2"></div>
+            <LanguageSwitcher />
+            <div className="w-px h-4 bg-zinc-800 mx-2 hidden sm:block"></div>
+            <span className="text-xs text-zinc-500 font-medium hidden sm:block">Курс USDC/EUR: 0.916</span>
+            <div className="w-px h-4 bg-zinc-800 mx-2 hidden sm:block"></div>
             <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20">
               <ShieldCheck className="w-3.5 h-3.5" /> GoBD Compliant
             </span>
@@ -97,9 +102,9 @@ export default function AccountingDashboard() {
         
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6">
           <div>
-            <h1 className="text-2xl font-semibold text-white tracking-tight mb-2">Финансови Отчети</h1>
+            <h1 className="text-2xl font-semibold text-white tracking-tight mb-2">{t('acc.title')}</h1>
             <p className="text-sm text-zinc-500 max-w-2xl">
-              Този панел обединява крипто транзакциите с реалните юридически лица. Данните са криптографски защитени чрез IPFS хешове, гарантирайки неизменяемост според изискванията на немските данъчни власти (GoBD).
+              {t('acc.subtitle')}
             </p>
           </div>
           
@@ -113,32 +118,32 @@ export default function AccountingDashboard() {
             ) : (
               <Download className="w-4 h-4" />
             )}
-            {isExporting ? 'Генериране...' : 'Експорт за DATEV (CSV)'}
+            {isExporting ? t('acc.generating') : t('acc.exportBtn')}
           </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-6">
-            <h3 className="text-xs font-medium text-zinc-500 uppercase tracking-widest mb-1">Общ Обем (Юли)</h3>
+            <h3 className="text-xs font-medium text-zinc-500 uppercase tracking-widest mb-1">{t('acc.vol')}</h3>
             <div className="flex items-baseline gap-2">
               <span className="text-3xl font-bold text-white">€152,700</span>
             </div>
           </div>
           <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-6">
-            <h3 className="text-xs font-medium text-zinc-500 uppercase tracking-widest mb-1">Обработени Сделки</h3>
+            <h3 className="text-xs font-medium text-zinc-500 uppercase tracking-widest mb-1">{t('acc.trades')}</h3>
             <div className="flex items-baseline gap-2">
               <span className="text-3xl font-bold text-white">2</span>
-              <span className="text-sm text-blue-400">успешни</span>
+              <span className="text-sm text-blue-400">{t('acc.success')}</span>
             </div>
           </div>
           <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-6 relative overflow-hidden">
             <div className="absolute top-0 right-0 p-4 opacity-10">
               <ShieldCheck className="w-24 h-24 text-blue-500" />
             </div>
-            <h3 className="text-xs font-medium text-zinc-500 uppercase tracking-widest mb-2">Одит статус</h3>
+            <h3 className="text-xs font-medium text-zinc-500 uppercase tracking-widest mb-2">{t('acc.audit')}</h3>
             <div className="flex flex-col gap-1">
-              <span className="text-sm text-emerald-400 flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5" /> Всички фактури налични</span>
-              <span className="text-sm text-emerald-400 flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5" /> Блокчейн подписите съвпадат</span>
+              <span className="text-sm text-emerald-400 flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5" /> {t('acc.audit1')}</span>
+              <span className="text-sm text-emerald-400 flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5" /> {t('acc.audit2')}</span>
             </div>
           </div>
         </div>
@@ -149,13 +154,13 @@ export default function AccountingDashboard() {
             <table className="w-full text-left text-sm whitespace-nowrap">
               <thead className="bg-zinc-950/50 text-zinc-400 border-b border-zinc-800/80">
                 <tr>
-                  <th className="px-6 py-4 font-medium">Сделка</th>
-                  <th className="px-6 py-4 font-medium">Дата</th>
-                  <th className="px-6 py-4 font-medium">Купувач (EU-Land u. UStID)</th>
-                  <th className="px-6 py-4 font-medium">Сума (USDC)</th>
-                  <th className="px-6 py-4 font-medium">Еквивалент (EUR)</th>
-                  <th className="px-6 py-4 font-medium">Одит Следа (Tx)</th>
-                  <th className="px-6 py-4 font-medium">Статус</th>
+                  <th className="px-6 py-4 font-medium">{t('acc.tableTrade')}</th>
+                  <th className="px-6 py-4 font-medium">{t('acc.tableDate')}</th>
+                  <th className="px-6 py-4 font-medium">{t('acc.tableBuyer')}</th>
+                  <th className="px-6 py-4 font-medium">{t('acc.tableAmount')}</th>
+                  <th className="px-6 py-4 font-medium">{t('acc.tableEq')}</th>
+                  <th className="px-6 py-4 font-medium">{t('acc.tableTrail')}</th>
+                  <th className="px-6 py-4 font-medium">{t('acc.tableStatus')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-800/50">
@@ -201,11 +206,11 @@ export default function AccountingDashboard() {
                     <td className="px-6 py-4">
                       {trade.status === 'BOOKED' ? (
                         <span className="inline-flex items-center gap-1 text-xs font-medium text-zinc-400 bg-zinc-800 px-2 py-1 rounded">
-                          <CheckCircle2 className="w-3 h-3" /> Осчетоводена
+                          <CheckCircle2 className="w-3 h-3" /> {t('acc.statusBooked')}
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 text-xs font-medium text-yellow-500 bg-yellow-500/10 px-2 py-1 rounded border border-yellow-500/20">
-                          <Clock className="w-3 h-3" /> Чака Експорт
+                          <Clock className="w-3 h-3" /> {t('acc.statusPending')}
                         </span>
                       )}
                     </td>

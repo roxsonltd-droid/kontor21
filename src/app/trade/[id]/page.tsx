@@ -65,7 +65,7 @@ export default function TradeView() {
           <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight mb-4">
             {t('trade.title')} #104
           </h1>
-          <p className="text-lg text-zinc-400">Преглед на детайли и статус на плащане за вашата поръчка.</p>
+          <p className="text-lg text-zinc-400">{t('trade.pageDesc')}</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">

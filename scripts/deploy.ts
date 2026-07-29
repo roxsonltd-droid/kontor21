@@ -33,11 +33,9 @@ async function main() {
     arbitrator: deployer.address,
   };
 
-  fs.writeFileSync(
-    path.join(__dirname, "..", "contract-addresses.json"),
-    JSON.stringify(addresses, null, 2)
-  );
-  console.log("\nAddresses written to contract-addresses.json");
+  const dest = path.join(__dirname, "..", "src", "lib", "contract-addresses.json");
+  fs.writeFileSync(dest, JSON.stringify(addresses, null, 2));
+  console.log("\nAddresses written to", dest);
 
   console.log("\nDeployment Summary:");
   console.log("  TestUSDC:", usdcAddress);

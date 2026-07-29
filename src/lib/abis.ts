@@ -1,4 +1,4 @@
-import addressesJson from "../../contract-addresses.json";
+import addressesJson from "./contract-addresses.json";
 
 export const CONTRACT_ADDRESSES = addressesJson as {
   testUSDC: string;

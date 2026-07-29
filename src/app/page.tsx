@@ -23,13 +23,13 @@ export default function Home() {
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-zinc-400">
             <a href="#features" className="hover:text-white transition-colors">{t('hero.howItWorks')}</a>
-            <a href="#tech" className="hover:text-white transition-colors">Технология</a>
-            <a href="#security" className="hover:text-white transition-colors">Сигурност</a>
+            <a href="#tech" className="hover:text-white transition-colors">{t('nav.tech')}</a>
+            <a href="#security" className="hover:text-white transition-colors">{t('nav.security')}</a>
           </div>
           <div className="flex items-center gap-4">
             <LanguageSwitcher />
             <Link href="/trade/123" className="px-5 py-2.5 rounded-lg bg-white text-zinc-950 font-semibold hover:bg-zinc-200 transition-colors text-sm">
-              Демо Дашборд
+              {t('nav.demo')}
             </Link>
           </div>
         </div>
@@ -48,7 +48,7 @@ export default function Home() {
           >
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm font-medium mb-8">
               <Zap className="w-4 h-4" />
-              Първата Web3 ескроу платформа за агро-търговия
+              {t('hero.badge')}
             </div>
             <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-8 max-w-4xl mx-auto leading-tight" dangerouslySetInnerHTML={{ __html: t('hero.title') }}>
             </h1>
@@ -61,7 +61,7 @@ export default function Home() {
                 <ArrowRight className="w-5 h-5" />
               </Link>
               <button className="px-8 py-4 rounded-xl bg-zinc-900 text-white font-semibold border border-zinc-800 hover:bg-zinc-800 transition-colors">
-                Говори с екипа
+                {t('nav.team')}
               </button>
             </div>
           </motion.div>
@@ -72,8 +72,8 @@ export default function Home() {
       <section id="features" className="py-24 bg-zinc-950/50 border-y border-zinc-800/50">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-white mb-4">Как работи програмируемият ескроу?</h2>
-            <p className="text-zinc-400">Традиционните акредитиви отнемат седмици. Ние го правим за секунди.</p>
+            <h2 className="text-3xl font-bold text-white mb-4">{t('features.title')}</h2>
+            <p className="text-zinc-400">{t('features.subtitle')}</p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
@@ -84,10 +84,8 @@ export default function Home() {
               <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center mb-6">
                 <Wallet className="w-6 h-6 text-blue-400" />
               </div>
-              <h3 className="text-xl font-semibold text-white mb-3">1. Депозит в Смарт Договор</h3>
-              <p className="text-zinc-400 text-sm leading-relaxed">
-                Купувачът заключва средствата в USDC директно в блокчейна (Polygon). Парите са в безопасност и не могат да бъдат докоснати нито от нас, нито от продавача.
-              </p>
+              <h3 className="text-xl font-semibold text-white mb-3">{t('features.step1Title')}</h3>
+              <p className="text-zinc-400 text-sm leading-relaxed">{t('features.step1Desc')}</p>
             </motion.div>
 
             <motion.div 
@@ -97,10 +95,8 @@ export default function Home() {
               <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-6">
                 <Activity className="w-6 h-6 text-emerald-400" />
               </div>
-              <h3 className="text-xl font-semibold text-white mb-3">2. Оракули и IoT Данни</h3>
-              <p className="text-zinc-400 text-sm leading-relaxed">
-                Независими инспектори (като SGS) и IoT сензори в контейнера подават данни в реално време към смарт договора. Всяко условие е математически проверено.
-              </p>
+              <h3 className="text-xl font-semibold text-white mb-3">{t('features.step2Title')}</h3>
+              <p className="text-zinc-400 text-sm leading-relaxed">{t('features.step2Desc')}</p>
             </motion.div>
 
             <motion.div 
@@ -110,10 +106,8 @@ export default function Home() {
               <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center mb-6">
                 <ShieldCheck className="w-6 h-6 text-purple-400" />
               </div>
-              <h3 className="text-xl font-semibold text-white mb-3">3. Автоматичен Сетълмент</h3>
-              <p className="text-zinc-400 text-sm leading-relaxed">
-                Когато всички условия са изпълнени (влажност, локация, документи), кодът автоматично освобождава плащането към продавача. Без чакане на SWIFT преводи.
-              </p>
+              <h3 className="text-xl font-semibold text-white mb-3">{t('features.step3Title')}</h3>
+              <p className="text-zinc-400 text-sm leading-relaxed">{t('features.step3Desc')}</p>
             </motion.div>
           </div>
         </div>
@@ -125,20 +119,20 @@ export default function Home() {
           <div className="flex flex-col lg:flex-row items-center gap-16">
             <div className="lg:w-1/2">
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-6 leading-tight">
-                Оставете банките в 20-ти век.
+                {t('compare.title')}
               </h2>
               <p className="text-zinc-400 text-lg mb-8 leading-relaxed">
-                Трансграничните банкови преводи струват средно 6.3% в такси и отнемат до 7 дни. При кризи и затворени канали, парите ви остават блокирани. С Kontor 21 и USDC, сетълментът е моментален, глобален и струва центове.
+                {t('compare.subtitle')}
               </p>
               <ul className="space-y-4">
                 <li className="flex items-center gap-3 text-zinc-300">
-                  <CheckIcon /> Моментално плащане (T+0 сетълмент)
+                  <CheckIcon /> {t('compare.benefit1')}
                 </li>
                 <li className="flex items-center gap-3 text-zinc-300">
-                  <CheckIcon /> Пълна защита от валутни колебания
+                  <CheckIcon /> {t('compare.benefit2')}
                 </li>
                 <li className="flex items-center gap-3 text-zinc-300">
-                  <CheckIcon /> Работи 24/7, без банкови празници
+                  <CheckIcon /> {t('compare.benefit3')}
                 </li>
               </ul>
             </div>
@@ -146,23 +140,23 @@ export default function Home() {
               <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/20 to-emerald-500/20 rounded-3xl blur-2xl"></div>
               <div className="relative bg-zinc-900/80 border border-zinc-800 rounded-3xl p-8 backdrop-blur-xl">
                 <div className="flex justify-between items-center mb-8 border-b border-zinc-800 pb-4">
-                  <span className="text-zinc-400 font-medium">Традиционен Акредитив</span>
-                  <span className="text-red-400 font-mono">3-7 Дни</span>
+                  <span className="text-zinc-400 font-medium">{t('compare.traditionalLabel')}</span>
+                  <span className="text-red-400 font-mono">{t('compare.days')}</span>
                 </div>
                 <div className="flex justify-between items-center mb-8 border-b border-zinc-800 pb-4">
-                  <span className="text-zinc-400 font-medium">Банкови Такси</span>
-                  <span className="text-red-400 font-mono">~2.5% - 6%</span>
+                  <span className="text-zinc-400 font-medium">{t('compare.bankFees')}</span>
+                  <span className="text-red-400 font-mono">{t('compare.feePercent')}</span>
                 </div>
                 <div className="flex justify-between items-center pt-2">
                   <span className="text-white font-semibold flex items-center gap-2">
                     <div className="w-6 h-6 rounded bg-blue-600 flex items-center justify-center">
                       <Blocks className="w-3 h-3 text-white" />
                     </div>
-                    Kontor 21 (Smart Escrow)
+                    {t('compare.kontor21')}
                   </span>
                   <div className="text-right">
-                    <span className="text-emerald-400 font-mono font-bold block">Моментално</span>
-                    <span className="text-emerald-400/70 text-xs font-mono">&lt; 0.1% такса</span>
+                    <span className="text-emerald-400 font-mono font-bold block">{t('compare.instant')}</span>
+                    <span className="text-emerald-400/70 text-xs font-mono">{t('compare.feeLow')}</span>
                   </div>
                 </div>
               </div>

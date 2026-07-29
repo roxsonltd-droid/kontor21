@@ -48,7 +48,8 @@ export default function Home() {
               <Zap className="w-4 h-4" />
               {t('hero.badge')}
             </div>
-            <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-8 max-w-4xl mx-auto leading-tight" dangerouslySetInnerHTML={{ __html: t('hero.title') }}>
+            <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-8 max-w-4xl mx-auto leading-tight">
+              {t('hero.title')}
             </h1>
             <p className="text-lg md:text-xl text-zinc-400 max-w-2xl mx-auto mb-10 leading-relaxed">
               {t('hero.subtitle')}
@@ -165,18 +166,20 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="border-t border-zinc-800/50 py-12">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-2">
-            <Blocks className="w-5 h-5 text-blue-500" />
-            <span className="font-bold text-white">Kontor 21</span>
-          </div>
-          <div className="text-center md:text-right">
-            <p className="text-sm text-zinc-400 mb-1">
-              {t('footer.ownedBy')} <strong className="text-white">Agri Nexus Ltd</strong>
-            </p>
-            <p className="text-xs text-zinc-500">
-              Sofia, Bulgaria • {t('footer.contact')}: <a href="mailto:info@agrinexus.eu" className="hover:text-white transition-colors">info@agrinexus.eu</a>
-            </p>
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-2">
+              <Blocks className="w-5 h-5 text-blue-500" />
+              <span className="font-bold text-white">Kontor 21</span>
+            </div>
+            <div className="text-sm text-zinc-500 text-center md:text-right space-y-1">
+              <p>
+                {t('footer.ownedBy')} <span className="text-zinc-300 font-medium">Agri Nexus Ltd</span>, Sofia, Bulgaria.
+              </p>
+              <p>
+                {t('footer.contact')}: <a href="mailto:info@agrinexus.eu" className="text-blue-400 hover:text-blue-300 transition-colors">info@agrinexus.eu</a>
+              </p>
+            </div>
           </div>
         </div>
       </footer>

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ShieldCheck, Activity, Globe2, ArrowRight, Wallet, Blocks, Zap } from 'lucide-react';
+import { ShieldCheck, Activity, ArrowRight, Wallet, Blocks, Zap } from 'lucide-react';
 import Link from 'next/link';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { useLanguage } from '@/contexts/LanguageContext';

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 
 type Language = 'EN' | 'DE' | 'BG';
 
@@ -226,6 +226,46 @@ const translations: Translations = {
   "trade.docProformaDate": { EN: "Added 2 days ago", DE: "Vor 2 Tagen hinzugefügt", BG: "Добавено преди 2 дни" },
   "trade.docSgs": { EN: "SGS Quality Certificate", DE: "SGS-Qualitätszertifikat", BG: "SGS Сертификат за качество" },
   "trade.docSgsPending": { EN: "Awaiting after loading", DE: "Wird nach dem Laden erwartet", BG: "Очаква се след натоварване" },
+
+  // Trade History
+  "history.title": { EN: "Trade History", DE: "Handelsverlauf", BG: "История на сделките" },
+  "history.desc": { EN: "View all your trades across the platform.", DE: "Alle Ihre Handelsgeschäfte auf der Plattform.", BG: "Преглед на всички ваши сделки." },
+  "history.all": { EN: "All", DE: "Alle", BG: "Всички" },
+  "history.active": { EN: "Active", DE: "Aktiv", BG: "Активни" },
+  "history.completed": { EN: "Completed", DE: "Abgeschlossen", BG: "Завършени" },
+  "history.disputed": { EN: "Disputed", DE: "Umstritten", BG: "Оспорени" },
+  "history.tradeId": { EN: "Trade ID", DE: "Handels-ID", BG: "ID на сделка" },
+  "history.product": { EN: "Product", DE: "Produkt", BG: "Продукт" },
+  "history.amount": { EN: "Amount", DE: "Betrag", BG: "Сума" },
+  "history.status": { EN: "Status", DE: "Status", BG: "Статус" },
+  "history.date": { EN: "Date", DE: "Datum", BG: "Дата" },
+  "history.actions": { EN: "Actions", DE: "Aktionen", BG: "Действия" },
+  "history.noTrades": { EN: "No trades yet", DE: "Noch keine Handelsgeschäfte", BG: "Все още няма сделки" },
+  "history.noTradesDesc": { EN: "Your connected wallet has no trade history.", DE: "Ihr verbundenes Wallet hat keine Handelshistorie.", BG: "Свързаният портфейл няма история на сделки." },
+  "history.search": { EN: "Search by trade ID...", DE: "Suche nach Handels-ID...", BG: "Търсене по ID на сделка..." },
+
+  // Notifications
+  "notif.title": { EN: "Notifications", DE: "Benachrichtigungen", BG: "Известия" },
+  "notif.empty": { EN: "No notifications yet", DE: "Noch keine Benachrichtigungen", BG: "Все още няма известия" },
+  "notif.emptyDesc": { EN: "You'll see trade updates here.", DE: "Sie sehen hier Handelsupdates.", BG: "Тук ще виждате обновления за сделките." },
+  "notif.markAll": { EN: "Mark all as read", DE: "Alle als gelesen markieren", BG: "Маркирай всички като прочетени" },
+  "notif.created": { EN: "New trade created", DE: "Neuer Handel erstellt", BG: "Нова сделка създадена" },
+  "notif.funded": { EN: "Trade funded", DE: "Handel finanziert", BG: "Сделката е финансирана" },
+  "notif.approved": { EN: "Trade approved by oracle", DE: "Handel vom Orakel genehmigt", BG: "Сделката е одобрена от оракул" },
+  "notif.disputed": { EN: "Dispute raised on trade", DE: "Streitfall für Handel eröffnet", BG: "Спор по сделката" },
+  "notif.resolved": { EN: "Dispute resolved", DE: "Streitfall gelöst", BG: "Спорът е разрешен" },
+
+  // Settings
+  "settings.title": { EN: "Settings", DE: "Einstellungen", BG: "Настройки" },
+  "settings.desc": { EN: "Manage your account preferences.", DE: "Verwalten Sie Ihre Kontoeinstellungen.", BG: "Управление на предпочитанията." },
+  "settings.wallet": { EN: "Wallet", DE: "Wallet", BG: "Портфейл" },
+  "settings.walletDesc": { EN: "Your connected wallet address.", DE: "Ihre verbundene Wallet-Adresse.", BG: "Адрес на свързания портфейл." },
+  "settings.language": { EN: "Language", DE: "Sprache", BG: "Език" },
+  "settings.languageDesc": { EN: "Choose your preferred language.", DE: "Wählen Sie Ihre bevorzugte Sprache.", BG: "Изберете предпочитан език." },
+  "settings.notifPref": { EN: "Notification Preferences", DE: "Benachrichtigungseinstellungen", BG: "Предпочитания за известия" },
+  "settings.notifDesc": { EN: "Choose which updates you receive.", DE: "Wählen Sie, welche Updates Sie erhalten.", BG: "Изберете какви обновления да получавате." },
+  "settings.emailNotif": { EN: "Email Notifications", DE: "E-Mail-Benachrichtigungen", BG: "Имейл известия" },
+  "settings.pushNotif": { EN: "Push Notifications", DE: "Push-Benachrichtigungen", BG: "Push известия" },
 };
 
 interface LanguageContextType {
@@ -237,15 +277,13 @@ interface LanguageContextType {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguage] = useState<Language>('EN');
-
-  useEffect(() => {
-    // Basic local storage persistence
-    const saved = localStorage.getItem('kontor_lang') as Language;
-    if (saved && (saved === 'EN' || saved === 'DE' || saved === 'BG')) {
-      setLanguage(saved);
+  const [language, setLanguage] = useState<Language>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('kontor_lang') as Language;
+      if (saved === 'EN' || saved === 'DE' || saved === 'BG') return saved;
     }
-  }, []);
+    return 'EN';
+  });
 
   const handleSetLanguage = (lang: Language) => {
     setLanguage(lang);

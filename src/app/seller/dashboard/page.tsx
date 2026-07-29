@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Wallet, Activity, ShieldCheck, Plus, ArrowUpRight, Search, FileCheck, Ship, CheckCircle2, ChevronRight, X, Blocks, Link as LinkIcon } from 'lucide-react';
+import { Plus, CheckCircle2, X, Blocks, LinkIcon, Wallet, ArrowUpRight, ShieldCheck, Activity, Search, Ship, FileCheck, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { useKontorEscrow } from '@/hooks/useKontorEscrow';
 import { CONTRACT_ADDRESSES } from '@/lib/abis';
@@ -10,7 +10,7 @@ import { CONTRACT_ADDRESSES } from '@/lib/abis';
 export default function SellerDashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const { address, formattedAddress, isConnecting, connect, createTrade, getUsdcBalance } = useKontorEscrow();
+  const { address, formattedAddress, isConnecting, connect, createTrade } = useKontorEscrow();
 
   const handleCreateContract = async () => {
     setIsProcessing(true);

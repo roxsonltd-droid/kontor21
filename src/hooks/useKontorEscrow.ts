@@ -10,7 +10,7 @@ import {
 
 declare global {
   interface Window {
-    ethereum?: any;
+    ethereum?: import("ethers").Eip1193Provider;
   }
 }
 
@@ -18,7 +18,6 @@ const HARDHAT_CHAIN_ID = "0x7a69";
 const HARDHAT_RPC = "http://127.0.0.1:8545";
 
 export function useKontorEscrow() {
-  const [provider, setProvider] = useState<BrowserProvider | null>(null);
   const [escrowContract, setEscrowContract] = useState<Contract | null>(null);
   const [usdcContract, setUsdcContract] = useState<Contract | null>(null);
   const [signerAddress, setSignerAddress] = useState<string | null>(null);
@@ -38,7 +37,6 @@ export function useKontorEscrow() {
       TEST_USDC_ABI,
       signer
     );
-    setProvider(bp);
     setEscrowContract(escrow);
     setUsdcContract(usdc);
     setSignerAddress(address);
@@ -55,8 +53,9 @@ export function useKontorEscrow() {
         });
       }
       return true;
-    } catch (switchError: any) {
-      if (switchError.code === 4902) {
+    } catch (switchError: unknown) {
+      const err = switchError as { code?: number };
+      if (err.code === 4902) {
         try {
           await window.ethereum.request({
             method: "wallet_addEthereumChain",
@@ -134,7 +133,7 @@ export function useKontorEscrow() {
       );
       const receipt = await tx.wait();
       const tradeCreatedLog = receipt.logs.find(
-        (log: any) => log.fragment?.name === "TradeCreated"
+        (log: { fragment?: { name?: string } }) => log.fragment?.name === "TradeCreated"
       );
       const tradeId = tradeCreatedLog
         ? Number(tradeCreatedLog.args[0])

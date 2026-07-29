@@ -3,13 +3,12 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Wallet, Activity, ShieldCheck, Plus, Search, FileCheck, Ship, CheckCircle2, ChevronRight, Blocks, Link as LinkIcon, ShoppingCart, Clock, AlertCircle } from 'lucide-react';
+import { Blocks, CheckCircle2, ShoppingCart, Clock, AlertCircle, LinkIcon, ShieldCheck, Search, Wallet, ChevronRight } from 'lucide-react';
 import { useKontorEscrow } from '@/hooks/useKontorEscrow';
-import { CONTRACT_ADDRESSES } from '@/lib/abis';
 
 export default function BuyerDashboard() {
   const [isProcessing, setIsProcessing] = useState(false);
-  const { address, formattedAddress, isConnecting, connect, fundTrade, getUsdcBalance } = useKontorEscrow();
+  const { address, formattedAddress, isConnecting, connect, fundTrade } = useKontorEscrow();
 
   const handleFundEscrow = async (tradeId: number) => {
     setIsProcessing(true);

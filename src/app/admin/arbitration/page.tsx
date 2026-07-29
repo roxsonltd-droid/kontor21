@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { ShieldAlert, Gavel, FileWarning, Search, ChevronRight, CheckCircle2, AlertTriangle, Blocks, Undo2, LogOut, ArrowRight, MessageSquareWarning } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { ShieldAlert, Gavel, FileWarning, Blocks, Undo2, LogOut, ArrowRight, MessageSquareWarning, CheckCircle2 } from 'lucide-react';
 import { useKontorEscrow } from '@/hooks/useKontorEscrow';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageSwitcher from '@/components/LanguageSwitcher';

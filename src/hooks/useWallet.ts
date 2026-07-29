@@ -1,22 +1,17 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import type { Eip1193Provider } from "ethers";
 
-// Extend window object for TypeScript
 declare global {
   interface Window {
-    ethereum?: any;
+    ethereum?: Eip1193Provider;
   }
 }
 
 export function useWallet() {
   const [address, setAddress] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
-
-  // Check if wallet is already connected on load
-  useEffect(() => {
-    checkIfWalletIsConnected();
-  }, []);
 
   const checkIfWalletIsConnected = async () => {
     try {
@@ -31,6 +26,11 @@ export function useWallet() {
       console.error("Error checking wallet connection", error);
     }
   };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    checkIfWalletIsConnected();
+  }, []);
 
   const connectWallet = async () => {
     try {
@@ -66,13 +66,12 @@ export function useWallet() {
       if (!window.ethereum) return false;
     }
     
+    if (!window.ethereum) return false;
     try {
-      // We simulate a contract interaction by sending a 0 ETH transaction to ourselves
-      // This forces the MetaMask window to open and ask for confirmation, making the demo extremely realistic!
       const params = [{
         from: address,
         to: address,
-        value: '0x0', // 0 ETH
+        value: '0x0',
       }];
       
       await window.ethereum.request({

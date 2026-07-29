@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ShieldCheck, Activity, Search, FileCheck, CheckCircle2, Blocks, Fingerprint, UploadCloud, Link as LinkIcon, Wallet } from 'lucide-react';
+import { CheckCircle2, Blocks, Fingerprint, UploadCloud, FileCheck, Wallet } from 'lucide-react';
 import { useWallet } from '@/hooks/useWallet';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageSwitcher from '@/components/LanguageSwitcher';

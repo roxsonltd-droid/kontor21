@@ -8,9 +8,12 @@
     "start": "next start",
     "lint": "eslint",
     "node": "npx hardhat node",
-    "deploy": "npx hardhat run scripts/deploy.ts --network localhost"
+    "deploy": "npx hardhat run scripts/deploy.ts --network localhost",
+    "deploy:amoy": "npx hardhat run scripts/deploy.ts --network amoy",
+    "deploy:verify": "npx hardhat verify --network amoy"
   },
   "dependencies": {
+    "dotenv": "^17.4.2",
     "ethers": "^6.17.0",
     "framer-motion": "^12.43.0",
     "lucide-react": "^1.27.0",

@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: kontor21
+    runtime: node
+    repo: https://github.com/roxsonltd-droid/kontor21
+    buildCommand: npx prisma generate && npx next build
+    startCommand: npx prisma db push && npx next start
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: DATABASE_URL
+        value: file:./prisma/dev.db
+    disk:
+      name: sqlite-data
+      mountPath: /opt/render/project/src/prisma
+      sizeGB: 1

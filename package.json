@@ -4,10 +4,10 @@
   "private": true,
   "engines": { "node": ">=22" },
   "scripts": {
-    "postinstall": "npx prisma@5.22.0 generate || true",
+    "postinstall": "node_modules/.bin/prisma generate || true",
     "dev": "next dev",
-    "build": "npx prisma@5.22.0 generate && npx next build",
-    "start": "npx prisma@5.22.0 db push && npx next start",
+    "build": "npx next build",
+    "start": "node_modules/.bin/prisma db push && npx next start",
     "lint": "eslint",
     "node": "npx hardhat node",
     "deploy": "npx hardhat run scripts/deploy.ts --network localhost",

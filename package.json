@@ -6,7 +6,7 @@
   "scripts": {
     "postinstall": "node_modules/.bin/prisma generate || true",
     "dev": "next dev",
-    "build": "npx next build",
+    "build": "npx next build --no-turbopack",
     "start": "node_modules/.bin/prisma db push && npx next start",
     "lint": "eslint",
     "node": "npx hardhat node",

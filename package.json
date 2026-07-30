@@ -5,8 +5,8 @@
   "engines": { "node": ">=22" },
   "scripts": {
     "dev": "next dev",
-    "build": "node_modules/.bin/prisma generate && npx next build",
-    "start": "node_modules/.bin/prisma db push && npx next start",
+    "build": "npx prisma@5.22.0 generate && npx next build",
+    "start": "npx prisma@5.22.0 db push && npx next start",
     "lint": "eslint",
     "node": "npx hardhat node",
     "deploy": "npx hardhat run scripts/deploy.ts --network localhost",

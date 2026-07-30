@@ -5,7 +5,6 @@
   "engines": { "node": ">=22" },
   "scripts": {
     "postinstall": "prisma generate",
-    "prebuild": "node -e \"const p=require('path'),f=p.resolve('app','node_modules'),t=p.resolve('node_modules'),r=require('fs');try{r.unlinkSync(f)}catch(e){}try{r.symlinkSync(t,f)}catch(e){}\"",
     "build": "npx next build",
     "start": "node_modules/.bin/prisma db push && npx next start",
     "dev": "next dev",

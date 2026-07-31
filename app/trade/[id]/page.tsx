@@ -1,29 +1,88 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import { ShieldCheck, Truck, Clock, FileText, Download, CheckCircle, ArrowRight, ShieldAlert, CircleAlert, Wallet } from 'lucide-react';
 import { useKontorEscrow } from '@/hooks/useKontorEscrow';
 import { motion } from 'framer-motion';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { useLanguage } from '@/contexts/LanguageContext';
 
+type TradeMetadata = {
+  id: string;
+  blockchainTradeId: number | null;
+  productName: string;
+  quantity: number;
+  unit: string;
+  priceUsdc: number;
+  conditionDescription: string | null;
+  status: string;
+  buyer: { walletAddress: string; companyName: string | null };
+  seller: { walletAddress: string; companyName: string | null };
+};
+
 export default function TradeView() {
   const { t } = useLanguage();
+  const params = useParams<{ id: string }>();
+  const [trade, setTrade] = useState<TradeMetadata | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isFunded, setIsFunded] = useState(false);
   const [isDisputed, setIsDisputed] = useState(false);
   const { address, formattedAddress, isConnecting, connect, fundTrade, raiseDispute } = useKontorEscrow();
-  const tradeId = 1;
+  const blockchainTradeId = trade?.blockchainTradeId ?? null;
+  const totalUsdc = trade ? trade.quantity * trade.priceUsdc : 0;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadTrade = async () => {
+      try {
+        const response = await fetch(`/api/escrow/${encodeURIComponent(params.id)}`, {
+          cache: "no-store",
+        });
+        const data = (await response.json()) as TradeMetadata & { error?: string };
+        if (!response.ok) throw new Error(data.error || "Failed to load trade");
+        if (!cancelled) setTrade(data);
+      } catch (error) {
+        if (!cancelled) {
+          setLoadError(error instanceof Error ? error.message : "Failed to load trade");
+        }
+      }
+    };
+
+    void loadTrade();
+    return () => {
+      cancelled = true;
+    };
+  }, [params.id]);
 
   const handleFundEscrow = async () => {
-    const success = await fundTrade(tradeId);
+    if (blockchainTradeId == null) return;
+    const success = await fundTrade(blockchainTradeId);
     if (success) setIsFunded(true);
   };
 
   const handleRaiseDispute = async () => {
-    const success = await raiseDispute(tradeId);
+    if (blockchainTradeId == null) return;
+    const success = await raiseDispute(blockchainTradeId);
     if (success) setIsDisputed(true);
   };
+
+  if (loadError) {
+    return (
+      <main className="min-h-screen bg-zinc-950 p-8 text-zinc-200">
+        <div className="mx-auto max-w-xl rounded-2xl border border-red-500/30 bg-red-500/10 p-6">
+          <h1 className="text-xl font-bold text-white">Escrow draft unavailable</h1>
+          <p className="mt-2 text-red-200">{loadError}</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (!trade) {
+    return <main className="min-h-screen bg-zinc-950 p-8 text-zinc-400">Loading escrow draft…</main>;
+  }
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-200 font-sans selection:bg-emerald-500/30">
@@ -64,7 +123,7 @@ export default function TradeView() {
             <span className="text-sm font-semibold tracking-wider uppercase">{t('trade.secured')}</span>
           </div>
           <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight mb-4">
-            {t('trade.title')} #104
+            {t('trade.title')} #{trade.id.slice(0, 8)}
           </h1>
           <p className="text-lg text-zinc-400">{t('trade.pageDesc')}</p>
         </div>
@@ -77,19 +136,19 @@ export default function TradeView() {
               <div className="space-y-4">
                 <div className="flex justify-between py-2 border-b border-zinc-800/50">
                   <span className="text-zinc-500">{t('trade.product')}</span>
-                  <span className="text-white font-medium">Слънчоглед (Високоолеинов)</span>
+                  <span className="text-white font-medium">{trade.productName}</span>
                 </div>
                 <div className="flex justify-between py-2 border-b border-zinc-800/50">
                   <span className="text-zinc-500">{t('trade.quantity')}</span>
-                  <span className="text-white font-medium">50 Тона</span>
+                  <span className="text-white font-medium">{trade.quantity} {trade.unit}</span>
                 </div>
                 <div className="flex justify-between py-2 border-b border-zinc-800/50">
                   <span className="text-zinc-500">{t('trade.seller')}</span>
-                  <span className="text-emerald-400 font-mono text-sm">0x9D4...1F2</span>
+                  <span className="text-emerald-400 font-mono text-sm">{trade.seller.walletAddress}</span>
                 </div>
                 <div className="flex justify-between py-2">
                   <span className="text-zinc-500">{t('trade.terms')}</span>
-                  <span className="text-white font-medium">FOB Варна</span>
+                  <span className="text-white font-medium">{trade.conditionDescription || "—"}</span>
                 </div>
               </div>
             </div>
@@ -168,7 +227,7 @@ export default function TradeView() {
               <div className="mb-8">
                 <p className="text-sm text-zinc-500 mb-1">{t('trade.value')}</p>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-4xl font-bold text-white">75,000</span>
+                  <span className="text-4xl font-bold text-white">{totalUsdc.toLocaleString()}</span>
                   <span className="text-lg text-zinc-400">USDC</span>
                 </div>
               </div>
@@ -210,10 +269,14 @@ export default function TradeView() {
                 <div className="mt-8 pt-6 border-t border-zinc-800">
                   <button 
                     onClick={handleFundEscrow}
-                    disabled={!address}
+                    disabled={!address || blockchainTradeId == null}
                     className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3.5 rounded-xl font-semibold transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
-                    {!address ? t('nav.connect') : `${t('trade.lockFunds')} 75,000 USDC`} <ArrowRight className="w-4 h-4" />
+                    {!address
+                      ? t('nav.connect')
+                      : blockchainTradeId == null
+                        ? "Awaiting on-chain deployment"
+                        : `${t('trade.lockFunds')} ${totalUsdc.toLocaleString()} USDC`} <ArrowRight className="w-4 h-4" />
                   </button>
                   <p className="text-[10px] text-zinc-500 text-center mt-3 flex items-center justify-center gap-1">
                     <ShieldCheck className="w-3 h-3" /> {t('trade.guarantee')}

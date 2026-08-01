@@ -8,21 +8,45 @@ import { motion } from 'framer-motion';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { useLanguage } from '@/contexts/LanguageContext';
 
+import { useParams } from 'next/navigation';
+
 export default function TradeView() {
   const { t } = useLanguage();
+  const params = useParams();
+  const tradeId = params.id ? parseInt(params.id as string) : 1;
+  
   const [isFunded, setIsFunded] = useState(false);
   const [isDisputed, setIsDisputed] = useState(false);
-  const { address, formattedAddress, isConnecting, connect, fundTrade, raiseDispute } = useKontorEscrow();
-  const tradeId = 1;
+  const [tradeData, setTradeData] = useState<any>(null);
+  
+  const { address, formattedAddress, isConnecting, connect, fundTrade, raiseDispute, getTrade } = useKontorEscrow();
+
+  React.useEffect(() => {
+    if (address) {
+      getTrade(tradeId).then(data => {
+        if (data) {
+          setTradeData(data);
+          setIsFunded(data.status >= 1); // 1 = FUNDED, 2 = COMPLETED
+          setIsDisputed(data.status === 3); // 3 = DISPUTED
+        }
+      });
+    }
+  }, [address, getTrade, tradeId]);
 
   const handleFundEscrow = async () => {
     const success = await fundTrade(tradeId);
-    if (success) setIsFunded(true);
+    if (success) {
+      setIsFunded(true);
+      if (tradeData) setTradeData({ ...tradeData, status: 1 });
+    }
   };
 
   const handleRaiseDispute = async () => {
     const success = await raiseDispute(tradeId);
-    if (success) setIsDisputed(true);
+    if (success) {
+      setIsDisputed(true);
+      if (tradeData) setTradeData({ ...tradeData, status: 3 });
+    }
   };
 
   return (

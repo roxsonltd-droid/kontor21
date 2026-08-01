@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { CheckCircle2, Blocks, Fingerprint, UploadCloud, FileCheck, Wallet } from 'lucide-react';
-import { useWallet } from '@/hooks/useWallet';
+import { useKontorEscrow } from '@/hooks/useKontorEscrow';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 
@@ -12,11 +12,38 @@ export default function OracleDashboard() {
   const { t } = useLanguage();
   const [isProcessing, setIsProcessing] = useState(false);
   const [isApproved, setIsApproved] = useState(false);
-  const { address, formattedAddress, isConnecting, connectWallet, mockTransaction } = useWallet();
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [ipfsHash, setIpfsHash] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const { 
+    address, 
+    formattedAddress, 
+    isConnecting, 
+    connect: connectWallet, 
+    approveTradeByOracle 
+  } = useKontorEscrow();
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setSelectedFile(file);
+      setIsUploading(true);
+      
+      // Simulate IPFS upload delay
+      setTimeout(() => {
+        // Generate a random mock CID hash starting with Qm
+        const mockCid = 'Qm' + Array.from({length: 44}, () => Math.random().toString(36)[2] || 'a').join('');
+        setIpfsHash(mockCid);
+        setIsUploading(false);
+      }, 1500);
+    }
+  };
 
   const handleApprove = async () => {
+    if (!ipfsHash) return;
     setIsProcessing(true);
-    const success = await mockTransaction('approve_trade');
+    // Call real smart contract function for Trade ID 1
+    const success = await approveTradeByOracle(1);
     setIsProcessing(false);
     
     if (success) {
@@ -131,10 +158,33 @@ export default function OracleDashboard() {
                 
                 <div>
                   <p className="text-[10px] text-zinc-500 uppercase tracking-widest mb-2">{t('oracle.proof')}</p>
-                  <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-lg p-2.5">
-                    <UploadCloud className="w-4 h-4 text-emerald-400/80" />
-                    <span className="text-xs font-mono text-zinc-400">QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG</span>
-                  </div>
+                  {!ipfsHash ? (
+                    <div className="relative">
+                      <input 
+                        type="file" 
+                        onChange={handleFileUpload} 
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                        disabled={isUploading}
+                      />
+                      <div className={`flex items-center justify-center gap-2 border-2 border-dashed ${isUploading ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-zinc-800 bg-zinc-900 hover:border-zinc-700'} rounded-lg p-4 transition-colors`}>
+                        <UploadCloud className={`w-5 h-5 ${isUploading ? 'text-emerald-400 animate-bounce' : 'text-zinc-500'}`} />
+                        <span className="text-sm font-medium text-zinc-400">
+                          {isUploading ? 'Uploading to IPFS...' : 'Click to upload inspection report'}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2 bg-emerald-950/30 border border-emerald-900/50 rounded-lg p-2.5">
+                        <FileCheck className="w-4 h-4 text-emerald-400" />
+                        <span className="text-xs font-medium text-emerald-400/90 truncate">{selectedFile?.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-lg p-2.5">
+                        <span className="text-[10px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded uppercase">CID</span>
+                        <span className="text-xs font-mono text-zinc-400 truncate">{ipfsHash}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -148,7 +198,7 @@ export default function OracleDashboard() {
                   <>
                     <button 
                       onClick={handleApprove}
-                      disabled={isProcessing}
+                      disabled={isProcessing || !ipfsHash}
                       className="w-full sm:w-auto flex-1 bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3.5 rounded-xl text-sm font-semibold transition-all shadow-[0_0_20px_rgba(16,185,129,0.2)] disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                       {isProcessing ? t('oracle.processing') : t('oracle.approveBtn')}

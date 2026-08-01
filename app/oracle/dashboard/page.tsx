@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { CheckCircle2, Blocks, Fingerprint, UploadCloud, FileCheck, Wallet } from 'lucide-react';
-import { useWallet } from '@/hooks/useWallet';
+import { useKontorEscrow } from '@/hooks/useKontorEscrow';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 
@@ -12,13 +12,22 @@ export default function OracleDashboard() {
   const { t } = useLanguage();
   const [isProcessing, setIsProcessing] = useState(false);
   const [isApproved, setIsApproved] = useState(false);
-  const { address, formattedAddress, isConnecting, connectWallet, mockTransaction } = useWallet();
+
+  // Use the real escrow contract instead of the mock wallet
+  const {
+    address,
+    formattedAddress,
+    isConnecting,
+    connect: connectWallet,
+    approveTradeByOracle,
+  } = useKontorEscrow();
 
   const handleApprove = async () => {
     setIsProcessing(true);
-    const success = await mockTransaction('approve_trade');
+    // Call the real smart contract function for Trade ID 1
+    const success = await approveTradeByOracle(1);
     setIsProcessing(false);
-    
+
     if (success) {
       setIsApproved(true);
     }

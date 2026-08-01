@@ -197,9 +197,9 @@ const translations: Translations = {
     BG: "Оставете банките в 20-ти век."
   },
   "compare.subtitle": {
-    EN: "Cross-border bank transfers cost an average of 6.3% in fees and take up to 7 days. During crises and closed channels, your money remains blocked. With Kontor 21 and USDC, settlement is instant, global, and costs cents.",
-    DE: "Grenzüberschreitende Banküberweisungen kosten durchschnittlich 6,3% an Gebühren und dauern bis zu 7 Tage. In Krisen und bei geschlossenen Kanälen bleibt Ihr Geld blockiert. Mit Kontor 21 und USDC ist die Abwicklung sofort, global und kostet Cents.",
-    BG: "Трансграничните банкови преводи струват средно 6.3% в такси и отнемат до 7 дни. При кризи и затворени канали, парите ви остават блокирани. С Kontor 21 и USDC, сетълментът е моментален, глобален и струва центове."
+    EN: "Cross-border bank transfers cost 6.3% in fees and take up to 7 days, leaving you vulnerable to geopolitical crises and currency fluctuations. Our programmable escrow with stablecoins (USDC/USDT) bypasses the banking system entirely—securing funds mathematically and settling instantly upon Oracle confirmation.",
+    DE: "Grenzüberschreitende Banküberweisungen kosten 6,3% Gebühren und dauern bis zu 7 Tage, was Sie geopolitischen Krisen und Währungsschwankungen aussetzt. Unser programmierbarer Treuhandservice mit Stablecoins (USDC/USDT) umgeht das Bankensystem vollständig – sichert Gelder mathematisch und wickelt sofort nach Oracle-Bestätigung ab.",
+    BG: "Трансграничните банкови преводи струват 6.3% в такси и отнемат до 7 дни, излагайки ви на геополитически рискове и валутни колебания. Нашият програмируем ескроу със стейбълкойни (USDC/USDT) заобикаля банковата система изцяло – осигурява средствата математически и прави моментален сетълмент при одобрение от Оракул."
   },
   "compare.benefit1": { EN: "Instant settlement (T+0)", DE: "Sofortige Abwicklung (T+0)", BG: "Моментално плащане (T+0 сетълмент)" },
   "compare.benefit2": { EN: "Full protection from currency fluctuations", DE: "Vollständiger Schutz vor Währungsschwankungen", BG: "Пълна защита от валутни колебания" },

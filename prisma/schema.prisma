@@ -12,7 +12,7 @@ model User {
   walletAddress String   @unique
   companyName   String?
   vatNumber     String?  // ЕИК/VAT
-  role          String   @default("TRADER") // TRADER, ORACLE, ADMIN
+  role          String   @default("TRADER") // TRADER, ORACLE, ADMIN, LAB, INSPECTOR
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   
@@ -25,29 +25,63 @@ model TradeMetadata {
   id                   String   @id @default(uuid())
   blockchainTradeId    Int?     @unique // ID from the smart contract
   productName          String
-  quantity             Float
+  quantity             Decimal  @db.Decimal(20, 6) // Nexus Core: High precision for commodities
   unit                 String   // e.g. "tons", "kg"
-  priceUsdc            Float
-  conditionDescription String?
+  priceUsdc            Decimal  @db.Decimal(20, 6) // Nexus Core: High precision for crypto-dollars
   
   buyerId  String
   sellerId String
   buyer    User @relation("BuyerTrades", fields: [buyerId], references: [id])
   seller   User @relation("SellerTrades", fields: [sellerId], references: [id])
 
-  status      String   @default("PENDING") // PENDING, IN_TRANSIT, COMPLETED, DISPUTED
+  // Nexus Core: Separation of physical state and financial state
+  operationalStatus String   @default("PENDING") // PENDING, SHIPPED, INSPECTED, CONDITIONS_SATISFIED, DISPUTED
+  settlementStatus  String   @default("AWAITING_FUNDS") // AWAITING_FUNDS, FUNDED, RELEASED, REFUNDED, PARTIAL_SETTLEMENT
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  conditions  TradeCondition[]
+  evidence    Evidence[]
   auditLogs   AuditLog[]
+}
+
+// Nexus Core: Structured Rules Engine Inputs
+model TradeCondition {
+  id           String   @id @default(uuid())
+  tradeId      String
+  parameter    String   // e.g. "moisture", "location", "weight"
+  operator     String   // e.g. "<=", "==", ">="
+  value        String   // e.g. "8.0", "Hamad Port"
+  unit         String?  // e.g. "%", "tons"
+  providerRole String   // e.g. "LAB", "INSPECTOR", "CARRIER"
+  isRequired   Boolean  @default(true)
+  
+  trade        TradeMetadata @relation(fields: [tradeId], references: [id])
+  evidence     Evidence[]
+}
+
+// Nexus Core: Verifiable Credentials / Lab Results
+model Evidence {
+  id             String   @id @default(uuid())
+  tradeId        String
+  conditionId    String?  // Which condition this evidence satisfies
+  documentHash   String   // IPFS hash of the actual PDF/Cert
+  providerWallet String   // Who uploaded it (e.g. SGS Oracle)
+  verifiedValue  String?  // The extracted value (e.g. "4.8" for moisture)
+  isValid        Boolean? // Evaluated by Rules Engine / AI
+  createdAt      DateTime @default(now())
+
+  trade     TradeMetadata   @relation(fields: [tradeId], references: [id])
+  condition TradeCondition? @relation(fields: [conditionId], references: [id])
 }
 
 model AuditLog {
   id              String   @id @default(uuid())
   tradeId         String
-  action          String   // e.g., "CERTIFICATE_UPLOADED", "FUNDS_LOCKED", "DISPUTE_RAISED"
-  actorWallet     String   // The wallet that performed the action
-  documentIpfsHash String? // If a document was uploaded
+  action          String   // e.g., "CERTIFICATE_UPLOADED", "CONDITIONS_SATISFIED"
+  actorWallet     String   
+  documentIpfsHash String? 
   createdAt       DateTime @default(now())
 
   trade TradeMetadata @relation(fields: [tradeId], references: [id])

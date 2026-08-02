@@ -12,6 +12,11 @@ async function main() {
   const [deployer] = await ethers.getSigners();
   console.log("Deploying with account:", deployer.address);
 
+  // Define 3 arbitrators (in production these would be separate controlled wallets)
+  const arb1 = deployer.address;
+  const arb2 = "0x2222222222222222222222222222222222222222";
+  const arb3 = "0x3333333333333333333333333333333333333333";
+
   const TestUSDC = await ethers.getContractFactory("TestUSDC");
   const usdc = await TestUSDC.deploy();
   await usdc.waitForDeployment();
@@ -24,7 +29,9 @@ async function main() {
   const KontorEscrow = await ethers.getContractFactory("KontorEscrow");
   const feeTreasury = deployer.address; // For demo, deployer is treasury
   const feeBasisPoints = 25; // 0.25%
-  const escrow = await KontorEscrow.deploy(deployer.address, feeTreasury, feeBasisPoints);
+  
+  // Pass 3 arbitrators instead of 1
+  const escrow = await KontorEscrow.deploy(arb1, arb2, arb3, feeTreasury, feeBasisPoints);
   await escrow.waitForDeployment();
   const escrowAddress = await escrow.getAddress();
   console.log("KontorEscrow deployed to:", escrowAddress);
@@ -32,17 +39,19 @@ async function main() {
   const addresses = {
     testUSDC: usdcAddress,
     kontorEscrow: escrowAddress,
-    arbitrator: deployer.address,
+    arbitrator1: arb1,
+    arbitrator2: arb2,
+    arbitrator3: arb3,
   };
 
-  const dest = path.join(__dirname, "..", "src", "lib", "contract-addresses.json");
+  const dest = path.join(__dirname, "..", "contract-addresses.json");
   fs.writeFileSync(dest, JSON.stringify(addresses, null, 2));
   console.log("\nAddresses written to", dest);
 
   console.log("\nDeployment Summary:");
   console.log("  TestUSDC:", usdcAddress);
   console.log("  KontorEscrow:", escrowAddress);
-  console.log("  Arbitrator/Owner:", deployer.address);
+  console.log("  Arbitrator 1 (Owner):", arb1);
 }
 
 main().catch((error) => {

@@ -118,8 +118,7 @@ export function useKontorEscrow() {
     buyer: string,
     oracle: string,
     amount: number,
-    tokenAddress: string,
-    conditionDescription: string
+    tokenAddress: string
   ) => {
     if (!escrowContract) return null;
     try {
@@ -128,8 +127,7 @@ export function useKontorEscrow() {
         buyer,
         oracle,
         amountWei,
-        tokenAddress,
-        conditionDescription
+        tokenAddress
       );
       const receipt = await tx.wait();
       const tradeCreatedLog = receipt.logs.find(
@@ -149,7 +147,7 @@ export function useKontorEscrow() {
     if (!escrowContract || !usdcContract) return false;
     try {
       const trade = await escrowContract.trades(tradeId);
-      const amountWei = trade.amount;
+      const amountWei = trade.totalAmount; // V2 uses totalAmount
       const approveTx = await usdcContract.approve(
         CONTRACT_ADDRESSES.kontorEscrow,
         amountWei
@@ -164,14 +162,15 @@ export function useKontorEscrow() {
     }
   };
 
-  const approveTradeByOracle = async (tradeId: number) => {
+  const releaseFunds = async (tradeId: number, amount: number) => {
     if (!escrowContract) return false;
     try {
-      const tx = await escrowContract.approveTradeByOracle(tradeId);
+      const amountWei = parseUnits(amount.toString(), 6);
+      const tx = await escrowContract.releaseFunds(tradeId, amountWei);
       await tx.wait();
       return true;
     } catch (error) {
-      console.error("approveTradeByOracle failed", error);
+      console.error("releaseFunds failed", error);
       return false;
     }
   };
@@ -188,14 +187,14 @@ export function useKontorEscrow() {
     }
   };
 
-  const resolveDispute = async (tradeId: number, refundBuyer: boolean) => {
+  const voteDispute = async (tradeId: number, refundBuyer: boolean) => {
     if (!escrowContract) return false;
     try {
-      const tx = await escrowContract.resolveDispute(tradeId, refundBuyer);
+      const tx = await escrowContract.voteDispute(tradeId, refundBuyer);
       await tx.wait();
       return true;
     } catch (error) {
-      console.error("resolveDispute failed", error);
+      console.error("voteDispute failed", error);
       return false;
     }
   };
@@ -209,9 +208,11 @@ export function useKontorEscrow() {
         seller: trade[1],
         oracle: trade[2],
         amount: formatUnits(trade[3], 6),
-        token: trade[4],
-        status: Number(trade[5]),
-        conditionDescription: trade[6],
+        releasedAmount: formatUnits(trade[4], 6),
+        token: trade[5],
+        status: Number(trade[6]),
+        votesForBuyer: Number(trade[7]),
+        votesForSeller: Number(trade[8]),
       };
     } catch (error) {
       console.error("getTrade failed", error);
@@ -241,9 +242,9 @@ export function useKontorEscrow() {
     connect,
     createTrade,
     fundTrade,
-    approveTradeByOracle,
+    releaseFunds,
     raiseDispute,
-    resolveDispute,
+    voteDispute,
     getTrade,
     getUsdcBalance,
   };

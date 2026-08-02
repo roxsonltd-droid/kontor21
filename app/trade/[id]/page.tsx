@@ -13,13 +13,14 @@ type TradeMetadata = {
   id: string;
   blockchainTradeId: number | null;
   productName: string;
-  quantity: number;
+  quantity: string | number;
   unit: string;
-  priceUsdc: number;
-  conditionDescription: string | null;
-  status: string;
+  priceUsdc: string | number;
+  operationalStatus: string;
+  settlementStatus: string;
   buyer: { walletAddress: string; companyName: string | null };
   seller: { walletAddress: string; companyName: string | null };
+  conditions?: { parameter: string; operator: string; value: string; unit: string | null; providerRole: string }[];
 };
 
 export default function TradeView() {
@@ -31,7 +32,9 @@ export default function TradeView() {
   const [isDisputed, setIsDisputed] = useState(false);
   const { address, formattedAddress, isConnecting, connect, fundTrade, raiseDispute } = useKontorEscrow();
   const blockchainTradeId = trade?.blockchainTradeId ?? null;
-  const totalUsdc = trade ? trade.quantity * trade.priceUsdc : 0;
+  const quantityNum = trade ? parseFloat(trade.quantity.toString()) : 0;
+  const priceNum = trade ? parseFloat(trade.priceUsdc.toString()) : 0;
+  const totalUsdc = quantityNum * priceNum;
 
   useEffect(() => {
     let cancelled = false;
@@ -140,15 +143,33 @@ export default function TradeView() {
                 </div>
                 <div className="flex justify-between py-2 border-b border-zinc-800/50">
                   <span className="text-zinc-500">{t('trade.quantity')}</span>
-                  <span className="text-white font-medium">{trade.quantity} {trade.unit}</span>
+                  <span className="text-white font-medium">{trade.quantity.toString()} {trade.unit}</span>
                 </div>
                 <div className="flex justify-between py-2 border-b border-zinc-800/50">
                   <span className="text-zinc-500">{t('trade.seller')}</span>
                   <span className="text-emerald-400 font-mono text-sm">{trade.seller.walletAddress}</span>
                 </div>
-                <div className="flex justify-between py-2">
-                  <span className="text-zinc-500">{t('trade.terms')}</span>
-                  <span className="text-white font-medium">{trade.conditionDescription || "—"}</span>
+                <div className="flex justify-between py-2 border-b border-zinc-800/50">
+                  <span className="text-zinc-500">Logistics Status</span>
+                  <span className="text-emerald-400 font-medium">{trade.operationalStatus}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-zinc-800/50">
+                  <span className="text-zinc-500">Financial Status</span>
+                  <span className="text-emerald-400 font-medium">{trade.settlementStatus}</span>
+                </div>
+                <div className="py-2">
+                  <span className="text-zinc-500 block mb-2">{t('trade.terms')} (Rules Engine)</span>
+                  {trade.conditions && trade.conditions.length > 0 ? (
+                    <div className="space-y-1">
+                      {trade.conditions.map((c, i) => (
+                        <div key={i} className="text-xs bg-zinc-800/50 p-2 rounded text-zinc-300">
+                          <span className="font-semibold text-emerald-400">{c.providerRole}</span> verifies: {c.parameter} {c.operator} {c.value}{c.unit}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-white font-medium">—</span>
+                  )}
                 </div>
               </div>
             </div>

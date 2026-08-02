@@ -10,7 +10,12 @@ export async function GET(_req: NextRequest, context: RouteContext) {
     const { id } = await context.params;
     const trade = await prisma.tradeMetadata.findUnique({
       where: { id },
-      include: { buyer: true, seller: true },
+      include: { 
+        buyer: true, 
+        seller: true,
+        conditions: true,
+        evidence: true
+      },
     });
 
     if (!trade) {
@@ -22,8 +27,11 @@ export async function GET(_req: NextRequest, context: RouteContext) {
         quantity: 50,
         unit: "Tons",
         priceUsdc: 1500,
-        conditionDescription: "FOB Varna, SGS Moisture < 8%",
-        status: "DRAFT",
+        conditions: [
+          { parameter: "moisture", operator: "<=", value: "8", unit: "%", providerRole: "LAB" }
+        ],
+        operationalStatus: "PENDING",
+        settlementStatus: "AWAITING_FUNDS",
         buyer: { walletAddress: "0x1A2...3B4", companyName: "AgriBuyer GmbH" },
         seller: { walletAddress: "0x9D4...1F2", companyName: "BioFood BG Ltd." },
       });

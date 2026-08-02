@@ -32,17 +32,36 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Prepare nested conditions creation if provided
+    let conditionsCreate = undefined;
+    if (body.conditions && Array.isArray(body.conditions)) {
+      conditionsCreate = {
+        create: body.conditions.map((c: any) => ({
+          parameter: c.parameter,
+          operator: c.operator,
+          value: c.value,
+          unit: c.unit || null,
+          providerRole: c.providerRole || "INSPECTOR",
+          isRequired: c.isRequired !== undefined ? c.isRequired : true
+        }))
+      };
+    }
+
     const trade = await prisma.tradeMetadata.create({
       data: {
         productName: body.productName,
         quantity: body.quantity,
         unit: body.unit || "tons",
         priceUsdc: body.priceUsdc,
-        conditionDescription: body.conditionDescription || null,
         buyerId: buyer.id,
         sellerId: seller.id,
-        status: "PENDING",
+        operationalStatus: "PENDING",
+        settlementStatus: "AWAITING_FUNDS",
+        conditions: conditionsCreate
       },
+      include: {
+        conditions: true
+      }
     });
 
     return NextResponse.json({
@@ -50,7 +69,7 @@ export async function POST(req: NextRequest) {
       tradeId: trade.id,
       blockchainTradeId: null,
       kontor21_url: `${PUBLIC_ORIGIN}/trade/${trade.id}`,
-      instructions: `Draft escrow created. Buyer and seller must open kontor21 and fund the escrow via MetaMask.`,
+      instructions: `Draft escrow created with structured conditions.`,
     });
   } catch (err) {
     console.error("[escrow-create]", err);
@@ -61,7 +80,7 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   try {
     const trades = await prisma.tradeMetadata.findMany({
-      include: { buyer: true, seller: true },
+      include: { buyer: true, seller: true, conditions: true },
       orderBy: { createdAt: "desc" },
       take: 50,
     });

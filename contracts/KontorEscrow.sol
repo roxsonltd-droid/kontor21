@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 /**
  * @title KontorEscrow
  * @dev Escrow smart contract for agricultural B2B trade.
+ * V2 Nexus Core: Supports partial payments and 2-of-3 Multisig Arbitration.
  */
 contract KontorEscrow is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -24,41 +25,41 @@ contract KontorEscrow is Ownable, ReentrancyGuard {
     struct Trade {
         address buyer;
         address seller;
-        address oracle; // e.g. SGS Inspector
-        uint256 amount;
+        address oracle; // Server Rules Engine address
+        uint256 totalAmount;
+        uint256 releasedAmount;
         IERC20 token;
         TradeStatus status;
-        string conditionDescription;
+        
+        // Multisig arbitration state
+        uint8 votesForBuyer;
+        uint8 votesForSeller;
     }
 
     // Mapping from tradeId to Trade
     mapping(uint256 => Trade) public trades;
     
-    // Auto-incrementing trade ID
+    // Mapping from tradeId to arbitrator address to whether they have voted
+    mapping(uint256 => mapping(address => bool)) public hasVoted;
+    
     uint256 public nextTradeId = 1;
 
-    // The platform's arbitrator address
-    address public arbitrator;
+    // 3 Arbitrators for 2-of-3 Multisig Resolution
+    address[3] public arbitrators;
 
-    // The platform's fee collection wallet
     address public feeTreasury;
-    
-    // Fee percentage in basis points (e.g., 25 = 0.25%)
     uint256 public feeBasisPoints;
 
     event TradeCreated(uint256 indexed tradeId, address indexed buyer, address indexed seller, uint256 amount);
     event TradeFunded(uint256 indexed tradeId);
-    event TradeApproved(uint256 indexed tradeId);
+    event TradePartialReleased(uint256 indexed tradeId, uint256 amount);
+    event TradeCompleted(uint256 indexed tradeId);
     event DisputeRaised(uint256 indexed tradeId, address raisedBy);
+    event ArbitratorVoted(uint256 indexed tradeId, address arbitrator, bool refundBuyer);
     event DisputeResolved(uint256 indexed tradeId, bool refundBuyer);
 
     modifier onlyBuyer(uint256 _tradeId) {
         require(msg.sender == trades[_tradeId].buyer, "Not the buyer");
-        _;
-    }
-
-    modifier onlySeller(uint256 _tradeId) {
-        require(msg.sender == trades[_tradeId].seller, "Not the seller");
         _;
     }
 
@@ -67,28 +68,32 @@ contract KontorEscrow is Ownable, ReentrancyGuard {
         _;
     }
 
-    modifier onlyArbitrator() {
-        require(msg.sender == arbitrator, "Not the arbitrator");
+    modifier isArbitrator() {
+        require(msg.sender == arbitrators[0] || msg.sender == arbitrators[1] || msg.sender == arbitrators[2], "Not an arbitrator");
         _;
     }
 
-    constructor(address _arbitrator, address _feeTreasury, uint256 _feeBasisPoints) Ownable(msg.sender) {
-        require(_feeTreasury != address(0), "Invalid treasury address");
-        require(_feeBasisPoints <= 1000, "Fee cannot exceed 10%"); // Max 10% safety cap
-        arbitrator = _arbitrator;
+    constructor(
+        address _arb1, 
+        address _arb2, 
+        address _arb3, 
+        address _feeTreasury, 
+        uint256 _feeBasisPoints
+    ) Ownable(msg.sender) {
+        require(_feeTreasury != address(0), "Invalid treasury");
+        require(_feeBasisPoints <= 1000, "Fee cannot exceed 10%");
+        arbitrators[0] = _arb1;
+        arbitrators[1] = _arb2;
+        arbitrators[2] = _arb3;
         feeTreasury = _feeTreasury;
         feeBasisPoints = _feeBasisPoints;
     }
 
-    /**
-     * @dev Creates a new escrow contract. Usually called by the Seller.
-     */
     function createTrade(
         address _buyer,
         address _oracle,
         uint256 _amount,
-        address _tokenAddress,
-        string memory _conditionDescription
+        address _tokenAddress
     ) external returns (uint256) {
         require(_buyer != address(0), "Invalid buyer address");
         require(_oracle != address(0), "Invalid oracle address");
@@ -100,98 +105,103 @@ contract KontorEscrow is Ownable, ReentrancyGuard {
             buyer: _buyer,
             seller: msg.sender,
             oracle: _oracle,
-            amount: _amount,
+            totalAmount: _amount,
+            releasedAmount: 0,
             token: IERC20(_tokenAddress),
             status: TradeStatus.AWAITING_FUNDS,
-            conditionDescription: _conditionDescription
+            votesForBuyer: 0,
+            votesForSeller: 0
         });
 
         emit TradeCreated(tradeId, _buyer, msg.sender, _amount);
         return tradeId;
     }
 
-    /**
-     * @dev Buyer deposits the required tokens into the contract.
-     * Note: Buyer must have called approve() on the token contract first.
-     */
     function fundTrade(uint256 _tradeId) external onlyBuyer(_tradeId) nonReentrant {
         Trade storage trade = trades[_tradeId];
         require(trade.status == TradeStatus.AWAITING_FUNDS, "Trade is not awaiting funds");
 
         trade.status = TradeStatus.FUNDED;
-        
-        // Transfer tokens from buyer to this contract
-        trade.token.safeTransferFrom(msg.sender, address(this), trade.amount);
-
+        trade.token.safeTransferFrom(msg.sender, address(this), trade.totalAmount);
         emit TradeFunded(_tradeId);
     }
 
     /**
-     * @dev Oracle (e.g. SGS) confirms the conditions are met and unlocks the funds to the seller.
+     * @dev Rules Engine (Oracle) releases partial or full funds based on milestones.
      */
-    function approveTradeByOracle(uint256 _tradeId) external onlyOracle(_tradeId) nonReentrant {
+    function releaseFunds(uint256 _tradeId, uint256 _amount) external onlyOracle(_tradeId) nonReentrant {
         Trade storage trade = trades[_tradeId];
-        require(trade.status == TradeStatus.FUNDED, "Trade is not funded yet");
+        require(trade.status == TradeStatus.FUNDED, "Trade is not funded or is disputed");
+        require(_amount > 0, "Amount must be > 0");
+        require(trade.releasedAmount + _amount <= trade.totalAmount, "Exceeds total amount");
 
-        trade.status = TradeStatus.COMPLETED;
+        trade.releasedAmount += _amount;
 
-        // Calculate fee
-        uint256 feeAmount = (trade.amount * feeBasisPoints) / 10000;
-        uint256 sellerAmount = trade.amount - feeAmount;
+        uint256 feeAmount = (_amount * feeBasisPoints) / 10000;
+        uint256 sellerAmount = _amount - feeAmount;
 
-        // Release funds
         if (feeAmount > 0) {
             trade.token.safeTransfer(feeTreasury, feeAmount);
         }
         trade.token.safeTransfer(trade.seller, sellerAmount);
 
-        emit TradeApproved(_tradeId);
+        if (trade.releasedAmount == trade.totalAmount) {
+            trade.status = TradeStatus.COMPLETED;
+            emit TradeCompleted(_tradeId);
+        } else {
+            emit TradePartialReleased(_tradeId, _amount);
+        }
     }
 
-    /**
-     * @dev Either buyer or seller can raise a dispute to freeze the funds.
-     */
     function raiseDispute(uint256 _tradeId) external nonReentrant {
         Trade storage trade = trades[_tradeId];
         require(msg.sender == trade.buyer || msg.sender == trade.seller, "Not part of trade");
-        require(trade.status == TradeStatus.FUNDED, "Can only dispute funded trades");
+        require(trade.status == TradeStatus.FUNDED, "Can only dispute active funded trades");
 
         trade.status = TradeStatus.DISPUTED;
-        
         emit DisputeRaised(_tradeId, msg.sender);
     }
 
     /**
-     * @dev Arbitrator resolves the dispute.
-     * @param refundBuyer If true, funds go back to buyer. If false, funds go to seller.
+     * @dev Arbitrators vote. 2 votes required to resolve.
      */
-    function resolveDispute(uint256 _tradeId, bool refundBuyer) external onlyArbitrator nonReentrant {
+    function voteDispute(uint256 _tradeId, bool refundBuyer) external isArbitrator nonReentrant {
         Trade storage trade = trades[_tradeId];
         require(trade.status == TradeStatus.DISPUTED, "Trade is not in dispute");
+        require(!hasVoted[_tradeId][msg.sender], "Arbitrator already voted");
 
+        hasVoted[_tradeId][msg.sender] = true;
+        
         if (refundBuyer) {
-            trade.status = TradeStatus.REFUNDED;
-            trade.token.safeTransfer(trade.buyer, trade.amount);
+            trade.votesForBuyer++;
         } else {
+            trade.votesForSeller++;
+        }
+        
+        emit ArbitratorVoted(_tradeId, msg.sender, refundBuyer);
+
+        uint256 remainingAmount = trade.totalAmount - trade.releasedAmount;
+
+        // Check if 2-of-3 consensus reached
+        if (trade.votesForBuyer >= 2) {
+            trade.status = TradeStatus.REFUNDED;
+            trade.token.safeTransfer(trade.buyer, remainingAmount);
+            emit DisputeResolved(_tradeId, true);
+        } else if (trade.votesForSeller >= 2) {
             trade.status = TradeStatus.COMPLETED;
-            
-            uint256 feeAmount = (trade.amount * feeBasisPoints) / 10000;
-            uint256 sellerAmount = trade.amount - feeAmount;
+            uint256 feeAmount = (remainingAmount * feeBasisPoints) / 10000;
+            uint256 sellerAmount = remainingAmount - feeAmount;
 
             if (feeAmount > 0) {
                 trade.token.safeTransfer(feeTreasury, feeAmount);
             }
             trade.token.safeTransfer(trade.seller, sellerAmount);
+            emit DisputeResolved(_tradeId, false);
         }
-
-        emit DisputeResolved(_tradeId, refundBuyer);
     }
 
-    /**
-     * @dev Admin function to update the arbitrator address
-     */
-    function setArbitrator(address _newArbitrator) external onlyOwner {
-        require(_newArbitrator != address(0), "Invalid address");
-        arbitrator = _newArbitrator;
+    function setArbitrators(address[3] calldata _newArbitrators) external onlyOwner {
+        require(_newArbitrators[0] != address(0) && _newArbitrators[1] != address(0) && _newArbitrators[2] != address(0), "Invalid arbitrators");
+        arbitrators = _newArbitrators;
     }
 }

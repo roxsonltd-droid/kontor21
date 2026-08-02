@@ -26,6 +26,24 @@ function NewTradeWizard() {
   const [deliveryPort, setDeliveryPort] = useState(searchParams.get("port") || "Varna");
   const [oracle, setOracle] = useState("sgs");
   
+  // Nexus Core: Structured Conditions
+  const [conditions, setConditions] = useState([
+    { id: 1, parameter: "moisture", operator: "<=", value: "8.0", unit: "%", providerRole: "LAB", isRequired: true },
+    { id: 2, parameter: "weight", operator: ">=", value: quantity, unit: "tons", providerRole: "INSPECTOR", isRequired: true }
+  ]);
+  
+  const addCondition = () => {
+    setConditions([...conditions, { id: Date.now(), parameter: "", operator: "==", value: "", unit: "", providerRole: "INSPECTOR", isRequired: true }]);
+  };
+  
+  const updateCondition = (id: number, field: string, val: string) => {
+    setConditions(conditions.map(c => c.id === id ? { ...c, [field]: val } : c));
+  };
+  
+  const removeCondition = (id: number) => {
+    setConditions(conditions.filter(c => c.id !== id));
+  };
+  
   const totalValue = parseFloat(quantity) * parseFloat(price) || 0;
 
   // Local translations for the wizard
@@ -56,7 +74,14 @@ function NewTradeWizard() {
             buyerWallet,
             sellerWallet,
             unit: "tons",
-            conditionDescription: `${quantity}t ${product} ${deliveryTerms} ${deliveryPort} | Oracle: ${oracle.toUpperCase()}`,
+            conditions: conditions.map(c => ({
+              parameter: c.parameter,
+              operator: c.operator,
+              value: c.value,
+              unit: c.unit,
+              providerRole: c.providerRole,
+              isRequired: c.isRequired
+            })),
           }),
         });
         const data = await res.json();
@@ -230,13 +255,35 @@ function NewTradeWizard() {
                   </div>
                 </div>
 
-                <div className="mt-8">
-                  <h4 className="text-sm font-semibold text-white mb-4">Required Documents Checklist</h4>
+                <div className="mt-8 border-t border-zinc-800/50 pt-8">
+                  <div className="flex justify-between items-center mb-4">
+                    <div>
+                      <h4 className="text-sm font-semibold text-white">Structured Trade Conditions</h4>
+                      <p className="text-xs text-zinc-500">Rules Engine parameters for automatic settlement.</p>
+                    </div>
+                    <button onClick={addCondition} className="text-xs bg-emerald-600/20 text-emerald-400 px-3 py-1.5 rounded-lg border border-emerald-500/30 hover:bg-emerald-600/40 transition-colors">
+                      + Add Rule
+                    </button>
+                  </div>
+                  
                   <div className="space-y-3">
-                    {['Proforma Invoice', 'Bill of Lading (B/L)', 'Quality & Moisture Certificate'].map((doc, idx) => (
-                      <div key={idx} className="flex items-center gap-3 bg-black/40 p-3 rounded-lg border border-zinc-800/50">
-                        <FileText className="w-4 h-4 text-emerald-500" />
-                        <span className="text-zinc-300 text-sm">{doc}</span>
+                    {conditions.map((c, idx) => (
+                      <div key={c.id} className="flex items-center gap-2 bg-black/40 p-3 rounded-lg border border-zinc-800/50">
+                        <select value={c.providerRole} onChange={e => updateCondition(c.id, 'providerRole', e.target.value)} className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-300 outline-none">
+                          <option value="LAB">LAB</option>
+                          <option value="INSPECTOR">INSPECTOR</option>
+                          <option value="CARRIER">CARRIER</option>
+                          <option value="BUYER">BUYER</option>
+                        </select>
+                        <input placeholder="Parameter (e.g. moisture)" value={c.parameter} onChange={e => updateCondition(c.id, 'parameter', e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-white outline-none" />
+                        <select value={c.operator} onChange={e => updateCondition(c.id, 'operator', e.target.value)} className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-300 outline-none w-16">
+                          <option value="<=">&lt;=</option>
+                          <option value=">=">&gt;=</option>
+                          <option value="==">==</option>
+                        </select>
+                        <input placeholder="Value" value={c.value} onChange={e => updateCondition(c.id, 'value', e.target.value)} className="w-20 bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-white outline-none" />
+                        <input placeholder="Unit" value={c.unit} onChange={e => updateCondition(c.id, 'unit', e.target.value)} className="w-16 bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-white outline-none" />
+                        <button onClick={() => removeCondition(c.id)} className="text-zinc-600 hover:text-red-400 p-1">✕</button>
                       </div>
                     ))}
                   </div>

@@ -11,7 +11,7 @@ describe("KontorEscrow", function () {
     await usdc.waitForDeployment();
 
     const KontorEscrow = await hre.ethers.getContractFactory("KontorEscrow");
-    const escrow = await KontorEscrow.deploy(owner.address);
+    const escrow = await KontorEscrow.deploy(owner.address, owner.address, 25);
     await escrow.waitForDeployment();
 
     await usdc.mint(buyer.address, hre.ethers.parseUnits("1000000", 6));

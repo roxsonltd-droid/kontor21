@@ -22,7 +22,9 @@ async function main() {
   console.log("Minted 1,000,000 USDC to deployer");
 
   const KontorEscrow = await ethers.getContractFactory("KontorEscrow");
-  const escrow = await KontorEscrow.deploy(deployer.address);
+  const feeTreasury = deployer.address; // For demo, deployer is treasury
+  const feeBasisPoints = 25; // 0.25%
+  const escrow = await KontorEscrow.deploy(deployer.address, feeTreasury, feeBasisPoints);
   await escrow.waitForDeployment();
   const escrowAddress = await escrow.getAddress();
   console.log("KontorEscrow deployed to:", escrowAddress);

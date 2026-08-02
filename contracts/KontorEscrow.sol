@@ -40,6 +40,12 @@ contract KontorEscrow is Ownable, ReentrancyGuard {
     // The platform's arbitrator address
     address public arbitrator;
 
+    // The platform's fee collection wallet
+    address public feeTreasury;
+    
+    // Fee percentage in basis points (e.g., 25 = 0.25%)
+    uint256 public feeBasisPoints;
+
     event TradeCreated(uint256 indexed tradeId, address indexed buyer, address indexed seller, uint256 amount);
     event TradeFunded(uint256 indexed tradeId);
     event TradeApproved(uint256 indexed tradeId);
@@ -66,8 +72,12 @@ contract KontorEscrow is Ownable, ReentrancyGuard {
         _;
     }
 
-    constructor(address _arbitrator) Ownable(msg.sender) {
+    constructor(address _arbitrator, address _feeTreasury, uint256 _feeBasisPoints) Ownable(msg.sender) {
+        require(_feeTreasury != address(0), "Invalid treasury address");
+        require(_feeBasisPoints <= 1000, "Fee cannot exceed 10%"); // Max 10% safety cap
         arbitrator = _arbitrator;
+        feeTreasury = _feeTreasury;
+        feeBasisPoints = _feeBasisPoints;
     }
 
     /**
@@ -125,8 +135,15 @@ contract KontorEscrow is Ownable, ReentrancyGuard {
 
         trade.status = TradeStatus.COMPLETED;
 
-        // Release funds to seller
-        trade.token.safeTransfer(trade.seller, trade.amount);
+        // Calculate fee
+        uint256 feeAmount = (trade.amount * feeBasisPoints) / 10000;
+        uint256 sellerAmount = trade.amount - feeAmount;
+
+        // Release funds
+        if (feeAmount > 0) {
+            trade.token.safeTransfer(feeTreasury, feeAmount);
+        }
+        trade.token.safeTransfer(trade.seller, sellerAmount);
 
         emit TradeApproved(_tradeId);
     }
@@ -157,7 +174,14 @@ contract KontorEscrow is Ownable, ReentrancyGuard {
             trade.token.safeTransfer(trade.buyer, trade.amount);
         } else {
             trade.status = TradeStatus.COMPLETED;
-            trade.token.safeTransfer(trade.seller, trade.amount);
+            
+            uint256 feeAmount = (trade.amount * feeBasisPoints) / 10000;
+            uint256 sellerAmount = trade.amount - feeAmount;
+
+            if (feeAmount > 0) {
+                trade.token.safeTransfer(feeTreasury, feeAmount);
+            }
+            trade.token.safeTransfer(trade.seller, sellerAmount);
         }
 
         emit DisputeResolved(_tradeId, refundBuyer);

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { FileSpreadsheet, Download, FileCheck2, ShieldCheck, Database, Calendar, Euro, Fingerprint, Activity, Clock, Blocks, Landmark, TrendingUp } from 'lucide-react';
+import { FileSpreadsheet, Download, FileCheck2, ShieldCheck, Database, Calendar, Euro, Fingerprint, Activity, Clock, Blocks, Landmark, TrendingUp, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageSwitcher from '@/components/LanguageSwitcher';

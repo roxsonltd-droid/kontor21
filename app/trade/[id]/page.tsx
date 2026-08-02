@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -148,7 +148,7 @@ export default function TradeView() {
                 </div>
                 <div className="flex justify-between py-2">
                   <span className="text-zinc-500">{t('trade.terms')}</span>
-                  <span className="text-white font-medium">{trade.conditionDescription || "ΓÇö"}</span>
+                  <span className="text-white font-medium">{trade.conditionDescription || "—"}</span>
                 </div>
               </div>
             </div>
@@ -163,8 +163,8 @@ export default function TradeView() {
                   <div className="flex items-center gap-3">
                     <FileText className="w-5 h-5 text-emerald-500" />
                     <div>
-                      <p className="text-sm font-medium text-white">╨ƒ╤Ç╨╛╤ä╨╛╤Ç╨╝╨░ ╨ñ╨░╨║╤é╤â╤Ç╨░.pdf</p>
-                      <p className="text-xs text-zinc-500 mt-0.5">╨ö╨╛╨▒╨░╨▓╨╡╨╜╨╛ ╨┐╤Ç╨╡╨┤╨╕ 2 ╨┤╨╜╨╕</p>
+                      <p className="text-sm font-medium text-white">Проформа Фактура.pdf</p>
+                      <p className="text-xs text-zinc-500 mt-0.5">Добавено преди 2 дни</p>
                     </div>
                   </div>
                   <button className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors">
@@ -176,8 +176,8 @@ export default function TradeView() {
                   <div className="flex items-center gap-3">
                     <Clock className="w-5 h-5 text-zinc-500" />
                     <div>
-                      <p className="text-sm font-medium text-white">SGS ╨í╨╡╤Ç╤é╨╕╤ä╨╕╨║╨░╤é ╨╖╨░ ╨║╨░╤ç╨╡╤ü╤é╨▓╨╛</p>
-                      <p className="text-xs text-zinc-500 mt-0.5">╨₧╤ç╨░╨║╨▓╨░ ╤ü╨╡ ╤ü╨╗╨╡╨┤ ╨╜╨░╤é╨╛╨▓╨░╤Ç╨▓╨░╨╜╨╡</p>
+                      <p className="text-sm font-medium text-white">SGS Сертификат за качество</p>
+                      <p className="text-xs text-zinc-500 mt-0.5">Очаква се след натоварване</p>
                     </div>
                   </div>
                 </div>

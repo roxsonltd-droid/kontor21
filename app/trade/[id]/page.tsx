@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { ShieldCheck, Truck, Clock, FileText, Download, CheckCircle, ArrowRight, ShieldAlert, CircleAlert, Wallet } from 'lucide-react';
+import { ShieldCheck, Truck, Clock, FileText, Download, CheckCircle, ArrowRight, ShieldAlert, CircleAlert, Wallet, Activity, Ship, Navigation } from 'lucide-react';
 import { useKontorEscrow } from '@/hooks/useKontorEscrow';
 import { motion } from 'framer-motion';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
@@ -146,8 +146,105 @@ export default function TradeView() {
                     </div>
                   </div>
                 </div>
+                </div>
               </div>
             </div>
+
+            {/* IoT Telemetry Section (Shown when funded) */}
+            {isFunded && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-6 md:p-8 backdrop-blur-sm overflow-hidden relative"
+              >
+                <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+                  <Activity className="w-48 h-48 text-blue-500" />
+                </div>
+                
+                <h2 className="text-xl font-semibold text-white mb-6 border-b border-zinc-800 pb-4 flex items-center gap-2 relative z-10">
+                  <Activity className="w-5 h-5 text-blue-400" />
+                  {t('trade.telemetryTitle')}
+                </h2>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
+                  
+                  {/* Map / Location Simulation */}
+                  <div className="bg-zinc-950/80 border border-zinc-800/50 rounded-xl p-5">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <p className="text-[10px] text-zinc-500 uppercase tracking-widest mb-1">{t('trade.liveLocation')}</p>
+                        <h4 className="text-sm font-medium text-white flex items-center gap-2">
+                          <Ship className="w-4 h-4 text-blue-400" /> {t('trade.vesselStatus')}
+                        </h4>
+                      </div>
+                      <span className="flex h-3 w-3 relative mt-1">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+                      </span>
+                    </div>
+                    
+                    <div className="h-32 bg-zinc-900 rounded-lg border border-zinc-800 relative overflow-hidden flex items-center justify-center">
+                      <div className="absolute inset-0 opacity-20 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-blue-900 via-zinc-900 to-zinc-900"></div>
+                      {/* Simulated map points */}
+                      <div className="absolute left-[20%] top-[40%] w-2 h-2 rounded-full bg-zinc-700"></div>
+                      <div className="absolute left-[20%] top-[40%] w-12 border-t-2 border-dashed border-zinc-700 -rotate-12 origin-left"></div>
+                      <div className="absolute left-[50%] top-[30%] w-3 h-3 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.8)] z-10">
+                        <div className="absolute -inset-2 rounded-full border border-blue-500/50 animate-ping"></div>
+                      </div>
+                      <div className="absolute left-[50%] top-[30%] w-16 border-t-2 border-dashed border-blue-500/30 rotate-12 origin-left"></div>
+                      <div className="absolute left-[80%] top-[45%] w-2 h-2 rounded-full border-2 border-emerald-500"></div>
+                      
+                      <div className="absolute bottom-2 left-2 right-2 bg-zinc-950/80 rounded px-2 py-1 flex justify-between text-[10px] font-mono text-zinc-400 backdrop-blur-sm border border-zinc-800/50">
+                        <span>LAT: 38.214</span>
+                        <span>LON: 25.109</span>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-3 flex justify-between text-xs">
+                      <span className="text-zinc-400">{t('trade.inTransit')}</span>
+                      <span className="text-blue-400 font-medium">{t('trade.eta')}</span>
+                    </div>
+                  </div>
+
+                  {/* Humidity Sensor */}
+                  <div className="bg-zinc-950/80 border border-zinc-800/50 rounded-xl p-5 flex flex-col justify-between">
+                    <div>
+                      <p className="text-[10px] text-zinc-500 uppercase tracking-widest mb-1">{t('trade.moistureLevel')}</p>
+                      <h4 className="text-sm font-medium text-white mb-1">{t('trade.moistureDesc')}</h4>
+                    </div>
+                    
+                    <div className="my-6">
+                      <div className="flex justify-between items-end mb-2">
+                        <span className="text-3xl font-mono font-semibold text-white">14.2<span className="text-lg text-zinc-500">%</span></span>
+                        <div className="text-right">
+                          <span className="text-[10px] text-zinc-500 uppercase block">{t('trade.condition')}</span>
+                          <span className="text-xs font-mono text-zinc-400">&lt; 15.0%</span>
+                        </div>
+                      </div>
+                      
+                      <div className="w-full h-2 bg-zinc-800 rounded-full overflow-hidden relative">
+                        <motion.div 
+                          className="h-full bg-gradient-to-r from-emerald-500 to-blue-500" 
+                          initial={{ width: 0 }} 
+                          animate={{ width: '90%' }} 
+                          transition={{ duration: 1.5, ease: "easeOut", delay: 0.2 }}
+                        />
+                      </div>
+                      <div className="flex justify-between mt-2 text-[10px] text-zinc-500 font-mono">
+                        <span>0%</span>
+                        <span className="text-emerald-400/80 relative -left-[5%]">14.2%</span>
+                        <span>15%</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 text-xs text-zinc-400 bg-zinc-900 p-2 rounded-lg border border-zinc-800/50">
+                      <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                      Сензорът отчита стойности в норма.
+                    </div>
+                  </div>
+
+                </div>
+              </motion.div>
+            )}
 
             {isFunded && !isDisputed && (
               <motion.div 

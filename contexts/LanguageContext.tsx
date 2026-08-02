@@ -34,6 +34,33 @@ const translations: Translations = {
   "hero.startTrade": { EN: "Start Secure Trade", DE: "Sicheren Handel starten", BG: "Започни сигурна сделка" },
   "hero.howItWorks": { EN: "How it works", DE: "Wie es funktioniert", BG: "Как работи" },
   
+  // Buyer Dashboard & AI
+  "buyer.title": { EN: "My Trades", DE: "Meine Trades", BG: "Моите Сделки" },
+  "buyer.subtitle": { EN: "Manage your escrow payments and active trades.", DE: "Verwalten Sie Ihre Treuhandzahlungen und aktiven Trades.", BG: "Управлявайте вашите ескроу плащания и преглеждайте активни сделки." },
+  "buyer.aiMarket": { EN: "AI Market Intelligence", DE: "AI-Marktintelligenz", BG: "AI Пазарен Анализ" },
+  "buyer.aiTrend": { EN: "Price Trend Forecast", DE: "Preisentwicklungsprognose", BG: "Прогноза за Ценови Тренд" },
+  "buyer.aiTrendDesc": { EN: "Sunflower oil prices expected to rise +12% in Q4 due to European drought.", DE: "Sonnenblumenölpreise steigen im Q4 voraussichtlich um +12% aufgrund von Dürre in Europa.", BG: "Очаква се цената на слънчогледа да се покачи с +12% през Q4 заради суша в Европа." },
+  "buyer.aiCapacity": { EN: "Supplier Capacity", DE: "Lieferantenkapazität", BG: "Капацитет на Доставчици" },
+  "buyer.aiCapacityDesc": { EN: "3 Halal-certified suppliers in BG/RO have immediate loading capacity.", DE: "3 Halal-zertifizierte Lieferanten in BG/RO haben sofortige Ladekapazität.", BG: "3 Халал-сертифицирани доставчици в БГ/РО имат наличен капацитет." },
+  "buyer.aiAction": { EN: "Strategic Recommendation", DE: "Strategische Empfehlung", BG: "Стратегическа Препоръка" },
+  "buyer.aiLock": { EN: "Lock Price Now", DE: "Preis jetzt sichern", BG: "Заключи Цена Сега" },
+  "buyer.active": { EN: "Active Trades", DE: "Aktive Trades", BG: "Активни Сделки" },
+  "buyer.inEscrow": { EN: "In Escrow", DE: "Im Treuhand", BG: "В Ескроу" },
+  "buyer.completed": { EN: "Completed Trades", DE: "Abgeschlossene Trades", BG: "Завършени Сделки" },
+  "buyer.waitingDeposit": { EN: "Awaiting Deposit", DE: "Warten auf Einzahlung", BG: "Сделки Чакащи Депозит" },
+
+  // AI Sourcing Layer
+  "sourcing.title": { EN: "AI Matching Engine", DE: "AI Matching-Engine", BG: "AI Търсачка за Доставчици" },
+  "sourcing.subtitle": { EN: "Find verified suppliers matching your exact requirements.", DE: "Finden Sie verifizierte Lieferanten, die genau Ihren Anforderungen entsprechen.", BG: "Намерете проверени доставчици, отговарящи точно на вашите изисквания." },
+  "sourcing.searchPlaceholder": { EN: "e.g. Tomato powder, Halal certified, 12 months shelf life, delivery to Hamad Port", DE: "z.B. Tomatenpulver, Halal-zertifiziert, 12 Monate Haltbarkeit, Lieferung nach Hamad Port", BG: "напр. Домат на прах, Halal сертифициран, доставка до Хамад Порт" },
+  "sourcing.searchBtn": { EN: "AI Search", DE: "AI-Suche", BG: "AI Търсене" },
+  "sourcing.analyzing": { EN: "Analyzing requirements & scanning EU suppliers...", DE: "Anforderungen analysieren & EU-Lieferanten scannen...", BG: "Анализиране на изискванията и сканиране на EU доставчици..." },
+  "sourcing.resultsTitle": { EN: "Top Ranked Suppliers", DE: "Top-bewertete Lieferanten", BG: "Топ Класирани Доставчици" },
+  "sourcing.matchScore": { EN: "Match", DE: "Übereinstimmung", BG: "Съвпадение" },
+  "sourcing.generateContract": { EN: "Generate Smart Contract", DE: "Smart Contract Generieren", BG: "Създай Смарт Договор" },
+  "sourcing.capacity": { EN: "Capacity", DE: "Kapazität", BG: "Капацитет" },
+  "sourcing.price": { EN: "Est. Price", DE: "Geschätzter Preis", BG: "Прогн. Цена" },
+
   // Trade View
   "trade.title": { EN: "Trade", DE: "Handel", BG: "Сделка" },
   "trade.secured": { EN: "Secured Trade", DE: "Gesicherter Handel", BG: "Осигурена Сделка" },
@@ -62,6 +89,16 @@ const translations: Translations = {
   "trade.frozen": { EN: "Funds are frozen. Awaiting decision by independent arbitrator.", DE: "Gelder sind eingefroren. Warten auf Entscheidung eines unabhängigen Schlichters.", BG: "Средствата са замразени. Очаква се решение от независим арбитър." },
   "trade.guarantee": { EN: "Smart contract guarantees refund on issue.", DE: "Smart Contract garantiert Rückerstattung bei Problemen.", BG: "Смарт договорът гарантира възстановяване при проблем." },
   "trade.locked": { EN: "Funds are locked", DE: "Gelder sind gesperrt", BG: "Средствата са заключени" },
+  
+  // IoT Telemetry
+  "trade.telemetryTitle": { EN: "IoT Telemetry & Logistics", DE: "IoT-Telemetrie & Logistik", BG: "IoT Телеметрия и Логистика" },
+  "trade.liveLocation": { EN: "Live Location", DE: "Live-Standort", BG: "Локация на живо" },
+  "trade.vesselStatus": { EN: "Vessel Status", DE: "Schiffsstatus", BG: "Статус на кораба" },
+  "trade.moistureLevel": { EN: "Moisture Level", DE: "Feuchtigkeitsgehalt", BG: "Ниво на влажност" },
+  "trade.moistureDesc": { EN: "Container sensor #482", DE: "Containersensor #482", BG: "Сензор в контейнер #482" },
+  "trade.condition": { EN: "Smart Contract Condition", DE: "Smart Contract Bedingung", BG: "Условие на Смарт Договора" },
+  "trade.inTransit": { EN: "In Transit (Aegean Sea)", DE: "Unterwegs (Ägäis)", BG: "В транзит (Егейско море)" },
+  "trade.eta": { EN: "ETA: 2 Days", DE: "Ankunft: 2 Tage", BG: "Очаква се след 2 дни" },
 
   // Footer
   "footer.ownedBy": { EN: "Owned and operated by", DE: "Eigentum und Betrieb durch", BG: "Собственост на" },
@@ -255,6 +292,30 @@ const translations: Translations = {
   "notif.disputed": { EN: "Dispute raised on trade", DE: "Streitfall für Handel eröffnet", BG: "Спор по сделката" },
   "notif.resolved": { EN: "Dispute resolved", DE: "Streitfall gelöst", BG: "Спорът е разрешен" },
 
+  // Seller Dashboard
+  "seller.title": { EN: "Seller Overview", DE: "Verkäuferübersicht", BG: "Преглед на търговеца" },
+  "seller.subtitle": { EN: "Manage your smart contracts and escrow payments.", DE: "Verwalten Sie Ihre Smart Contracts und Treuhandzahlungen.", BG: "Управлявайте вашите смарт договори и ескроу плащания." },
+  "seller.newContract": { EN: "New Smart Contract", DE: "Neuer Smart Contract", BG: "Нов Смарт Договор" },
+  "seller.totalRevenue": { EN: "Total Revenue", DE: "Gesamtumsatz", BG: "Общ Приход" },
+  "seller.inEscrow": { EN: "In Escrow", DE: "Im Treuhand", BG: "В Ескроу" },
+  "seller.successfulTrades": { EN: "Successful Trades", DE: "Erfolgreiche Trades", BG: "Успешни Сделки" },
+  "seller.activeTrades": { EN: "Active Trades", DE: "Aktive Trades", BG: "Активни Сделки" },
+  "seller.searchPlaceholder": { EN: "Search by ID or product...", DE: "Suche nach ID oder Produkt...", BG: "Търси по ID или стока..." },
+  "seller.tradeId": { EN: "Trade ID", DE: "Trade ID", BG: "Сделка ID" },
+  "seller.product": { EN: "Product", DE: "Produkt", BG: "Стока" },
+  "seller.amount": { EN: "Amount (USDC)", DE: "Betrag (USDC)", BG: "Сума (USDC)" },
+  "seller.status": { EN: "Status", DE: "Status", BG: "Статус" },
+  "seller.oracles": { EN: "Oracles", DE: "Orakel", BG: "Оракули" },
+  "seller.action": { EN: "Action", DE: "Aktion", BG: "Действие" },
+  "seller.withdraw": { EN: "Withdraw", DE: "Abheben", BG: "Изтегли (Withdraw)" },
+  "seller.statusFunded": { EN: "Funded (Locked)", DE: "Finanziert (Gesperrt)", BG: "Депозирано (Заключено)" },
+  "seller.statusAwaiting": { EN: "Awaiting Deposit", DE: "Wartet auf Einzahlung", BG: "Чака депозит" },
+  "seller.uploadInvoice": { EN: "Upload Invoice", DE: "Rechnung hochladen", BG: "Качи фактура" },
+  "seller.enterBatch": { EN: "Enter Batch Details", DE: "Chargendetails eingeben", BG: "Въведи детайли за партидата" },
+  "seller.awaitingLoading": { EN: "Awaiting Loading", DE: "Wartet auf Verladung", BG: "В очакване на натоварване" },
+  "seller.uploadSuccess": { EN: "Invoice Uploaded", DE: "Rechnung hochgeladen", BG: "Фактурата е качена" },
+  "seller.batchSuccess": { EN: "Batch Data Saved", DE: "Chargendaten gespeichert", BG: "Данните за партидата са записани" },
+
   // Settings
   "settings.title": { EN: "Settings", DE: "Einstellungen", BG: "Настройки" },
   "settings.desc": { EN: "Manage your account preferences.", DE: "Verwalten Sie Ihre Kontoeinstellungen.", BG: "Управление на предпочитанията." },
@@ -266,6 +327,22 @@ const translations: Translations = {
   "settings.notifDesc": { EN: "Choose which updates you receive.", DE: "Wählen Sie, welche Updates Sie erhalten.", BG: "Изберете какви обновления да получавате." },
   "settings.emailNotif": { EN: "Email Notifications", DE: "E-Mail-Benachrichtigungen", BG: "Имейл известия" },
   "settings.pushNotif": { EN: "Push Notifications", DE: "Push-Benachrichtigungen", BG: "Push известия" },
+
+  // AI Mission Control Notifications
+  "notif.title": { EN: "AI Mission Control", DE: "AI-Missionskontrolle", BG: "AI Контролен Център" },
+  "notif.empty": { EN: "No AI events yet", DE: "Noch keine AI-Ereignisse", BG: "Няма AI събития все още" },
+  "notif.emptyDesc": { EN: "Automated communication logs will appear here.", DE: "Automatisierte Kommunikationsprotokolle werden hier angezeigt.", BG: "Автоматизираните комуникационни логове ще се появят тук." },
+  "notif.markAll": { EN: "Mark all verified", DE: "Alle als verifiziert markieren", BG: "Отбележи всички като прочетени" },
+  "notif.created": { EN: "Smart Contract Deployed", DE: "Smart Contract Bereitgestellt", BG: "Смарт Договорът е Деплойнат" },
+  "notif.funded": { EN: "Funds Locked in Escrow", DE: "Gelder im Treuhandkonto gesperrt", BG: "Средствата са Заключени в Ескроу" },
+  "notif.approved": { EN: "AI Verified Certificate", DE: "AI Verifiziertes Zertifikat", BG: "AI Верифицира Сертификат" },
+  "notif.disputed": { EN: "IoT Sensor Alert", DE: "IoT-Sensor Warnung", BG: "IoT Сензор Предупреждение" },
+  "notif.resolved": { EN: "Dispute Automatically Resolved", DE: "Streitfall automatisch gelöst", BG: "Диспутът е Автоматично Решен" },
+  "notif.desc.created": { EN: "Trade escrow contract initialized on the blockchain.", DE: "Treuhandvertrag auf der Blockchain initialisiert.", BG: "Ескроу договор е създаден в блокчейна." },
+  "notif.desc.funded": { EN: "Funds successfully locked. Smart contract active.", DE: "Gelder erfolgreich gesperrt. Smart Contract aktiv.", BG: "Средствата са успешно заключени. Смарт договорът е активен." },
+  "notif.desc.approved": { EN: "AI verified Halal Certificate (Hash: 0x98f...). Authenticity confirmed.", DE: "AI hat Halal-Zertifikat verifiziert (Hash: 0x98f...). Echtheit bestätigt.", BG: "AI верифицира Halal сертификат (Hash: 0x98f...). Автентичността е потвърдена." },
+  "notif.desc.disputed": { EN: "Humidity sensor spiked to 16.5% (> 15% limit). Escrow payments halted.", DE: "Feuchtigkeitssensor stieg auf 16,5% (> 15% Limit). Treuhandzahlungen gestoppt.", BG: "Сензор за влажност отчете 16.5% (> 15% лимит). Ескроу плащанията са спрени." },
+  "notif.desc.resolved": { EN: "Oracle confirmed acceptable cargo condition. Escrow released.", DE: "Orakel bestätigte akzeptablen Ladungszustand. Treuhandkonto freigegeben.", BG: "Оракулът потвърди приемливо състояние на товара. Средствата са освободени." },
 };
 
 interface LanguageContextType {

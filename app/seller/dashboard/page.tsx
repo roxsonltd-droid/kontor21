@@ -1,16 +1,42 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, CheckCircle2, X, Blocks, LinkIcon, Wallet, ArrowUpRight, ShieldCheck, Activity, Search, Ship, FileCheck, ChevronRight } from 'lucide-react';
+import { Plus, CheckCircle2, X, Blocks, Wallet, ArrowUpRight, ShieldCheck, Activity, Search, Ship, FileCheck, ChevronRight, UploadCloud } from 'lucide-react';
 import Link from 'next/link';
 import { useKontorEscrow } from '@/hooks/useKontorEscrow';
 import { CONTRACT_ADDRESSES } from '@/lib/abis';
+import { useLanguage } from '@/contexts/LanguageContext';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 export default function SellerDashboard() {
+  const { t } = useLanguage();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const { address, formattedAddress, isConnecting, connect, createTrade } = useKontorEscrow();
+  
+  // Real escrow hook
+  const { address, formattedAddress, isConnecting, connect, createTrade, getTrade } = useKontorEscrow();
+
+  // Dynamic Trade 1 Data
+  const [trade1Data, setTrade1Data] = useState<any>(null);
+  const [isFunded, setIsFunded] = useState(false);
+  
+  // Upload states for Trade 1
+  const [invoiceUploaded, setInvoiceUploaded] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [batchData, setBatchData] = useState({ truck: '', date: '' });
+  const [batchSaved, setBatchSaved] = useState(false);
+
+  useEffect(() => {
+    if (address) {
+      getTrade(1).then(data => {
+        if (data) {
+          setTrade1Data(data);
+          setIsFunded(data.status >= 1); // 1 = FUNDED, 2 = COMPLETED
+        }
+      });
+    }
+  }, [address, getTrade]);
 
   const handleCreateContract = async () => {
     setIsProcessing(true);
@@ -26,14 +52,30 @@ export default function SellerDashboard() {
     setIsProcessing(false);
     if (tradeId !== null) {
       setIsModalOpen(false);
-      alert(`Смарт договорът беше създаден! Trade ID: ${tradeId}`);
+      alert(`Сделката е създадена! ID: ${tradeId}`);
     } else {
       alert("Грешка при създаване на договора.");
     }
   };
 
   const handleWithdraw = async () => {
-    alert("Функцията за теглене е достъпна след одобрение от оракул.");
+    alert("Функцията за теглене е достъпна автоматично след одобрение от оракул (SGS). Смарт договорът ще преведе USDC директно във вашия портфейл.");
+  };
+
+  const handleInvoiceUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setIsUploading(true);
+      setTimeout(() => {
+        setInvoiceUploaded(true);
+        setIsUploading(false);
+      }, 1000);
+    }
+  };
+
+  const handleSaveBatch = () => {
+    if (batchData.truck && batchData.date) {
+      setBatchSaved(true);
+    }
   };
 
   return (
@@ -43,20 +85,17 @@ export default function SellerDashboard() {
       <nav className="border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-md sticky w-full top-0 z-40">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <Link href="/" className="flex items-center gap-2 mr-4">
-              <div className="w-6 h-6 rounded bg-gradient-to-tr from-blue-600 to-blue-400 flex items-center justify-center">
-                <Blocks className="w-3.5 h-3.5 text-white" />
-              </div>
+            <Link href="/" className="flex items-center gap-2 mr-4 opacity-70 hover:opacity-100 transition-opacity">
+              <Blocks className="w-5 h-5 text-blue-400" />
               <span className="text-sm font-bold text-white tracking-tight">Kontor 21</span>
             </Link>
             <div className="hidden md:flex items-center gap-6 text-[13px] font-medium text-zinc-400">
-              <a href="#" className="text-white">Дашборд</a>
-              <a href="#" className="hover:text-white transition-colors">Сделки</a>
-              <a href="#" className="hover:text-white transition-colors">Оракули & IoT</a>
+              <a href="#" className="text-white">{t('nav.seller')}</a>
             </div>
           </div>
           
           <div className="flex items-center gap-4">
+            <LanguageSwitcher />
             {address ? (
               <div className="flex items-center gap-2 bg-zinc-900/80 border border-zinc-800 rounded-lg px-3 py-1.5">
                 <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
@@ -68,8 +107,8 @@ export default function SellerDashboard() {
                 disabled={isConnecting}
                 className="flex items-center gap-2 bg-blue-600/10 border border-blue-500/20 text-blue-400 hover:bg-blue-600/20 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
               >
-                <LinkIcon className="w-3.5 h-3.5" />
-                {isConnecting ? 'Свързване...' : 'Свържи Портфейл'}
+                <Wallet className="w-3.5 h-3.5" />
+                {isConnecting ? t('nav.connecting') : t('nav.connect')}
               </button>
             )}
             <div className="w-8 h-8 bg-zinc-800 rounded-full flex items-center justify-center text-xs font-semibold border border-zinc-700">
@@ -84,15 +123,15 @@ export default function SellerDashboard() {
         {/* Header & CTA */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <div>
-            <h1 className="text-2xl font-semibold text-white tracking-tight mb-1">Преглед на търговеца</h1>
-            <p className="text-sm text-zinc-500">Управлявайте вашите смарт договори и ескроу плащания.</p>
+            <h1 className="text-2xl font-semibold text-white tracking-tight mb-1">{t('seller.title')}</h1>
+            <p className="text-sm text-zinc-500">{t('seller.subtitle')}</p>
           </div>
           <button 
             onClick={() => setIsModalOpen(true)}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-all shadow-[0_0_15px_rgba(37,99,235,0.2)]"
           >
             <Plus className="w-4 h-4" />
-            Нов Смарт Договор
+            {t('seller.newContract')}
           </button>
         </div>
 
@@ -106,10 +145,9 @@ export default function SellerDashboard() {
               <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
                 <Wallet className="w-4 h-4" />
               </div>
-              <span className="text-[10px] font-medium px-2 py-1 bg-zinc-800/80 text-zinc-400 rounded uppercase tracking-wider">Налични</span>
             </div>
             <div className="relative z-10">
-              <p className="text-xs text-zinc-500 mb-1 uppercase tracking-widest">Общ Приход</p>
+              <p className="text-xs text-zinc-500 mb-1 uppercase tracking-widest">{t('seller.totalRevenue')}</p>
               <div className="flex items-baseline gap-1.5">
                 <h2 className="text-2xl font-semibold text-white tracking-tight">154,200</h2>
                 <span className="text-xs font-medium text-emerald-400/80">USDC</span>
@@ -120,7 +158,7 @@ export default function SellerDashboard() {
               disabled={isProcessing}
               className="mt-4 w-full flex items-center justify-center gap-1.5 bg-zinc-800/50 hover:bg-zinc-800 text-xs font-medium text-white py-2 rounded-lg transition-colors border border-zinc-700/50"
             >
-              {isProcessing ? 'Транзакция...' : 'Изтегли (Withdraw)'} <ArrowUpRight className="w-3 h-3" />
+              {isProcessing ? '...' : t('seller.withdraw')} <ArrowUpRight className="w-3 h-3" />
             </button>
           </motion.div>
 
@@ -128,24 +166,25 @@ export default function SellerDashboard() {
             initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }}
             className="p-5 rounded-xl bg-zinc-900/40 border border-zinc-800/80 backdrop-blur-sm relative overflow-hidden"
           >
-            {/* Soft glow */}
             <div className="absolute -right-8 -top-8 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl"></div>
             
             <div className="flex justify-between items-start mb-4 relative z-10">
               <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400">
                 <ShieldCheck className="w-4 h-4" />
               </div>
-              <span className="text-[10px] font-medium px-2 py-1 bg-zinc-800/80 text-zinc-400 rounded uppercase tracking-wider">Заключени</span>
+              <span className="text-[10px] font-medium px-2 py-1 bg-zinc-800/80 text-zinc-400 rounded uppercase tracking-wider">{t('seller.inEscrow')}</span>
             </div>
             <div className="relative z-10">
-              <p className="text-xs text-zinc-500 mb-1 uppercase tracking-widest">В Ескроу</p>
+              <p className="text-xs text-zinc-500 mb-1 uppercase tracking-widest">{t('seller.inEscrow')}</p>
               <div className="flex items-baseline gap-1.5">
-                <h2 className="text-2xl font-semibold text-white tracking-tight">38,400</h2>
+                <h2 className="text-2xl font-semibold text-white tracking-tight">
+                  {isFunded ? "113,400" : "38,400"}
+                </h2>
                 <span className="text-xs font-medium text-blue-400/80">USDC</span>
               </div>
               <p className="text-[11px] text-zinc-500 mt-2 flex items-center gap-1">
                 <span className="w-1 h-1 rounded-full bg-blue-400 animate-pulse"></span>
-                1 активна сделка
+                {isFunded ? "2 active trades" : "1 active trade"}
               </p>
             </div>
           </motion.div>
@@ -160,26 +199,23 @@ export default function SellerDashboard() {
               </div>
             </div>
             <div>
-              <p className="text-xs text-zinc-500 mb-1 uppercase tracking-widest">Успешни Сделки</p>
+              <p className="text-xs text-zinc-500 mb-1 uppercase tracking-widest">{t('seller.successfulTrades')}</p>
               <div className="flex items-baseline gap-1.5">
                 <h2 className="text-2xl font-semibold text-white tracking-tight">47</h2>
               </div>
-              <p className="text-[11px] text-emerald-400/80 mt-2 flex items-center gap-1">
-                +12% този месец
-              </p>
             </div>
           </motion.div>
         </div>
 
-        {/* Active Trades Table */}
-        <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-xl backdrop-blur-sm overflow-hidden">
+        {/* Dynamic Trades & Action Table */}
+        <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-xl backdrop-blur-sm overflow-hidden mb-8">
           <div className="p-5 border-b border-zinc-800/80 flex justify-between items-center bg-zinc-950/30">
-            <h3 className="text-sm font-semibold text-zinc-200">Активни Сделки</h3>
+            <h3 className="text-sm font-semibold text-zinc-200">{t('seller.activeTrades')}</h3>
             <div className="relative">
               <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
               <input 
                 type="text" 
-                placeholder="Търси по ID или стока..." 
+                placeholder={t('seller.searchPlaceholder')}
                 className="bg-zinc-950 border border-zinc-800 rounded-lg text-xs py-1.5 pl-9 pr-3 text-zinc-300 focus:outline-none focus:border-zinc-700 w-48 transition-colors"
               />
             </div>
@@ -189,79 +225,66 @@ export default function SellerDashboard() {
             <table className="w-full text-left text-sm">
               <thead className="text-[10px] text-zinc-500 uppercase tracking-widest bg-zinc-950/50">
                 <tr>
-                  <th className="px-5 py-3 font-medium">Сделка ID</th>
-                  <th className="px-5 py-3 font-medium">Стока</th>
-                  <th className="px-5 py-3 font-medium">Сума (USDC)</th>
-                  <th className="px-5 py-3 font-medium">Статус</th>
-                  <th className="px-5 py-3 font-medium">Оракули</th>
-                  <th className="px-5 py-3 text-right font-medium">Действие</th>
+                  <th className="px-5 py-3 font-medium">{t('seller.tradeId')}</th>
+                  <th className="px-5 py-3 font-medium">{t('seller.product')}</th>
+                  <th className="px-5 py-3 font-medium">{t('seller.amount')}</th>
+                  <th className="px-5 py-3 font-medium">{t('seller.status')}</th>
+                  <th className="px-5 py-3 font-medium">{t('seller.oracles')}</th>
+                  <th className="px-5 py-3 text-right font-medium">{t('seller.action')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-800/50">
                 
-                {/* Trade 102 */}
+                {/* Real Trade 1 */}
                 <tr className="hover:bg-zinc-800/20 transition-colors group">
-                  <td className="px-5 py-4 font-mono text-zinc-400 text-xs">#102</td>
-                  <td className="px-5 py-4 text-zinc-200 font-medium">Сушени кайсии, 12t</td>
-                  <td className="px-5 py-4 font-semibold text-white">38,400</td>
+                  <td className="px-5 py-4 font-mono text-zinc-400 text-xs">#1</td>
+                  <td className="px-5 py-4 text-zinc-200 font-medium">Слънчоглед, 50t</td>
+                  <td className="px-5 py-4 font-semibold text-white">75,000</td>
                   <td className="px-5 py-4">
-                    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-blue-500/10 text-blue-400 text-[11px] font-medium border border-blue-500/20">
-                      <Ship className="w-3 h-3" /> В транзит
-                    </span>
+                    {isFunded ? (
+                      <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-blue-500/10 text-blue-400 text-[11px] font-medium border border-blue-500/20">
+                        <ShieldCheck className="w-3 h-3" /> {t('seller.statusFunded')}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-zinc-800 text-zinc-400 text-[11px] font-medium border border-zinc-700">
+                        <Wallet className="w-3 h-3" /> {t('seller.statusAwaiting')}
+                      </span>
+                    )}
                   </td>
                   <td className="px-5 py-4">
                     <div className="flex gap-2">
-                      <div className="w-6 h-6 rounded bg-emerald-500/10 flex items-center justify-center text-emerald-400" title="SGS Одобрено">
+                      <div className="w-6 h-6 rounded bg-zinc-800 flex items-center justify-center text-zinc-500">
                         <FileCheck className="w-3 h-3" />
-                      </div>
-                      <div className="w-6 h-6 rounded bg-blue-500/10 flex items-center justify-center text-blue-400" title="IoT Активен">
-                        <Activity className="w-3 h-3" />
                       </div>
                     </div>
                   </td>
                   <td className="px-5 py-4 text-right">
-                    <Link href="/trade/123" className="inline-flex items-center gap-1 text-xs font-medium text-zinc-400 hover:text-white transition-colors">
-                      Преглед <ChevronRight className="w-3 h-3" />
+                    <Link href="/trade/1" className="inline-flex items-center gap-1 text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors">
+                      {t('history.actions')} <ChevronRight className="w-3 h-3" />
                     </Link>
                   </td>
                 </tr>
 
-                {/* Trade 103 */}
+                {/* Dummy Trade 102 */}
                 <tr className="hover:bg-zinc-800/20 transition-colors group">
-                  <td className="px-5 py-4 font-mono text-zinc-400 text-xs">#103</td>
-                  <td className="px-5 py-4 text-zinc-200 font-medium">Слънчоглед, 50t</td>
-                  <td className="px-5 py-4 font-semibold text-zinc-400">75,000</td>
+                  <td className="px-5 py-4 font-mono text-zinc-400 text-xs">#102</td>
+                  <td className="px-5 py-4 text-zinc-400 font-medium">Сушени кайсии, 12t</td>
+                  <td className="px-5 py-4 font-semibold text-zinc-500">38,400</td>
                   <td className="px-5 py-4">
-                    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-zinc-800 text-zinc-400 text-[11px] font-medium border border-zinc-700">
-                      <Wallet className="w-3 h-3" /> Чака депозит
+                    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-blue-500/10 text-blue-400/50 text-[11px] font-medium border border-blue-500/10">
+                      <Ship className="w-3 h-3" /> In Transit
                     </span>
                   </td>
                   <td className="px-5 py-4">
-                    <div className="text-[10px] text-zinc-600">Няма активни</div>
+                    <div className="flex gap-2">
+                      <div className="w-6 h-6 rounded bg-emerald-500/10 flex items-center justify-center text-emerald-400/50" title="SGS Одобрено">
+                        <FileCheck className="w-3 h-3" />
+                      </div>
+                    </div>
                   </td>
                   <td className="px-5 py-4 text-right">
-                    <button className="inline-flex items-center gap-1 text-xs font-medium text-zinc-500 hover:text-white transition-colors">
-                      Преглед <ChevronRight className="w-3 h-3" />
-                    </button>
-                  </td>
-                </tr>
-
-                {/* Trade 101 */}
-                <tr className="hover:bg-zinc-800/20 transition-colors group opacity-60">
-                  <td className="px-5 py-4 font-mono text-zinc-400 text-xs">#101</td>
-                  <td className="px-5 py-4 text-zinc-400 font-medium">Пшеница, 200t</td>
-                  <td className="px-5 py-4 font-semibold text-zinc-500">120,000</td>
-                  <td className="px-5 py-4">
-                    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-emerald-500/10 text-emerald-400/80 text-[11px] font-medium border border-emerald-500/20">
-                      <CheckCircle2 className="w-3 h-3" /> Завършена
-                    </span>
-                  </td>
-                  <td className="px-5 py-4">
-                    <div className="text-[10px] text-zinc-500">Условия изпълнени</div>
-                  </td>
-                  <td className="px-5 py-4 text-right">
-                    <button className="inline-flex items-center gap-1 text-xs font-medium text-zinc-500 hover:text-white transition-colors">
-                      Архив <ChevronRight className="w-3 h-3" />
+                    <button className="inline-flex items-center gap-1 text-xs font-medium text-zinc-600 hover:text-white transition-colors cursor-not-allowed">
+                      Архив
                     </button>
                   </td>
                 </tr>
@@ -270,6 +293,93 @@ export default function SellerDashboard() {
             </table>
           </div>
         </div>
+
+        {/* Action Required: Upload Invoice & Batch Details (Only shown if Trade 1 is Funded) */}
+        {isFunded && (!invoiceUploaded || !batchSaved) && (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+            className="bg-blue-900/10 border border-blue-900/30 rounded-2xl p-6 md:p-8 relative overflow-hidden"
+          >
+            <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
+            <h3 className="text-lg font-semibold text-white mb-2">Действие: Средствата са осигурени!</h3>
+            <p className="text-sm text-zinc-400 mb-6">Купувачът заключи 75,000 USDC в смарт договора. Качете фактурата и въведете детайли за партидата, за да се подготви инспекцията от SGS.</p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              
+              {/* Upload Invoice */}
+              <div className="bg-zinc-950/50 border border-zinc-800/80 rounded-xl p-5">
+                <p className="text-[10px] text-zinc-500 uppercase tracking-widest mb-3">{t('seller.uploadInvoice')}</p>
+                {!invoiceUploaded ? (
+                  <div className="relative">
+                    <input 
+                      type="file" 
+                      onChange={handleInvoiceUpload} 
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                      disabled={isUploading}
+                    />
+                    <div className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed ${isUploading ? 'border-blue-500/50 bg-blue-500/5' : 'border-zinc-800 bg-zinc-900 hover:border-zinc-700'} rounded-lg p-6 transition-colors`}>
+                      <UploadCloud className={`w-6 h-6 ${isUploading ? 'text-blue-400 animate-bounce' : 'text-zinc-500'}`} />
+                      <span className="text-sm font-medium text-zinc-400">
+                        {isUploading ? 'Качване...' : 'Кликнете за качване на фактура'}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 bg-emerald-950/30 border border-emerald-900/50 rounded-lg p-4">
+                    <FileCheck className="w-5 h-5 text-emerald-400" />
+                    <div>
+                      <span className="block text-sm font-medium text-emerald-400/90">Фактура 2026-08.pdf</span>
+                      <span className="block text-xs text-emerald-500/50">{t('seller.uploadSuccess')}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Batch Details */}
+              <div className="bg-zinc-950/50 border border-zinc-800/80 rounded-xl p-5">
+                <p className="text-[10px] text-zinc-500 uppercase tracking-widest mb-3">{t('seller.enterBatch')}</p>
+                {!batchSaved ? (
+                  <div className="space-y-4">
+                    <div>
+                      <input 
+                        type="text" 
+                        placeholder="Рег. номер на камион/контейнер" 
+                        className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors"
+                        value={batchData.truck}
+                        onChange={(e) => setBatchData({ ...batchData, truck: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <input 
+                        type="date" 
+                        className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-400 focus:outline-none focus:border-blue-500/50 transition-colors"
+                        value={batchData.date}
+                        onChange={(e) => setBatchData({ ...batchData, date: e.target.value })}
+                      />
+                    </div>
+                    <button 
+                      onClick={handleSaveBatch}
+                      disabled={!batchData.truck || !batchData.date}
+                      className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-medium transition-all"
+                    >
+                      Запази данни
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 bg-emerald-950/30 border border-emerald-900/50 rounded-lg p-4 h-full">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                    <div>
+                      <span className="block text-sm font-medium text-emerald-400/90">{batchData.truck}</span>
+                      <span className="block text-xs text-emerald-500/50">{t('seller.batchSuccess')}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+            </div>
+          </motion.div>
+        )}
+
       </main>
 
       {/* New Smart Contract Modal Overlay */}
@@ -288,7 +398,7 @@ export default function SellerDashboard() {
               <div className="p-5 border-b border-zinc-800/80 flex justify-between items-center bg-zinc-900/50">
                 <h3 className="text-base font-semibold text-white flex items-center gap-2">
                   <Blocks className="w-4 h-4 text-blue-400" />
-                  Нов Смарт Договор
+                  {t('seller.newContract')}
                 </h3>
                 <button onClick={() => setIsModalOpen(false)} className="text-zinc-500 hover:text-white transition-colors">
                   <X className="w-5 h-5" />
@@ -297,7 +407,7 @@ export default function SellerDashboard() {
               
               <div className="p-6 space-y-5">
                 <div>
-                  <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Стока и Описание</label>
+                  <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">{t('seller.product')} и Описание</label>
                   <input type="text" placeholder="напр. Сушени кайсии, 12 тона" className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors" />
                 </div>
                 
@@ -310,7 +420,7 @@ export default function SellerDashboard() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-zinc-400 mb-2 uppercase tracking-wider">Условия за освобождаване (Oracles)</label>
+                  <label className="block text-xs font-medium text-zinc-400 mb-2 uppercase tracking-wider">Условия за освобождаване ({t('seller.oracles')})</label>
                   <div className="space-y-2">
                     <label className="flex items-center gap-3 p-3 rounded-lg border border-zinc-800 bg-zinc-900/50 cursor-pointer hover:bg-zinc-900 transition-colors">
                       <input type="checkbox" className="w-4 h-4 rounded border-zinc-700 text-blue-600 focus:ring-blue-500/50 bg-zinc-950" defaultChecked />

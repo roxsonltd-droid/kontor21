@@ -167,7 +167,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="border-t border-zinc-800/50 py-12">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8 pb-8 border-b border-zinc-800/50">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8 pb-8 border-b border-zinc-800/50">
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <Blocks className="w-5 h-5 text-blue-500" />
@@ -176,6 +176,16 @@ export default function Home() {
               <p className="text-sm text-zinc-400">
                 Търговия без граници. Доверие чрез код.
               </p>
+            </div>
+            <div>
+              <h3 className="text-white font-semibold mb-4">Нови AI Функции</h3>
+              <ul className="space-y-2 text-sm">
+                <li><Link href="/buyer/sourcing" className="text-zinc-400 hover:text-white transition-colors">1. AI Сорсинг (Търсачка)</Link></li>
+                <li><Link href="/oracle/dashboard" className="text-zinc-400 hover:text-white transition-colors">2. AI Верификация (Оракул)</Link></li>
+                <li><Link href="/trade/123" className="text-zinc-400 hover:text-white transition-colors">3. IoT Логистика (Влажност/Локация)</Link></li>
+                <li><Link href="/buyer/dashboard" className="text-zinc-400 hover:text-white transition-colors">4. AI Прогнозиране на цени</Link></li>
+                <li><Link href="/notifications" className="text-zinc-400 hover:text-white transition-colors">5. AI Автоматизирана комуникация (Mission Control)</Link></li>
+              </ul>
             </div>
             <div>
               <h3 className="text-white font-semibold mb-4">{t('demo.title')}</h3>

@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
+const PUBLIC_ORIGIN = (
+  process.env.NEXT_PUBLIC_APP_URL ||
+  process.env.APP_URL ||
+  "https://kontor21.onrender.com"
+).replace(/\/$/, "");
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -43,7 +49,7 @@ export async function POST(req: NextRequest) {
       status: "draft_created",
       tradeId: trade.id,
       blockchainTradeId: null,
-      kontor21_url: `${req.nextUrl.origin}/trade/${trade.id}`,
+      kontor21_url: `${PUBLIC_ORIGIN}/trade/${trade.id}`,
       instructions: `Draft escrow created. Buyer and seller must open kontor21 and fund the escrow via MetaMask.`,
     });
   } catch (err) {

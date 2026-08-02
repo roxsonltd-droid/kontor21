@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Search, Blocks, Wallet, ArrowRight, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
 import { useKontorEscrow } from '@/hooks/useKontorEscrow';
@@ -8,12 +8,21 @@ import { motion } from 'framer-motion';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { useLanguage } from '@/contexts/LanguageContext';
 
-const MOCK_TRADES = [
-  { id: 104, product: 'Sunflower (High Oleic)', amount: '75,000', status: 'active', date: '2026-07-28', role: 'seller' },
-  { id: 103, product: 'Corn, Feed Grade', amount: '120,000', status: 'completed', date: '2026-07-25', role: 'buyer' },
-  { id: 102, product: 'Soybean Meal', amount: '95,000', status: 'disputed', date: '2026-07-20', role: 'seller' },
-  { id: 101, product: 'Wheat, Milling', amount: '200,000', status: 'completed', date: '2026-07-15', role: 'buyer' },
-];
+type TradeRecord = {
+  id: string;
+  product: string;
+  amount: string;
+  status: 'active' | 'completed' | 'disputed';
+  date: string;
+  role: 'buyer' | 'seller' | '';
+};
+
+const STATUS_MAP: Record<string, 'active' | 'completed' | 'disputed'> = {
+  PENDING: 'active',
+  IN_TRANSIT: 'active',
+  COMPLETED: 'completed',
+  DISPUTED: 'disputed',
+};
 
 const STATUS_ICONS: Record<string, React.ReactNode> = {
   active: <Clock className="w-4 h-4 text-blue-400" />,
@@ -29,13 +38,45 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function TradeHistory() {
   const { t } = useLanguage();
+  const [trades, setTrades] = useState<TradeRecord[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'active' | 'completed' | 'disputed'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const { address, formattedAddress, isConnecting, connect } = useKontorEscrow();
 
-  const filteredTrades = MOCK_TRADES.filter(trade => {
+  useEffect(() => {
+    const fetchTrades = async () => {
+      try {
+        const res = await fetch('/api/escrow');
+        if (!res.ok) throw new Error('Failed to fetch trades');
+        const data = await res.json();
+        const mapped: TradeRecord[] = (data as any[]).map((t: any) => ({
+          id: t.id.slice(0, 8),
+          product: t.productName,
+          amount: Number(t.priceUsdc).toLocaleString(),
+          status: STATUS_MAP[t.status] || 'active',
+          date: new Date(t.createdAt).toISOString().slice(0, 10),
+          role: address
+            ? t.buyer?.walletAddress?.toLowerCase() === address.toLowerCase()
+              ? 'buyer'
+              : t.seller?.walletAddress?.toLowerCase() === address.toLowerCase()
+                ? 'seller'
+                : ''
+            : '',
+        }));
+        setTrades(mapped);
+      } catch (err) {
+        console.error('[trade-history]', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTrades();
+  }, [address]);
+
+  const filteredTrades = trades.filter(trade => {
     const matchesFilter = filter === 'all' || trade.status === filter;
-    const matchesSearch = !searchQuery || trade.id.toString().includes(searchQuery);
+    const matchesSearch = !searchQuery || trade.id.includes(searchQuery);
     return matchesFilter && matchesSearch;
   });
 
@@ -98,7 +139,14 @@ export default function TradeHistory() {
           </div>
         </div>
 
-        {filteredTrades.length === 0 ? (
+        {loading ? (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+            className="text-center py-20 border border-dashed border-zinc-800 rounded-2xl bg-zinc-900/20"
+          >
+            <Blocks className="w-12 h-12 text-zinc-700 mx-auto mb-4 animate-pulse" />
+            <h3 className="text-lg font-medium text-zinc-400 mb-2">{t('history.loading') || 'Loading...'}</h3>
+          </motion.div>
+        ) : filteredTrades.length === 0 ? (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
             className="text-center py-20 border border-dashed border-zinc-800 rounded-2xl bg-zinc-900/20"
           >

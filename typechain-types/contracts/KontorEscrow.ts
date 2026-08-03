@@ -26,42 +26,99 @@ import type {
 export interface KontorEscrowInterface extends Interface {
   getFunction(
     nameOrSignature:
+      | "DISPUTE_WINDOW"
+      | "FUNDING_WINDOW"
+      | "RELEASE_WINDOW"
+      | "allowedTokens"
+      | "approveRelease"
       | "arbitrators"
+      | "claimDisputeTimeoutRefund"
+      | "claimTimeoutRefund"
       | "createTrade"
+      | "disputeDeadlines"
       | "feeBasisPoints"
       | "feeTreasury"
       | "fundTrade"
+      | "fundingDeadlines"
       | "hasVoted"
       | "nextTradeId"
       | "owner"
+      | "pause"
+      | "paused"
+      | "pendingEvidenceRoots"
+      | "pendingReleaseAmounts"
+      | "proposeRelease"
       | "raiseDispute"
-      | "releaseFunds"
+      | "releaseDeadlines"
       | "renounceOwnership"
       | "setArbitrators"
+      | "setTokenAllowed"
+      | "tradeArbitrators"
       | "trades"
       | "transferOwnership"
+      | "unpause"
       | "voteDispute"
   ): FunctionFragment;
 
   getEvent(
     nameOrSignatureOrTopic:
       | "ArbitratorVoted"
+      | "DefaultArbitratorsUpdated"
       | "DisputeRaised"
       | "DisputeResolved"
+      | "DisputeTimedOut"
       | "OwnershipTransferred"
+      | "Paused"
+      | "ReleaseApproved"
+      | "ReleaseProposed"
+      | "TokenAllowlistUpdated"
       | "TradeCompleted"
       | "TradeCreated"
       | "TradeFunded"
       | "TradePartialReleased"
+      | "TradeTimedOut"
+      | "Unpaused"
   ): EventFragment;
 
+  encodeFunctionData(
+    functionFragment: "DISPUTE_WINDOW",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "FUNDING_WINDOW",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "RELEASE_WINDOW",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "allowedTokens",
+    values: [AddressLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "approveRelease",
+    values: [BigNumberish, BigNumberish, BytesLike]
+  ): string;
   encodeFunctionData(
     functionFragment: "arbitrators",
     values: [BigNumberish]
   ): string;
   encodeFunctionData(
+    functionFragment: "claimDisputeTimeoutRefund",
+    values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "claimTimeoutRefund",
+    values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
     functionFragment: "createTrade",
     values: [AddressLike, AddressLike, BigNumberish, AddressLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "disputeDeadlines",
+    values: [BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "feeBasisPoints",
@@ -76,6 +133,10 @@ export interface KontorEscrowInterface extends Interface {
     values: [BigNumberish]
   ): string;
   encodeFunctionData(
+    functionFragment: "fundingDeadlines",
+    values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
     functionFragment: "hasVoted",
     values: [BigNumberish, AddressLike]
   ): string;
@@ -84,13 +145,27 @@ export interface KontorEscrowInterface extends Interface {
     values?: undefined
   ): string;
   encodeFunctionData(functionFragment: "owner", values?: undefined): string;
+  encodeFunctionData(functionFragment: "pause", values?: undefined): string;
+  encodeFunctionData(functionFragment: "paused", values?: undefined): string;
+  encodeFunctionData(
+    functionFragment: "pendingEvidenceRoots",
+    values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "pendingReleaseAmounts",
+    values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "proposeRelease",
+    values: [BigNumberish, BigNumberish, BytesLike]
+  ): string;
   encodeFunctionData(
     functionFragment: "raiseDispute",
     values: [BigNumberish]
   ): string;
   encodeFunctionData(
-    functionFragment: "releaseFunds",
-    values: [BigNumberish, BigNumberish]
+    functionFragment: "releaseDeadlines",
+    values: [BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "renounceOwnership",
@@ -101,6 +176,14 @@ export interface KontorEscrowInterface extends Interface {
     values: [[AddressLike, AddressLike, AddressLike]]
   ): string;
   encodeFunctionData(
+    functionFragment: "setTokenAllowed",
+    values: [AddressLike, boolean]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "tradeArbitrators",
+    values: [BigNumberish, BigNumberish]
+  ): string;
+  encodeFunctionData(
     functionFragment: "trades",
     values: [BigNumberish]
   ): string;
@@ -108,17 +191,50 @@ export interface KontorEscrowInterface extends Interface {
     functionFragment: "transferOwnership",
     values: [AddressLike]
   ): string;
+  encodeFunctionData(functionFragment: "unpause", values?: undefined): string;
   encodeFunctionData(
     functionFragment: "voteDispute",
     values: [BigNumberish, boolean]
   ): string;
 
   decodeFunctionResult(
+    functionFragment: "DISPUTE_WINDOW",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "FUNDING_WINDOW",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "RELEASE_WINDOW",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "allowedTokens",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "approveRelease",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
     functionFragment: "arbitrators",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
+    functionFragment: "claimDisputeTimeoutRefund",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "claimTimeoutRefund",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
     functionFragment: "createTrade",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "disputeDeadlines",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -130,18 +246,36 @@ export interface KontorEscrowInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "fundTrade", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "fundingDeadlines",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(functionFragment: "hasVoted", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "nextTradeId",
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "owner", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "pause", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "paused", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "pendingEvidenceRoots",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "pendingReleaseAmounts",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "proposeRelease",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(
     functionFragment: "raiseDispute",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: "releaseFunds",
+    functionFragment: "releaseDeadlines",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -152,11 +286,20 @@ export interface KontorEscrowInterface extends Interface {
     functionFragment: "setArbitrators",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(
+    functionFragment: "setTokenAllowed",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "tradeArbitrators",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(functionFragment: "trades", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "transferOwnership",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(functionFragment: "unpause", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "voteDispute",
     data: BytesLike
@@ -178,6 +321,24 @@ export namespace ArbitratorVotedEvent {
     tradeId: bigint;
     arbitrator: string;
     refundBuyer: boolean;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace DefaultArbitratorsUpdatedEvent {
+  export type InputTuple = [
+    arb1: AddressLike,
+    arb2: AddressLike,
+    arb3: AddressLike
+  ];
+  export type OutputTuple = [arb1: string, arb2: string, arb3: string];
+  export interface OutputObject {
+    arb1: string;
+    arb2: string;
+    arb3: string;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -211,12 +372,100 @@ export namespace DisputeResolvedEvent {
   export type LogDescription = TypedLogDescription<Event>;
 }
 
+export namespace DisputeTimedOutEvent {
+  export type InputTuple = [
+    tradeId: BigNumberish,
+    refundedAmount: BigNumberish
+  ];
+  export type OutputTuple = [tradeId: bigint, refundedAmount: bigint];
+  export interface OutputObject {
+    tradeId: bigint;
+    refundedAmount: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
 export namespace OwnershipTransferredEvent {
   export type InputTuple = [previousOwner: AddressLike, newOwner: AddressLike];
   export type OutputTuple = [previousOwner: string, newOwner: string];
   export interface OutputObject {
     previousOwner: string;
     newOwner: string;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace PausedEvent {
+  export type InputTuple = [account: AddressLike];
+  export type OutputTuple = [account: string];
+  export interface OutputObject {
+    account: string;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace ReleaseApprovedEvent {
+  export type InputTuple = [
+    tradeId: BigNumberish,
+    buyer: AddressLike,
+    amount: BigNumberish,
+    evidenceRoot: BytesLike
+  ];
+  export type OutputTuple = [
+    tradeId: bigint,
+    buyer: string,
+    amount: bigint,
+    evidenceRoot: string
+  ];
+  export interface OutputObject {
+    tradeId: bigint;
+    buyer: string;
+    amount: bigint;
+    evidenceRoot: string;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace ReleaseProposedEvent {
+  export type InputTuple = [
+    tradeId: BigNumberish,
+    amount: BigNumberish,
+    evidenceRoot: BytesLike
+  ];
+  export type OutputTuple = [
+    tradeId: bigint,
+    amount: bigint,
+    evidenceRoot: string
+  ];
+  export interface OutputObject {
+    tradeId: bigint;
+    amount: bigint;
+    evidenceRoot: string;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace TokenAllowlistUpdatedEvent {
+  export type InputTuple = [token: AddressLike, allowed: boolean];
+  export type OutputTuple = [token: string, allowed: boolean];
+  export interface OutputObject {
+    token: string;
+    allowed: boolean;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -241,19 +490,22 @@ export namespace TradeCreatedEvent {
     tradeId: BigNumberish,
     buyer: AddressLike,
     seller: AddressLike,
-    amount: BigNumberish
+    amount: BigNumberish,
+    fundingDeadline: BigNumberish
   ];
   export type OutputTuple = [
     tradeId: bigint,
     buyer: string,
     seller: string,
-    amount: bigint
+    amount: bigint,
+    fundingDeadline: bigint
   ];
   export interface OutputObject {
     tradeId: bigint;
     buyer: string;
     seller: string;
     amount: bigint;
+    fundingDeadline: bigint;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -262,10 +514,14 @@ export namespace TradeCreatedEvent {
 }
 
 export namespace TradeFundedEvent {
-  export type InputTuple = [tradeId: BigNumberish];
-  export type OutputTuple = [tradeId: bigint];
+  export type InputTuple = [
+    tradeId: BigNumberish,
+    releaseDeadline: BigNumberish
+  ];
+  export type OutputTuple = [tradeId: bigint, releaseDeadline: bigint];
   export interface OutputObject {
     tradeId: bigint;
+    releaseDeadline: bigint;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -279,6 +535,34 @@ export namespace TradePartialReleasedEvent {
   export interface OutputObject {
     tradeId: bigint;
     amount: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace TradeTimedOutEvent {
+  export type InputTuple = [
+    tradeId: BigNumberish,
+    refundedAmount: BigNumberish
+  ];
+  export type OutputTuple = [tradeId: bigint, refundedAmount: bigint];
+  export interface OutputObject {
+    tradeId: bigint;
+    refundedAmount: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace UnpausedEvent {
+  export type InputTuple = [account: AddressLike];
+  export type OutputTuple = [account: string];
+  export interface OutputObject {
+    account: string;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -329,28 +613,58 @@ export interface KontorEscrow extends BaseContract {
     event?: TCEvent
   ): Promise<this>;
 
+  DISPUTE_WINDOW: TypedContractMethod<[], [bigint], "view">;
+
+  FUNDING_WINDOW: TypedContractMethod<[], [bigint], "view">;
+
+  RELEASE_WINDOW: TypedContractMethod<[], [bigint], "view">;
+
+  allowedTokens: TypedContractMethod<[arg0: AddressLike], [boolean], "view">;
+
+  approveRelease: TypedContractMethod<
+    [
+      tradeId: BigNumberish,
+      expectedAmount: BigNumberish,
+      expectedEvidenceRoot: BytesLike
+    ],
+    [void],
+    "nonpayable"
+  >;
+
   arbitrators: TypedContractMethod<[arg0: BigNumberish], [string], "view">;
+
+  claimDisputeTimeoutRefund: TypedContractMethod<
+    [tradeId: BigNumberish],
+    [void],
+    "nonpayable"
+  >;
+
+  claimTimeoutRefund: TypedContractMethod<
+    [tradeId: BigNumberish],
+    [void],
+    "nonpayable"
+  >;
 
   createTrade: TypedContractMethod<
     [
-      _buyer: AddressLike,
-      _oracle: AddressLike,
-      _amount: BigNumberish,
-      _tokenAddress: AddressLike
+      buyer: AddressLike,
+      oracle: AddressLike,
+      amount: BigNumberish,
+      tokenAddress: AddressLike
     ],
     [bigint],
     "nonpayable"
   >;
 
+  disputeDeadlines: TypedContractMethod<[arg0: BigNumberish], [bigint], "view">;
+
   feeBasisPoints: TypedContractMethod<[], [bigint], "view">;
 
   feeTreasury: TypedContractMethod<[], [string], "view">;
 
-  fundTrade: TypedContractMethod<
-    [_tradeId: BigNumberish],
-    [void],
-    "nonpayable"
-  >;
+  fundTrade: TypedContractMethod<[tradeId: BigNumberish], [void], "nonpayable">;
+
+  fundingDeadlines: TypedContractMethod<[arg0: BigNumberish], [bigint], "view">;
 
   hasVoted: TypedContractMethod<
     [arg0: BigNumberish, arg1: AddressLike],
@@ -362,24 +676,54 @@ export interface KontorEscrow extends BaseContract {
 
   owner: TypedContractMethod<[], [string], "view">;
 
-  raiseDispute: TypedContractMethod<
-    [_tradeId: BigNumberish],
+  pause: TypedContractMethod<[], [void], "nonpayable">;
+
+  paused: TypedContractMethod<[], [boolean], "view">;
+
+  pendingEvidenceRoots: TypedContractMethod<
+    [arg0: BigNumberish],
+    [string],
+    "view"
+  >;
+
+  pendingReleaseAmounts: TypedContractMethod<
+    [arg0: BigNumberish],
+    [bigint],
+    "view"
+  >;
+
+  proposeRelease: TypedContractMethod<
+    [tradeId: BigNumberish, amount: BigNumberish, evidenceRoot: BytesLike],
     [void],
     "nonpayable"
   >;
 
-  releaseFunds: TypedContractMethod<
-    [_tradeId: BigNumberish, _amount: BigNumberish],
+  raiseDispute: TypedContractMethod<
+    [tradeId: BigNumberish],
     [void],
     "nonpayable"
   >;
+
+  releaseDeadlines: TypedContractMethod<[arg0: BigNumberish], [bigint], "view">;
 
   renounceOwnership: TypedContractMethod<[], [void], "nonpayable">;
 
   setArbitrators: TypedContractMethod<
-    [_newArbitrators: [AddressLike, AddressLike, AddressLike]],
+    [newArbitrators: [AddressLike, AddressLike, AddressLike]],
     [void],
     "nonpayable"
+  >;
+
+  setTokenAllowed: TypedContractMethod<
+    [token: AddressLike, allowed: boolean],
+    [void],
+    "nonpayable"
+  >;
+
+  tradeArbitrators: TypedContractMethod<
+    [arg0: BigNumberish, arg1: BigNumberish],
+    [string],
+    "view"
   >;
 
   trades: TypedContractMethod<
@@ -416,8 +760,10 @@ export interface KontorEscrow extends BaseContract {
     "nonpayable"
   >;
 
+  unpause: TypedContractMethod<[], [void], "nonpayable">;
+
   voteDispute: TypedContractMethod<
-    [_tradeId: BigNumberish, refundBuyer: boolean],
+    [tradeId: BigNumberish, refundBuyer: boolean],
     [void],
     "nonpayable"
   >;
@@ -427,20 +773,52 @@ export interface KontorEscrow extends BaseContract {
   ): T;
 
   getFunction(
+    nameOrSignature: "DISPUTE_WINDOW"
+  ): TypedContractMethod<[], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "FUNDING_WINDOW"
+  ): TypedContractMethod<[], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "RELEASE_WINDOW"
+  ): TypedContractMethod<[], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "allowedTokens"
+  ): TypedContractMethod<[arg0: AddressLike], [boolean], "view">;
+  getFunction(
+    nameOrSignature: "approveRelease"
+  ): TypedContractMethod<
+    [
+      tradeId: BigNumberish,
+      expectedAmount: BigNumberish,
+      expectedEvidenceRoot: BytesLike
+    ],
+    [void],
+    "nonpayable"
+  >;
+  getFunction(
     nameOrSignature: "arbitrators"
   ): TypedContractMethod<[arg0: BigNumberish], [string], "view">;
+  getFunction(
+    nameOrSignature: "claimDisputeTimeoutRefund"
+  ): TypedContractMethod<[tradeId: BigNumberish], [void], "nonpayable">;
+  getFunction(
+    nameOrSignature: "claimTimeoutRefund"
+  ): TypedContractMethod<[tradeId: BigNumberish], [void], "nonpayable">;
   getFunction(
     nameOrSignature: "createTrade"
   ): TypedContractMethod<
     [
-      _buyer: AddressLike,
-      _oracle: AddressLike,
-      _amount: BigNumberish,
-      _tokenAddress: AddressLike
+      buyer: AddressLike,
+      oracle: AddressLike,
+      amount: BigNumberish,
+      tokenAddress: AddressLike
     ],
     [bigint],
     "nonpayable"
   >;
+  getFunction(
+    nameOrSignature: "disputeDeadlines"
+  ): TypedContractMethod<[arg0: BigNumberish], [bigint], "view">;
   getFunction(
     nameOrSignature: "feeBasisPoints"
   ): TypedContractMethod<[], [bigint], "view">;
@@ -449,7 +827,10 @@ export interface KontorEscrow extends BaseContract {
   ): TypedContractMethod<[], [string], "view">;
   getFunction(
     nameOrSignature: "fundTrade"
-  ): TypedContractMethod<[_tradeId: BigNumberish], [void], "nonpayable">;
+  ): TypedContractMethod<[tradeId: BigNumberish], [void], "nonpayable">;
+  getFunction(
+    nameOrSignature: "fundingDeadlines"
+  ): TypedContractMethod<[arg0: BigNumberish], [bigint], "view">;
   getFunction(
     nameOrSignature: "hasVoted"
   ): TypedContractMethod<
@@ -464,24 +845,53 @@ export interface KontorEscrow extends BaseContract {
     nameOrSignature: "owner"
   ): TypedContractMethod<[], [string], "view">;
   getFunction(
-    nameOrSignature: "raiseDispute"
-  ): TypedContractMethod<[_tradeId: BigNumberish], [void], "nonpayable">;
+    nameOrSignature: "pause"
+  ): TypedContractMethod<[], [void], "nonpayable">;
   getFunction(
-    nameOrSignature: "releaseFunds"
+    nameOrSignature: "paused"
+  ): TypedContractMethod<[], [boolean], "view">;
+  getFunction(
+    nameOrSignature: "pendingEvidenceRoots"
+  ): TypedContractMethod<[arg0: BigNumberish], [string], "view">;
+  getFunction(
+    nameOrSignature: "pendingReleaseAmounts"
+  ): TypedContractMethod<[arg0: BigNumberish], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "proposeRelease"
   ): TypedContractMethod<
-    [_tradeId: BigNumberish, _amount: BigNumberish],
+    [tradeId: BigNumberish, amount: BigNumberish, evidenceRoot: BytesLike],
     [void],
     "nonpayable"
   >;
+  getFunction(
+    nameOrSignature: "raiseDispute"
+  ): TypedContractMethod<[tradeId: BigNumberish], [void], "nonpayable">;
+  getFunction(
+    nameOrSignature: "releaseDeadlines"
+  ): TypedContractMethod<[arg0: BigNumberish], [bigint], "view">;
   getFunction(
     nameOrSignature: "renounceOwnership"
   ): TypedContractMethod<[], [void], "nonpayable">;
   getFunction(
     nameOrSignature: "setArbitrators"
   ): TypedContractMethod<
-    [_newArbitrators: [AddressLike, AddressLike, AddressLike]],
+    [newArbitrators: [AddressLike, AddressLike, AddressLike]],
     [void],
     "nonpayable"
+  >;
+  getFunction(
+    nameOrSignature: "setTokenAllowed"
+  ): TypedContractMethod<
+    [token: AddressLike, allowed: boolean],
+    [void],
+    "nonpayable"
+  >;
+  getFunction(
+    nameOrSignature: "tradeArbitrators"
+  ): TypedContractMethod<
+    [arg0: BigNumberish, arg1: BigNumberish],
+    [string],
+    "view"
   >;
   getFunction(
     nameOrSignature: "trades"
@@ -516,9 +926,12 @@ export interface KontorEscrow extends BaseContract {
     nameOrSignature: "transferOwnership"
   ): TypedContractMethod<[newOwner: AddressLike], [void], "nonpayable">;
   getFunction(
+    nameOrSignature: "unpause"
+  ): TypedContractMethod<[], [void], "nonpayable">;
+  getFunction(
     nameOrSignature: "voteDispute"
   ): TypedContractMethod<
-    [_tradeId: BigNumberish, refundBuyer: boolean],
+    [tradeId: BigNumberish, refundBuyer: boolean],
     [void],
     "nonpayable"
   >;
@@ -529,6 +942,13 @@ export interface KontorEscrow extends BaseContract {
     ArbitratorVotedEvent.InputTuple,
     ArbitratorVotedEvent.OutputTuple,
     ArbitratorVotedEvent.OutputObject
+  >;
+  getEvent(
+    key: "DefaultArbitratorsUpdated"
+  ): TypedContractEvent<
+    DefaultArbitratorsUpdatedEvent.InputTuple,
+    DefaultArbitratorsUpdatedEvent.OutputTuple,
+    DefaultArbitratorsUpdatedEvent.OutputObject
   >;
   getEvent(
     key: "DisputeRaised"
@@ -545,11 +965,46 @@ export interface KontorEscrow extends BaseContract {
     DisputeResolvedEvent.OutputObject
   >;
   getEvent(
+    key: "DisputeTimedOut"
+  ): TypedContractEvent<
+    DisputeTimedOutEvent.InputTuple,
+    DisputeTimedOutEvent.OutputTuple,
+    DisputeTimedOutEvent.OutputObject
+  >;
+  getEvent(
     key: "OwnershipTransferred"
   ): TypedContractEvent<
     OwnershipTransferredEvent.InputTuple,
     OwnershipTransferredEvent.OutputTuple,
     OwnershipTransferredEvent.OutputObject
+  >;
+  getEvent(
+    key: "Paused"
+  ): TypedContractEvent<
+    PausedEvent.InputTuple,
+    PausedEvent.OutputTuple,
+    PausedEvent.OutputObject
+  >;
+  getEvent(
+    key: "ReleaseApproved"
+  ): TypedContractEvent<
+    ReleaseApprovedEvent.InputTuple,
+    ReleaseApprovedEvent.OutputTuple,
+    ReleaseApprovedEvent.OutputObject
+  >;
+  getEvent(
+    key: "ReleaseProposed"
+  ): TypedContractEvent<
+    ReleaseProposedEvent.InputTuple,
+    ReleaseProposedEvent.OutputTuple,
+    ReleaseProposedEvent.OutputObject
+  >;
+  getEvent(
+    key: "TokenAllowlistUpdated"
+  ): TypedContractEvent<
+    TokenAllowlistUpdatedEvent.InputTuple,
+    TokenAllowlistUpdatedEvent.OutputTuple,
+    TokenAllowlistUpdatedEvent.OutputObject
   >;
   getEvent(
     key: "TradeCompleted"
@@ -579,6 +1034,20 @@ export interface KontorEscrow extends BaseContract {
     TradePartialReleasedEvent.OutputTuple,
     TradePartialReleasedEvent.OutputObject
   >;
+  getEvent(
+    key: "TradeTimedOut"
+  ): TypedContractEvent<
+    TradeTimedOutEvent.InputTuple,
+    TradeTimedOutEvent.OutputTuple,
+    TradeTimedOutEvent.OutputObject
+  >;
+  getEvent(
+    key: "Unpaused"
+  ): TypedContractEvent<
+    UnpausedEvent.InputTuple,
+    UnpausedEvent.OutputTuple,
+    UnpausedEvent.OutputObject
+  >;
 
   filters: {
     "ArbitratorVoted(uint256,address,bool)": TypedContractEvent<
@@ -590,6 +1059,17 @@ export interface KontorEscrow extends BaseContract {
       ArbitratorVotedEvent.InputTuple,
       ArbitratorVotedEvent.OutputTuple,
       ArbitratorVotedEvent.OutputObject
+    >;
+
+    "DefaultArbitratorsUpdated(address,address,address)": TypedContractEvent<
+      DefaultArbitratorsUpdatedEvent.InputTuple,
+      DefaultArbitratorsUpdatedEvent.OutputTuple,
+      DefaultArbitratorsUpdatedEvent.OutputObject
+    >;
+    DefaultArbitratorsUpdated: TypedContractEvent<
+      DefaultArbitratorsUpdatedEvent.InputTuple,
+      DefaultArbitratorsUpdatedEvent.OutputTuple,
+      DefaultArbitratorsUpdatedEvent.OutputObject
     >;
 
     "DisputeRaised(uint256,address)": TypedContractEvent<
@@ -614,6 +1094,17 @@ export interface KontorEscrow extends BaseContract {
       DisputeResolvedEvent.OutputObject
     >;
 
+    "DisputeTimedOut(uint256,uint256)": TypedContractEvent<
+      DisputeTimedOutEvent.InputTuple,
+      DisputeTimedOutEvent.OutputTuple,
+      DisputeTimedOutEvent.OutputObject
+    >;
+    DisputeTimedOut: TypedContractEvent<
+      DisputeTimedOutEvent.InputTuple,
+      DisputeTimedOutEvent.OutputTuple,
+      DisputeTimedOutEvent.OutputObject
+    >;
+
     "OwnershipTransferred(address,address)": TypedContractEvent<
       OwnershipTransferredEvent.InputTuple,
       OwnershipTransferredEvent.OutputTuple,
@@ -623,6 +1114,50 @@ export interface KontorEscrow extends BaseContract {
       OwnershipTransferredEvent.InputTuple,
       OwnershipTransferredEvent.OutputTuple,
       OwnershipTransferredEvent.OutputObject
+    >;
+
+    "Paused(address)": TypedContractEvent<
+      PausedEvent.InputTuple,
+      PausedEvent.OutputTuple,
+      PausedEvent.OutputObject
+    >;
+    Paused: TypedContractEvent<
+      PausedEvent.InputTuple,
+      PausedEvent.OutputTuple,
+      PausedEvent.OutputObject
+    >;
+
+    "ReleaseApproved(uint256,address,uint256,bytes32)": TypedContractEvent<
+      ReleaseApprovedEvent.InputTuple,
+      ReleaseApprovedEvent.OutputTuple,
+      ReleaseApprovedEvent.OutputObject
+    >;
+    ReleaseApproved: TypedContractEvent<
+      ReleaseApprovedEvent.InputTuple,
+      ReleaseApprovedEvent.OutputTuple,
+      ReleaseApprovedEvent.OutputObject
+    >;
+
+    "ReleaseProposed(uint256,uint256,bytes32)": TypedContractEvent<
+      ReleaseProposedEvent.InputTuple,
+      ReleaseProposedEvent.OutputTuple,
+      ReleaseProposedEvent.OutputObject
+    >;
+    ReleaseProposed: TypedContractEvent<
+      ReleaseProposedEvent.InputTuple,
+      ReleaseProposedEvent.OutputTuple,
+      ReleaseProposedEvent.OutputObject
+    >;
+
+    "TokenAllowlistUpdated(address,bool)": TypedContractEvent<
+      TokenAllowlistUpdatedEvent.InputTuple,
+      TokenAllowlistUpdatedEvent.OutputTuple,
+      TokenAllowlistUpdatedEvent.OutputObject
+    >;
+    TokenAllowlistUpdated: TypedContractEvent<
+      TokenAllowlistUpdatedEvent.InputTuple,
+      TokenAllowlistUpdatedEvent.OutputTuple,
+      TokenAllowlistUpdatedEvent.OutputObject
     >;
 
     "TradeCompleted(uint256)": TypedContractEvent<
@@ -636,7 +1171,7 @@ export interface KontorEscrow extends BaseContract {
       TradeCompletedEvent.OutputObject
     >;
 
-    "TradeCreated(uint256,address,address,uint256)": TypedContractEvent<
+    "TradeCreated(uint256,address,address,uint256,uint256)": TypedContractEvent<
       TradeCreatedEvent.InputTuple,
       TradeCreatedEvent.OutputTuple,
       TradeCreatedEvent.OutputObject
@@ -647,7 +1182,7 @@ export interface KontorEscrow extends BaseContract {
       TradeCreatedEvent.OutputObject
     >;
 
-    "TradeFunded(uint256)": TypedContractEvent<
+    "TradeFunded(uint256,uint256)": TypedContractEvent<
       TradeFundedEvent.InputTuple,
       TradeFundedEvent.OutputTuple,
       TradeFundedEvent.OutputObject
@@ -667,6 +1202,28 @@ export interface KontorEscrow extends BaseContract {
       TradePartialReleasedEvent.InputTuple,
       TradePartialReleasedEvent.OutputTuple,
       TradePartialReleasedEvent.OutputObject
+    >;
+
+    "TradeTimedOut(uint256,uint256)": TypedContractEvent<
+      TradeTimedOutEvent.InputTuple,
+      TradeTimedOutEvent.OutputTuple,
+      TradeTimedOutEvent.OutputObject
+    >;
+    TradeTimedOut: TypedContractEvent<
+      TradeTimedOutEvent.InputTuple,
+      TradeTimedOutEvent.OutputTuple,
+      TradeTimedOutEvent.OutputObject
+    >;
+
+    "Unpaused(address)": TypedContractEvent<
+      UnpausedEvent.InputTuple,
+      UnpausedEvent.OutputTuple,
+      UnpausedEvent.OutputObject
+    >;
+    Unpaused: TypedContractEvent<
+      UnpausedEvent.InputTuple,
+      UnpausedEvent.OutputTuple,
+      UnpausedEvent.OutputObject
     >;
   };
 }

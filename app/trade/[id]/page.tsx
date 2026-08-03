@@ -84,7 +84,14 @@ export default function TradeView() {
     setContractError(null);
     setIsCreating(true);
     try {
-      const oracleAddress = trade.oracle?.walletAddress || CONTRACT_ADDRESSES.arbitrator;
+      const oracleAddress =
+        trade.oracle?.walletAddress ||
+        CONTRACT_ADDRESSES.arbitrator1 ||
+        CONTRACT_ADDRESSES.arbitrator;
+      if (!oracleAddress) {
+        setContractError("No oracle wallet is configured for this trade.");
+        return;
+      }
       const tradeId = await createTrade(
         trade.buyer.walletAddress,
         oracleAddress,

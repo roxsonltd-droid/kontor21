@@ -19,6 +19,7 @@ export default function EvidenceList({ tradeId }: EvidenceListProps) {
   const { t } = useLanguage();
   const [evidence, setEvidence] = useState<EvidenceItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const gateway = (process.env.NEXT_PUBLIC_IPFS_GATEWAY || "https://ipfs.io/ipfs").replace(/\/$/, "");
 
   useEffect(() => {
     const fetchEvidence = async () => {
@@ -74,7 +75,7 @@ export default function EvidenceList({ tradeId }: EvidenceListProps) {
                   <span className="text-emerald-400 text-sm font-medium">{t('trade.valid')}</span>
                 )}
                 <a
-                  href={`https://ipfs.io/ipfs/${e.documentHash}`}
+                  href={`${gateway}/${e.documentHash}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"

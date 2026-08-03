@@ -57,9 +57,14 @@ async function main() {
     arbitrator3: arb3,
   };
 
-  const dest = path.join(__dirname, "..", "contract-addresses.json");
-  fs.writeFileSync(dest, JSON.stringify(addresses, null, 2));
-  console.log("\nAddresses written to", dest);
+  const destinations = [
+    path.join(__dirname, "..", "contract-addresses.json"),
+    path.join(__dirname, "..", "lib", "contract-addresses.json"),
+  ];
+  for (const destination of destinations) {
+    fs.writeFileSync(destination, JSON.stringify(addresses, null, 2));
+    console.log("\nAddresses written to", destination);
+  }
 
   console.log("\nDeployment Summary:");
   console.log("  TestUSDC:", usdcAddress);

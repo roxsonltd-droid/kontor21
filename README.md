@@ -1,36 +1,57 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Kontor21
 
-## Getting Started
+Kontor21 is a Web3 escrow platform for agricultural B2B trades. It combines a
+Next.js application, PostgreSQL/Prisma metadata, IPFS evidence, and a Polygon
+smart contract with milestone releases and 2-of-3 arbitration.
 
-First, run the development server:
+## Local setup
+
+Requirements: Node.js 22+, PostgreSQL, and a Web3 wallet.
 
 ```bash
+npm ci
+copy .env.example .env
+npm run db:migrate
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Required environment variables:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `DATABASE_URL` — PostgreSQL connection string.
+- `PINATA_JWT` — server-only Pinata token with file pinning permission.
+- `AMOY_RPC_URL` — Polygon Amoy RPC endpoint.
+- `DEPLOYER_PRIVATE_KEY` — deployment wallet key; never expose it to the browser.
+- `POLYGONSCAN_API_KEY` — contract verification key.
+- `ARBITRATOR_WALLETS` — three unique, controlled addresses separated by commas.
+- `NEXT_PUBLIC_APP_URL` — public application origin.
+- `NEXT_PUBLIC_IPFS_GATEWAY` — public IPFS gateway prefix.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Quality checks
 
-## Learn More
+```bash
+npm run lint
+npm run typecheck
+npm test
+npm run build
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Smart contract deployment
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Use test wallets and test funds on Polygon Amoy:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm run deploy:amoy
+```
 
-## Deploy on Vercel
+The deployment script updates both `contract-addresses.json` and
+`lib/contract-addresses.json`. Commit the resulting addresses before deploying
+the web application.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Render staging
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+`render.yaml` defines the Next.js web service, PostgreSQL database, migration
+command, and health check. Secret values are intentionally marked `sync: false`
+and must be entered in Render.
+
+The pre-deploy command runs `prisma migrate deploy`; application startup never
+changes the database schema.

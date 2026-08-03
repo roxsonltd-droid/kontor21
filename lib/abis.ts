@@ -3,7 +3,10 @@ import addressesJson from "./contract-addresses.json";
 export const CONTRACT_ADDRESSES = addressesJson as {
   testUSDC: string;
   kontorEscrow: string;
-  arbitrator: string;
+  arbitrator1?: string;
+  arbitrator2?: string;
+  arbitrator3?: string;
+  arbitrator?: string;
 };
 
 export const KONTOR_ESCROW_ABI = [

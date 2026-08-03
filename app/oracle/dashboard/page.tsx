@@ -21,7 +21,7 @@ type OracleTrade = {
   createdAt: string;
   buyer: { walletAddress: string; companyName: string | null };
   seller: { walletAddress: string; companyName: string | null };
-  conditions?: { parameter: string; operator: string; value: string; unit: string | null; providerRole: string }[];
+  conditions?: { id: string; parameter: string; operator: string; value: string; unit: string | null; providerRole: string }[];
 };
 
 export default function OracleDashboard() {
@@ -30,6 +30,8 @@ export default function OracleDashboard() {
   const [isApproved, setIsApproved] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [ipfsHash, setIpfsHash] = useState<string | null>(null);
+  const [selectedConditionId, setSelectedConditionId] = useState("");
+  const [verifiedValue, setVerifiedValue] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [trades, setTrades] = useState<OracleTrade[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,39 +71,63 @@ export default function OracleDashboard() {
     loadTrades(address);
   }, [address, loadTrades]);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setSelectedFile(file);
       setIsUploading(true);
-      
-      // Simulate IPFS upload delay (no Pinata backend configured)
-      setTimeout(() => {
-        const mockCid = 'Qm' + Array.from({length: 44}, () => Math.random().toString(36)[2] || 'a').join('');
-        setIpfsHash(mockCid);
+      setError(null);
+      try {
+        const form = new FormData();
+        form.append("file", file);
+        const response = await signedFetch("/api/ipfs/upload", { method: "POST", body: form });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "IPFS upload failed");
+        setIpfsHash(result.cid);
+      } catch (uploadError) {
+        setSelectedFile(null);
+        setIpfsHash(null);
+        setError(uploadError instanceof Error ? uploadError.message : "IPFS upload failed");
+      } finally {
         setIsUploading(false);
-      }, 1500);
+      }
     }
   };
 
   const handleApprove = async () => {
-    if (!ipfsHash || !activeTrade) return;
+    if (!ipfsHash || !activeTrade || !selectedConditionId || !verifiedValue) return;
     if (activeTrade.blockchainTradeId == null) {
       setError("This trade is not on-chain yet. Create the smart contract from the trade view first.");
       return;
     }
     setIsProcessing(true);
-    const success = await approveTradeByOracle(activeTrade.blockchainTradeId);
-    setIsProcessing(false);
-    
-    if (success) {
+    setError(null);
+    try {
+      const evidenceResponse = await signedFetch(`/api/escrow/${activeTrade.id}/evidence`, {
+        method: "POST",
+        body: JSON.stringify({
+          documentHash: ipfsHash,
+          providerWallet: address,
+          verifiedValue,
+          conditionId: selectedConditionId,
+        }),
+      });
+      const evidenceResult = await evidenceResponse.json();
+      if (!evidenceResponse.ok) throw new Error(evidenceResult.error || "Evidence validation failed");
+
+      const success = await approveTradeByOracle(activeTrade.blockchainTradeId);
+      if (!success) throw new Error("On-chain release failed");
+
       setIsApproved(true);
       await signedFetch(`/api/escrow/${activeTrade.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ settlementStatus: "RELEASED", operationalStatus: "CONDITIONS_SATISFIED" }),
       });
       await loadTrades(address);
+    } catch (approvalError) {
+      setError(approvalError instanceof Error ? approvalError.message : "Approval failed");
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -273,6 +299,33 @@ export default function OracleDashboard() {
                     </div>
                   )}
 
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label className="text-xs text-zinc-400">
+                      Condition
+                      <select
+                        value={selectedConditionId}
+                        onChange={(event) => setSelectedConditionId(event.target.value)}
+                        className="mt-1.5 w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2.5 text-white"
+                      >
+                        <option value="">Select condition</option>
+                        {activeTrade.conditions?.map((condition) => (
+                          <option key={condition.id} value={condition.id}>
+                            {condition.parameter} {condition.operator} {condition.value} {condition.unit || ""}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="text-xs text-zinc-400">
+                      Verified value
+                      <input
+                        value={verifiedValue}
+                        onChange={(event) => setVerifiedValue(event.target.value)}
+                        placeholder="Measured value"
+                        className="mt-1.5 w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2.5 text-white"
+                      />
+                    </label>
+                  </div>
+
                   <div>
                     <p className="text-[10px] text-zinc-500 uppercase tracking-widest mb-2">{t('oracle.proof')}</p>
                     {!ipfsHash ? (
@@ -321,7 +374,7 @@ export default function OracleDashboard() {
                     <>
                       <button 
                         onClick={handleApprove}
-                        disabled={isProcessing || !ipfsHash || activeTrade.blockchainTradeId == null}
+                        disabled={isProcessing || !ipfsHash || !selectedConditionId || !verifiedValue || activeTrade.blockchainTradeId == null}
                         className="w-full sm:w-auto flex-1 bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3.5 rounded-xl text-sm font-semibold transition-all shadow-[0_0_20px_rgba(16,185,129,0.2)] disabled:opacity-50 flex items-center justify-center gap-2"
                       >
                         {isProcessing ? t('oracle.processing') : t('oracle.approveBtn')}

@@ -297,7 +297,7 @@ export default function BuyerDashboard() {
                         <span className="text-xs font-mono text-zinc-400">Verified BG Producer</span>
                       </td>
                       <td className="px-5 py-4 text-right">
-                        <Link href={`/trade/123`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition-colors">
+                        <Link href={`/trade/new`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition-colors">
                           Explore demo workflow <ChevronRight className="w-3 h-3" />
                         </Link>
                       </td>

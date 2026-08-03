@@ -27,7 +27,7 @@ export default function Home() {
           </div>
           <div className="flex items-center gap-4">
             <LanguageSwitcher />
-            <Link href="/trade/123" className="px-5 py-2.5 rounded-lg bg-white text-zinc-950 font-semibold hover:bg-zinc-200 transition-colors text-sm">
+            <Link href="/buyer/dashboard" className="px-5 py-2.5 rounded-lg bg-white text-zinc-950 font-semibold hover:bg-zinc-200 transition-colors text-sm">
               {t('nav.demo')}
             </Link>
           </div>
@@ -56,7 +56,7 @@ export default function Home() {
               {t('hero.subtitle')}
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link href="/trade/123" className="px-8 py-4 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-500 transition-colors flex items-center gap-2 shadow-[0_0_20px_rgba(37,99,235,0.3)]">
+              <Link href="/trade/new" className="px-8 py-4 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-500 transition-colors flex items-center gap-2 shadow-[0_0_20px_rgba(37,99,235,0.3)]">
                 {t('hero.startTrade')}
                 <ArrowRight className="w-5 h-5" />
               </Link>
@@ -194,7 +194,7 @@ export default function Home() {
               <ul className="space-y-2 text-sm">
                 <li><Link href="/buyer/sourcing" className="text-zinc-400 hover:text-white transition-colors">1. Kontor21 Intelligence</Link></li>
                 <li><Link href="/oracle/dashboard" className="text-zinc-400 hover:text-white transition-colors">2. Independent Inspection</Link></li>
-                <li><Link href="/trade/123" className="text-zinc-400 hover:text-white transition-colors">3. Evidence Engine & Telemetry</Link></li>
+                <li><Link href="/buyer/dashboard" className="text-zinc-400 hover:text-white transition-colors">3. Evidence Engine & Telemetry</Link></li>
                 <li><Link href="/buyer/dashboard" className="text-zinc-400 hover:text-white transition-colors">4. Escrow Dashboard</Link></li>
                 <li><Link href="/trust" className="text-zinc-400 hover:text-white transition-colors">5. Trust Center</Link></li>
               </ul>
@@ -202,7 +202,7 @@ export default function Home() {
             <div>
               <h3 className="text-white font-semibold mb-4">{t('demo.title')}</h3>
               <ul className="space-y-2 text-sm">
-                <li><Link href="/trade/123" className="text-zinc-400 hover:text-white transition-colors">{t('demo.buyer')}</Link></li>
+                <li><Link href="/buyer/dashboard" className="text-zinc-400 hover:text-white transition-colors">{t('demo.buyer')}</Link></li>
                 <li><Link href="/oracle/dashboard" className="text-zinc-400 hover:text-white transition-colors">{t('demo.oracle')}</Link></li>
                 <li><Link href="/admin/accounting" className="text-zinc-400 hover:text-white transition-colors">{t('demo.accounting')}</Link></li>
                 <li><Link href="/admin/arbitration" className="text-zinc-400 hover:text-white transition-colors">{t('demo.arbitration')}</Link></li>

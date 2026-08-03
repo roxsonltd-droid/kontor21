@@ -7,6 +7,7 @@ import { ShieldAlert, Gavel, Blocks, ArrowRight, MessageSquareWarning, CheckCirc
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { useKontorEscrow } from '@/hooks/useKontorEscrow';
+import { signedFetch } from '@/lib/signedFetch';
 
 type DisputeTrade = {
   id: string;
@@ -36,7 +37,7 @@ export default function ArbitrationDashboard() {
   const loadDisputes = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/escrow?disputes=1');
+      const res = await signedFetch('/api/escrow?disputes=1');
       if (res.ok) {
         const data = await res.json();
         setTrades(data);
@@ -72,7 +73,7 @@ export default function ArbitrationDashboard() {
       const success = await voteDispute(selectedTrade.blockchainTradeId, refundBuyer);
       if (success) {
         setResolvedId(selectedTrade.id);
-        await fetch(`/api/escrow/${selectedTrade.id}`, {
+        await signedFetch(`/api/escrow/${selectedTrade.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

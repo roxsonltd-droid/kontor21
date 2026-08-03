@@ -12,10 +12,23 @@ async function main() {
   const [deployer] = await ethers.getSigners();
   console.log("Deploying with account:", deployer.address);
 
-  // Define 3 arbitrators (in production these would be separate controlled wallets)
-  const arb1 = deployer.address;
-  const arb2 = "0x2222222222222222222222222222222222222222";
-  const arb3 = "0x3333333333333333333333333333333333333333";
+  const configuredArbitrators = (process.env.ARBITRATOR_WALLETS || "")
+    .split(",")
+    .map((address) => address.trim())
+    .filter(Boolean);
+  const localSigners = await ethers.getSigners();
+  const arbitratorAddresses =
+    configuredArbitrators.length === 3
+      ? configuredArbitrators
+      : localSigners.slice(0, 3).map((signer) => signer.address);
+
+  if (arbitratorAddresses.length !== 3) {
+    throw new Error("Configure exactly three controlled wallets in ARBITRATOR_WALLETS");
+  }
+  const [arb1, arb2, arb3] = arbitratorAddresses;
+  if (new Set(arbitratorAddresses.map((address) => address.toLowerCase())).size !== 3) {
+    throw new Error("ARBITRATOR_WALLETS must contain three unique addresses");
+  }
 
   const TestUSDC = await ethers.getContractFactory("TestUSDC");
   const usdc = await TestUSDC.deploy();

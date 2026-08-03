@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ShieldCheck, FileText, Download } from 'lucide-react';
+import { FileText, Download } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 type EvidenceItem = {
@@ -8,7 +8,7 @@ type EvidenceItem = {
   providerWallet: string;
   verifiedValue?: string | null;
   isValid?: boolean | null;
-  timestamp: string;
+  createdAt: string;
 };
 
 interface EvidenceListProps {

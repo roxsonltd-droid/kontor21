@@ -11,6 +11,7 @@ import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { useLanguage } from '@/contexts/LanguageContext';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { signedFetch } from '@/lib/signedFetch';
 
 type TradeMetadata = {
   id: string;
@@ -94,7 +95,7 @@ export default function TradeView() {
         setContractError("createTrade failed — check wallet and network (Amoy).");
         return;
       }
-      const res = await fetch(`/api/escrow/${trade.id}`, {
+      const res = await signedFetch(`/api/escrow/${trade.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ blockchainTradeId: tradeId }),
@@ -116,7 +117,7 @@ export default function TradeView() {
     const success = await fundTrade(blockchainTradeId);
     if (success) {
       setIsFunded(true);
-      await fetch(`/api/escrow/${trade?.id}`, {
+      await signedFetch(`/api/escrow/${trade?.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ settlementStatus: "FUNDED" }),
@@ -130,7 +131,7 @@ export default function TradeView() {
     const success = await raiseDispute(blockchainTradeId);
     if (success) {
       setIsDisputed(true);
-      await fetch(`/api/escrow/${trade?.id}`, {
+      await signedFetch(`/api/escrow/${trade?.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ operationalStatus: "DISPUTED", settlementStatus: "DISPUTED" }),

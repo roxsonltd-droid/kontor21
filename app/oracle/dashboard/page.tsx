@@ -7,6 +7,7 @@ import { CheckCircle2, Blocks, Fingerprint, UploadCloud, FileCheck, Wallet, Arro
 import { useKontorEscrow } from '@/hooks/useKontorEscrow';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
+import { signedFetch } from '@/lib/signedFetch';
 
 type OracleTrade = {
   id: string;
@@ -45,7 +46,7 @@ export default function OracleDashboard() {
   const loadTrades = useCallback(async (wallet: string | null) => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/escrow?role=oracle&address=${wallet || ''}`);
+      const res = await signedFetch(`/api/escrow?role=oracle&address=${wallet || ''}`);
       if (res.ok) {
         const data = await res.json();
         setTrades(data);
@@ -95,7 +96,7 @@ export default function OracleDashboard() {
     
     if (success) {
       setIsApproved(true);
-      await fetch(`/api/escrow/${activeTrade.id}`, {
+      await signedFetch(`/api/escrow/${activeTrade.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ settlementStatus: "RELEASED", operationalStatus: "CONDITIONS_SATISFIED" }),

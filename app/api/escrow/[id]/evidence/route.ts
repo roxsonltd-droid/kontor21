@@ -1,18 +1,43 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { authenticateWalletRequest } from "@/lib/api-auth";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
+export async function GET(_req: NextRequest, context: RouteContext) {
+  const { id } = await context.params;
+  const trade = await prisma.tradeMetadata.findUnique({
+    where: { id },
+    select: { id: true },
+  });
+  if (!trade) {
+    return NextResponse.json({ error: "Trade not found" }, { status: 404 });
+  }
+  const evidence = await prisma.evidence.findMany({
+    where: { tradeId: id },
+    orderBy: { createdAt: "desc" },
+  });
+  return NextResponse.json({ evidence });
+}
+
 export async function POST(req: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params;
-    const body = await req.json();
+    const rawBody = await req.text();
+    const actorWallet = authenticateWalletRequest(req, rawBody);
+    if (!actorWallet) {
+      return NextResponse.json({ error: "Valid wallet signature required" }, { status: 401 });
+    }
+    const body = JSON.parse(rawBody);
 
     const { documentHash, providerWallet, verifiedValue, conditionId } = body;
     if (!documentHash || !providerWallet) {
       return NextResponse.json({ error: "Missing documentHash or providerWallet" }, { status: 400 });
+    }
+    if (providerWallet.toLowerCase() !== actorWallet.toLowerCase()) {
+      return NextResponse.json({ error: "Provider wallet must sign the request" }, { status: 403 });
     }
 
     const trade = await prisma.tradeMetadata.findUnique({
@@ -23,6 +48,10 @@ export async function POST(req: NextRequest, context: RouteContext) {
     if (!trade) {
       return NextResponse.json({ error: "Trade not found" }, { status: 404 });
     }
+    const provider = await prisma.user.findUnique({ where: { walletAddress: actorWallet } });
+    if (!provider || !["LAB", "INSPECTOR", "ORACLE"].includes(provider.role)) {
+      return NextResponse.json({ error: "Wallet is not an approved evidence provider" }, { status: 403 });
+    }
 
     let targetCondition = null;
     let isValid = null;
@@ -32,6 +61,9 @@ export async function POST(req: NextRequest, context: RouteContext) {
     } else {
       // Auto-match if we can (naive first match for the provider)
       targetCondition = trade.conditions.find(c => c.providerRole === "LAB" || c.providerRole === "INSPECTOR");
+    }
+    if (!targetCondition || (provider.role !== "ORACLE" && targetCondition.providerRole !== provider.role)) {
+      return NextResponse.json({ error: "Provider is not authorized for this condition" }, { status: 403 });
     }
 
     // Basic Rules Engine Evaluation
@@ -59,7 +91,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
         tradeId: id,
         conditionId: targetCondition?.id || null,
         documentHash,
-        providerWallet,
+        providerWallet: actorWallet,
         verifiedValue: verifiedValue || null,
         isValid
       }
@@ -70,7 +102,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
       data: {
         tradeId: id,
         action: isValid ? "VALID_EVIDENCE_UPLOADED" : "EVIDENCE_UPLOADED",
-        actorWallet: providerWallet,
+        actorWallet,
         documentIpfsHash: documentHash
       }
     });

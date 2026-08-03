@@ -1,4 +1,5 @@
 "use client";
+import { signedFetch } from "@/lib/signedFetch";
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -51,7 +52,7 @@ export default function TradeHistory() {
   useEffect(() => {
     const fetchTrades = async () => {
       try {
-        const res = await fetch('/api/escrow');
+        const res = await signedFetch('/api/escrow');
         if (!res.ok) throw new Error('Failed to fetch trades');
         const data = await res.json();
         const mapped: TradeRecord[] = (data as { id: string; productName: string; priceUsdc: string; operationalStatus: string; createdAt: string; buyer?: { walletAddress: string }; seller?: { walletAddress: string } }[]).map((t) => ({

@@ -1,4 +1,6 @@
-const { ethers } = require("hardhat");
+import hre from "hardhat";
+
+const { ethers } = hre;
 
 async function main() {
   console.log("Starting Kontor21 End-to-End Amoy Test...");
@@ -20,7 +22,13 @@ async function main() {
 
   // 2. Deploy Escrow Contract
   const Escrow = await ethers.getContractFactory("KontorEscrow");
-  const escrow = await Escrow.deploy(usdcAddress, [deployer.address, oracle.address, seller.address]); // mock arbitrators for testing
+  const escrow = await Escrow.deploy(
+    deployer.address,
+    oracle.address,
+    seller.address,
+    deployer.address,
+    25
+  );
   await escrow.waitForDeployment();
   const escrowAddress = await escrow.getAddress();
   console.log(`KontorEscrow deployed to: ${escrowAddress}`);
@@ -74,7 +82,7 @@ async function main() {
   await vote2Tx.wait();
   console.log("Vote 2 recorded (Oracle). Resolution triggered!");
 
-  const trade = await escrow.getTrade(tradeId);
+  const trade = await escrow.trades(tradeId);
   console.log(`\nFinal Trade Status: ${trade.status} (4 = REFUNDED)`);
   console.log("E2E Test Completed Successfully!");
 }

@@ -80,6 +80,7 @@ contract KontorEscrow is Ownable, ReentrancyGuard {
         address _feeTreasury, 
         uint256 _feeBasisPoints
     ) Ownable(msg.sender) {
+        _validateArbitrators(_arb1, _arb2, _arb3);
         require(_feeTreasury != address(0), "Invalid treasury");
         require(_feeBasisPoints <= 1000, "Fee cannot exceed 10%");
         arbitrators[0] = _arb1;
@@ -121,8 +122,13 @@ contract KontorEscrow is Ownable, ReentrancyGuard {
         Trade storage trade = trades[_tradeId];
         require(trade.status == TradeStatus.AWAITING_FUNDS, "Trade is not awaiting funds");
 
+        uint256 balanceBefore = trade.token.balanceOf(address(this));
         trade.status = TradeStatus.FUNDED;
         trade.token.safeTransferFrom(msg.sender, address(this), trade.totalAmount);
+        require(
+            trade.token.balanceOf(address(this)) - balanceBefore == trade.totalAmount,
+            "Unsupported fee-on-transfer token"
+        );
         emit TradeFunded(_tradeId);
     }
 
@@ -201,7 +207,12 @@ contract KontorEscrow is Ownable, ReentrancyGuard {
     }
 
     function setArbitrators(address[3] calldata _newArbitrators) external onlyOwner {
-        require(_newArbitrators[0] != address(0) && _newArbitrators[1] != address(0) && _newArbitrators[2] != address(0), "Invalid arbitrators");
+        _validateArbitrators(_newArbitrators[0], _newArbitrators[1], _newArbitrators[2]);
         arbitrators = _newArbitrators;
+    }
+
+    function _validateArbitrators(address _arb1, address _arb2, address _arb3) private pure {
+        require(_arb1 != address(0) && _arb2 != address(0) && _arb3 != address(0), "Invalid arbitrators");
+        require(_arb1 != _arb2 && _arb1 != _arb3 && _arb2 != _arb3, "Arbitrators must be unique");
     }
 }

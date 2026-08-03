@@ -8,9 +8,12 @@
   "scripts": {
     "postinstall": "prisma generate",
     "build": "npx next build",
-    "start": "node_modules/.bin/prisma db push --accept-data-loss && npx next start",
+    "start": "next start",
+    "db:migrate": "prisma migrate deploy",
     "dev": "next dev",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "hardhat test",
     "node": "npx hardhat node",
     "deploy": "npx hardhat run scripts/deploy.ts --network localhost",
     "deploy:amoy": "npx hardhat run scripts/deploy.ts --network amoy",

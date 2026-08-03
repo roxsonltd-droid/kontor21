@@ -6,10 +6,13 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { ShieldCheck, ArrowRight, ArrowLeft, Wallet, CheckCircle2, Loader2, Blocks, Navigation } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useWallet } from "@/hooks/useWallet";
+import { signedFetch } from "@/lib/signedFetch";
 
 function NewTradeWizard() {
   const searchParams = useSearchParams();
   const { language } = useLanguage();
+  const { address, connectWallet } = useWallet();
   
   // Step State
   const [step, setStep] = useState(1);
@@ -21,7 +24,6 @@ function NewTradeWizard() {
   const [quantity, setQuantity] = useState(searchParams.get("quantity") || "50");
   const [price, setPrice] = useState(searchParams.get("price") || "820");
   const buyerWallet = searchParams.get("buyer") || "0x742d35Cc6634C0532925a3b844Bc454e4438f44e";
-  const sellerWallet = searchParams.get("seller") || "0x9D4...1F2";
   const [deliveryTerms, setDeliveryTerms] = useState(searchParams.get("terms") || "FOB");
   const [deliveryPort, setDeliveryPort] = useState(searchParams.get("port") || "Varna");
   const [oracle, setOracle] = useState("sgs");
@@ -63,7 +65,9 @@ function NewTradeWizard() {
   const handleDeploy = async () => {
     setSubmitting(true);
     try {
-      const res = await fetch("/api/escrow", {
+      const sellerWallet = address || await connectWallet();
+      if (!sellerWallet) throw new Error("Connect the seller wallet to create a trade");
+      const res = await signedFetch("/api/escrow", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -334,7 +338,7 @@ function NewTradeWizard() {
                     </div>
                     <div className="flex justify-between py-2 border-b border-zinc-800/50">
                       <span className="text-zinc-500">Seller</span>
-                      <span className="text-white font-medium font-mono text-xs">{sellerWallet}</span>
+                      <span className="text-white font-medium font-mono text-xs">{address || "Connect seller wallet"}</span>
                     </div>
                     <div className="flex justify-between py-2 border-b border-zinc-800/50">
                       <span className="text-zinc-500">Oracle Authority</span>

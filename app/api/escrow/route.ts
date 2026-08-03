@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { authenticateWalletRequest, isConfiguredArbitrator } from "@/lib/api-auth";
+import { getAddress, isAddress } from "ethers";
 
 const PUBLIC_ORIGIN = (
   process.env.NEXT_PUBLIC_APP_URL ||
@@ -9,7 +11,12 @@ const PUBLIC_ORIGIN = (
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const rawBody = await req.text();
+    const actorWallet = authenticateWalletRequest(req, rawBody);
+    if (!actorWallet) {
+      return NextResponse.json({ error: "Valid wallet signature required" }, { status: 401 });
+    }
+    const body = JSON.parse(rawBody);
 
     const required = ["productName", "quantity", "priceUsdc", "buyerWallet", "sellerWallet"];
     for (const field of required) {
@@ -17,29 +24,38 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: `Missing required field: ${field}` }, { status: 400 });
       }
     }
-
-    let buyer = await prisma.user.findUnique({ where: { walletAddress: body.buyerWallet } });
-    if (!buyer) {
-      buyer = await prisma.user.create({
-        data: { walletAddress: body.buyerWallet, companyName: body.buyerName || null, role: "TRADER" },
-      });
+    if (!isAddress(body.buyerWallet) || !isAddress(body.sellerWallet)) {
+      return NextResponse.json({ error: "Invalid buyer or seller wallet" }, { status: 400 });
+    }
+    const quantity = Number(body.quantity);
+    const priceUsdc = Number(body.priceUsdc);
+    if (!Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(priceUsdc) || priceUsdc <= 0) {
+      return NextResponse.json({ error: "Quantity and price must be positive numbers" }, { status: 400 });
+    }
+    if (getAddress(body.sellerWallet) !== actorWallet) {
+      return NextResponse.json({ error: "Seller wallet must sign the request" }, { status: 403 });
     }
 
-    let seller = await prisma.user.findUnique({ where: { walletAddress: body.sellerWallet } });
-    if (!seller) {
-      seller = await prisma.user.create({
-        data: { walletAddress: body.sellerWallet, companyName: body.sellerName || null, role: "TRADER" },
-      });
-    }
+    const buyer = await prisma.user.upsert({
+      where: { walletAddress: getAddress(body.buyerWallet) },
+      update: {},
+      create: { walletAddress: getAddress(body.buyerWallet), companyName: body.buyerName || null, role: "TRADER" },
+    });
+
+    const seller = await prisma.user.upsert({
+      where: { walletAddress: actorWallet },
+      update: {},
+      create: { walletAddress: actorWallet, companyName: body.sellerName || null, role: "TRADER" },
+    });
 
     let oracle = null;
-    if (body.oracleWallet) {
-      oracle = await prisma.user.findUnique({ where: { walletAddress: body.oracleWallet } });
-      if (!oracle) {
-        oracle = await prisma.user.create({
-          data: { walletAddress: body.oracleWallet, companyName: body.oracleName || null, role: "ORACLE" },
-        });
-      }
+    if (body.oracleWallet && isAddress(body.oracleWallet)) {
+      const oracleAddress = getAddress(body.oracleWallet);
+      oracle = await prisma.user.upsert({
+        where: { walletAddress: oracleAddress },
+        update: {},
+        create: { walletAddress: oracleAddress, companyName: body.oracleName || null, role: "ORACLE" },
+      });
     }
 
     // Prepare nested conditions creation if provided
@@ -60,9 +76,9 @@ export async function POST(req: NextRequest) {
     const trade = await prisma.tradeMetadata.create({
       data: {
         productName: body.productName,
-        quantity: body.quantity,
+        quantity,
         unit: body.unit || "tons",
-        priceUsdc: body.priceUsdc,
+        priceUsdc,
         buyerId: buyer.id,
         sellerId: seller.id,
         oracleId: oracle?.id || null,
@@ -79,7 +95,7 @@ export async function POST(req: NextRequest) {
       data: {
         tradeId: trade.id,
         action: "TRADE_CREATED",
-        actorWallet: body.buyerWallet,
+        actorWallet,
         documentIpfsHash: null,
       },
     });
@@ -99,12 +115,22 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
+    const actorWallet = authenticateWalletRequest(req, "");
+    if (!actorWallet) {
+      return NextResponse.json({ error: "Valid wallet signature required" }, { status: 401 });
+    }
     const address = req.nextUrl.searchParams.get("address");
     const role = req.nextUrl.searchParams.get("role");
     const disputes = req.nextUrl.searchParams.get("disputes");
     
     let whereClause: Record<string, unknown> = {};
+    if (address && address.toLowerCase() !== actorWallet.toLowerCase()) {
+      return NextResponse.json({ error: "Cannot list another wallet's trades" }, { status: 403 });
+    }
     if (disputes === "1") {
+      if (!isConfiguredArbitrator(actorWallet)) {
+        return NextResponse.json({ error: "Arbitrator access required" }, { status: 403 });
+      }
       whereClause = {
         operationalStatus: "DISPUTED",
         blockchainTradeId: { not: null },
@@ -117,6 +143,14 @@ export async function GET(req: NextRequest) {
           { buyer: { walletAddress: address } },
           { seller: { walletAddress: address } }
         ]
+      };
+    } else if (!isConfiguredArbitrator(actorWallet)) {
+      whereClause = {
+        OR: [
+          { buyer: { walletAddress: actorWallet } },
+          { seller: { walletAddress: actorWallet } },
+          { oracle: { walletAddress: actorWallet } },
+        ],
       };
     }
 

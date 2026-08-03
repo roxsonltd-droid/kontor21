@@ -1,4 +1,5 @@
 "use client";
+import { signedFetch } from "@/lib/signedFetch";
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -31,7 +32,7 @@ export default function AccountingDashboard() {
   useEffect(() => {
     async function fetchTrades() {
       try {
-        const res = await fetch('/api/escrow');
+        const res = await signedFetch('/api/escrow');
         if (res.ok) {
           setTrades(await res.json());
         }

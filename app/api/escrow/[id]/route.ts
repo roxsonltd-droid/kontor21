@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { authenticateWalletRequest, isConfiguredArbitrator } from "@/lib/api-auth";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -40,26 +41,65 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Trade not found" }, { status: 404 });
     }
 
-    const body = await req.json();
+    const rawBody = await req.text();
+    const actorWallet = authenticateWalletRequest(req, rawBody);
+    if (!actorWallet) {
+      return NextResponse.json({ error: "Valid wallet signature required" }, { status: 401 });
+    }
+    const body = JSON.parse(rawBody);
     const data: { blockchainTradeId?: number | null; operationalStatus?: string; settlementStatus?: string } = {};
 
     if ("blockchainTradeId" in body) {
-      data.blockchainTradeId =
+      const parsedTradeId =
         body.blockchainTradeId === null || body.blockchainTradeId === undefined
           ? null
           : parseInt(body.blockchainTradeId, 10);
+      if (parsedTradeId !== null && (!Number.isSafeInteger(parsedTradeId) || parsedTradeId <= 0)) {
+        return NextResponse.json({ error: "Invalid blockchainTradeId" }, { status: 400 });
+      }
+      data.blockchainTradeId = parsedTradeId;
     }
 
     if ("operationalStatus" in body && typeof body.operationalStatus === "string") {
+      const allowedOperationalStatuses = ["PENDING", "SHIPPED", "INSPECTED", "CONDITIONS_SATISFIED", "DISPUTED"];
+      if (!allowedOperationalStatuses.includes(body.operationalStatus)) {
+        return NextResponse.json({ error: "Invalid operationalStatus" }, { status: 400 });
+      }
       data.operationalStatus = body.operationalStatus;
     }
 
     if ("settlementStatus" in body && typeof body.settlementStatus === "string") {
+      const allowedSettlementStatuses = ["AWAITING_FUNDS", "FUNDED", "RELEASED", "REFUNDED", "PARTIAL_SETTLEMENT", "DISPUTED"];
+      if (!allowedSettlementStatuses.includes(body.settlementStatus)) {
+        return NextResponse.json({ error: "Invalid settlementStatus" }, { status: 400 });
+      }
       data.settlementStatus = body.settlementStatus;
     }
 
     if (Object.keys(data).length === 0) {
       return NextResponse.json({ error: "No updatable fields provided" }, { status: 400 });
+    }
+
+    const actor = actorWallet.toLowerCase();
+    const fullDraft = await prisma.tradeMetadata.findUnique({
+      where: { id },
+      include: { buyer: true, seller: true, oracle: true },
+    });
+    if (!fullDraft) {
+      return NextResponse.json({ error: "Trade not found" }, { status: 404 });
+    }
+    const isBuyer = fullDraft.buyer.walletAddress.toLowerCase() === actor;
+    const isSeller = fullDraft.seller.walletAddress.toLowerCase() === actor;
+    const isOracle = fullDraft.oracle?.walletAddress.toLowerCase() === actor;
+    const isArbitrator = isConfiguredArbitrator(actorWallet);
+    const allowed =
+      (data.blockchainTradeId !== undefined && isSeller) ||
+      (data.settlementStatus === "FUNDED" && isBuyer) ||
+      (data.operationalStatus === "DISPUTED" && (isBuyer || isSeller)) ||
+      ((data.settlementStatus === "RELEASED" || data.operationalStatus === "CONDITIONS_SATISFIED") && isOracle) ||
+      (data.settlementStatus === "REFUNDED" && isArbitrator);
+    if (!allowed) {
+      return NextResponse.json({ error: "Wallet is not authorized for this transition" }, { status: 403 });
     }
 
     const updated = await prisma.tradeMetadata.update({
@@ -82,7 +122,7 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
         data: {
           tradeId: draft.id,
           action: actions.join("|"),
-          actorWallet: "0xSystem",
+          actorWallet,
           documentIpfsHash: null,
         },
       });

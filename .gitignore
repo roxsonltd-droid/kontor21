@@ -12,6 +12,9 @@
 
 # testing
 /coverage
+/artifacts
+/cache
+/typechain-types
 
 # next.js
 /.next/
@@ -23,6 +26,13 @@
 # misc
 .DS_Store
 *.pem
+*.metadata.json
+/dev.log
+/dev.err
+/node.log
+/node.err
+/theirs.tsx
+/theirs2.tsx
 
 # debug
 npm-debug.log*

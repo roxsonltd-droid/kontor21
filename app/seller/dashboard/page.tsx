@@ -14,29 +14,45 @@ export default function SellerDashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   
-  // Real escrow hook
-  const { address, formattedAddress, isConnecting, connect, createTrade, getTrade } = useKontorEscrow();
+  const { address, formattedAddress, isConnecting, connect, createTrade } = useKontorEscrow();
 
-  // Dynamic Trade 1 Data
-  const [trade1Data, setTrade1Data] = useState<any>(null);
-  const [isFunded, setIsFunded] = useState(false);
-  
-  // Upload states for Trade 1
+  const [trades, setTrades] = useState<any[]>([]);
+  const [loadingTrades, setLoadingTrades] = useState(true);
+
+  // Upload states for active trade action
   const [invoiceUploaded, setInvoiceUploaded] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [batchData, setBatchData] = useState({ truck: '', date: '' });
   const [batchSaved, setBatchSaved] = useState(false);
 
   useEffect(() => {
-    if (address) {
-      getTrade(1).then(data => {
-        if (data) {
-          setTrade1Data(data);
-          setIsFunded(data.status >= 1); // 1 = FUNDED, 2 = COMPLETED
+    async function fetchTrades() {
+      try {
+        setLoadingTrades(true);
+        const res = await fetch(`/api/escrow${address ? `?address=${address}` : ''}`);
+        if (res.ok) {
+          const data = await res.json();
+          setTrades(data);
         }
-      });
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoadingTrades(false);
+      }
     }
-  }, [address, getTrade]);
+    fetchTrades();
+  }, [address]);
+
+  // Derived stats
+  const totalRevenueUsdc = trades
+    .filter(t => t.settlementStatus === "COMPLETED")
+    .reduce((sum, t) => sum + parseFloat(t.quantity) * parseFloat(t.priceUsdc), 0);
+  const inEscrowUsdc = trades
+    .filter(t => t.settlementStatus === "FUNDED" || t.settlementStatus === "PARTIAL_RELEASE")
+    .reduce((sum, t) => sum + parseFloat(t.quantity) * parseFloat(t.priceUsdc), 0);
+  const successfulCount = trades.filter(t => t.settlementStatus === "COMPLETED").length;
+  const activeCount = trades.filter(t => t.settlementStatus === "FUNDED" || t.settlementStatus === "PARTIAL_RELEASE" || t.settlementStatus === "AWAITING_FUNDS").length;
+  const hasFundedTrade = trades.some(t => t.settlementStatus === "FUNDED" || t.settlementStatus === "PARTIAL_RELEASE");
 
   const handleCreateContract = async () => {
     setIsProcessing(true);
@@ -149,7 +165,7 @@ export default function SellerDashboard() {
             <div className="relative z-10">
               <p className="text-xs text-zinc-500 mb-1 uppercase tracking-widest">{t('seller.totalRevenue')}</p>
               <div className="flex items-baseline gap-1.5">
-                <h2 className="text-2xl font-semibold text-white tracking-tight">154,200</h2>
+                <h2 className="text-2xl font-semibold text-white tracking-tight">{totalRevenueUsdc.toLocaleString()}</h2>
                 <span className="text-xs font-medium text-emerald-400/80">USDC</span>
               </div>
             </div>
@@ -178,13 +194,13 @@ export default function SellerDashboard() {
               <p className="text-xs text-zinc-500 mb-1 uppercase tracking-widest">{t('seller.inEscrow')}</p>
               <div className="flex items-baseline gap-1.5">
                 <h2 className="text-2xl font-semibold text-white tracking-tight">
-                  {isFunded ? "113,400" : "38,400"}
+                  {inEscrowUsdc.toLocaleString()}
                 </h2>
                 <span className="text-xs font-medium text-blue-400/80">USDC</span>
               </div>
               <p className="text-[11px] text-zinc-500 mt-2 flex items-center gap-1">
                 <span className="w-1 h-1 rounded-full bg-blue-400 animate-pulse"></span>
-                {isFunded ? "2 active trades" : "1 active trade"}
+                {activeCount} active trades
               </p>
             </div>
           </motion.div>
@@ -201,7 +217,7 @@ export default function SellerDashboard() {
             <div>
               <p className="text-xs text-zinc-500 mb-1 uppercase tracking-widest">{t('seller.successfulTrades')}</p>
               <div className="flex items-baseline gap-1.5">
-                <h2 className="text-2xl font-semibold text-white tracking-tight">47</h2>
+                <h2 className="text-2xl font-semibold text-white tracking-tight">{successfulCount}</h2>
               </div>
             </div>
           </motion.div>
@@ -235,59 +251,54 @@ export default function SellerDashboard() {
               </thead>
               <tbody className="divide-y divide-zinc-800/50">
                 
-                {/* Real Trade 1 */}
-                <tr className="hover:bg-zinc-800/20 transition-colors group">
-                  <td className="px-5 py-4 font-mono text-zinc-400 text-xs">#1</td>
-                  <td className="px-5 py-4 text-zinc-200 font-medium">Слънчоглед, 50t</td>
-                  <td className="px-5 py-4 font-semibold text-white">75,000</td>
-                  <td className="px-5 py-4">
-                    {isFunded ? (
-                      <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-blue-500/10 text-blue-400 text-[11px] font-medium border border-blue-500/20">
-                        <ShieldCheck className="w-3 h-3" /> {t('seller.statusFunded')}
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-zinc-800 text-zinc-400 text-[11px] font-medium border border-zinc-700">
-                        <Wallet className="w-3 h-3" /> {t('seller.statusAwaiting')}
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-5 py-4">
-                    <div className="flex gap-2">
-                      <div className="w-6 h-6 rounded bg-zinc-800 flex items-center justify-center text-zinc-500">
-                        <FileCheck className="w-3 h-3" />
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-5 py-4 text-right">
-                    <Link href="/trade/1" className="inline-flex items-center gap-1 text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors">
-                      {t('history.actions')} <ChevronRight className="w-3 h-3" />
-                    </Link>
-                  </td>
-                </tr>
+                {loadingTrades ? (
+                  <tr><td colSpan={6} className="text-center py-8 text-zinc-500">Зареждане на сделки...</td></tr>
+                ) : trades.length === 0 ? (
+                  <tr><td colSpan={6} className="text-center py-8 text-zinc-500">Няма намерени сделки.</td></tr>
+                ) : (
+                  trades.map(trade => {
+                    const totalUsdc = parseFloat(trade.quantity) * parseFloat(trade.priceUsdc);
+                    const isDisputed = trade.settlementStatus === "DISPUTED";
+                    const isFunded = trade.settlementStatus === "FUNDED" || trade.settlementStatus === "PARTIAL_RELEASE";
+                    const isCompleted = trade.settlementStatus === "COMPLETED";
+                    const needsFunding = trade.settlementStatus === "AWAITING_FUNDS";
 
-                {/* Dummy Trade 102 */}
-                <tr className="hover:bg-zinc-800/20 transition-colors group">
-                  <td className="px-5 py-4 font-mono text-zinc-400 text-xs">#102</td>
-                  <td className="px-5 py-4 text-zinc-400 font-medium">Сушени кайсии, 12t</td>
-                  <td className="px-5 py-4 font-semibold text-zinc-500">38,400</td>
-                  <td className="px-5 py-4">
-                    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-blue-500/10 text-blue-400/50 text-[11px] font-medium border border-blue-500/10">
-                      <Ship className="w-3 h-3" /> In Transit
-                    </span>
-                  </td>
-                  <td className="px-5 py-4">
-                    <div className="flex gap-2">
-                      <div className="w-6 h-6 rounded bg-emerald-500/10 flex items-center justify-center text-emerald-400/50" title="SGS Одобрено">
-                        <FileCheck className="w-3 h-3" />
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-5 py-4 text-right">
-                    <button className="inline-flex items-center gap-1 text-xs font-medium text-zinc-600 hover:text-white transition-colors cursor-not-allowed">
-                      Архив
-                    </button>
-                  </td>
-                </tr>
+                    return (
+                      <tr key={trade.id} className={`hover:bg-zinc-800/20 transition-colors group ${isCompleted ? 'opacity-60' : ''}`}>
+                        <td className="px-5 py-4 font-mono text-zinc-400 text-xs">#{trade.id.slice(0,6)}</td>
+                        <td className="px-5 py-4 text-zinc-200 font-medium">{trade.productName}, {parseFloat(trade.quantity)}t</td>
+                        <td className="px-5 py-4 font-semibold text-white">{totalUsdc.toLocaleString()}</td>
+                        <td className="px-5 py-4">
+                          {isFunded ? (
+                            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-blue-500/10 text-blue-400 text-[11px] font-medium border border-blue-500/20">
+                              <ShieldCheck className="w-3 h-3" /> В Ескроу
+                            </span>
+                          ) : isCompleted ? (
+                            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-emerald-500/10 text-emerald-400/80 text-[11px] font-medium border border-emerald-500/20">
+                              <CheckCircle2 className="w-3 h-3" /> Завършена
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-zinc-800 text-zinc-400 text-[11px] font-medium border border-zinc-700">
+                              <Wallet className="w-3 h-3" /> {t('seller.statusAwaiting')}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="flex gap-2">
+                            <div className="w-6 h-6 rounded bg-zinc-800 flex items-center justify-center text-zinc-500">
+                              <FileCheck className="w-3 h-3" />
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-5 py-4 text-right">
+                          <Link href={`/trade/${trade.id}`} className="inline-flex items-center gap-1 text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors">
+                            {t('history.actions')} <ChevronRight className="w-3 h-3" />
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
 
               </tbody>
             </table>
@@ -295,7 +306,7 @@ export default function SellerDashboard() {
         </div>
 
         {/* Action Required: Upload Invoice & Batch Details (Only shown if Trade 1 is Funded) */}
-        {isFunded && (!invoiceUploaded || !batchSaved) && (
+        {hasFundedTrade && (!invoiceUploaded || !batchSaved) && (
           <motion.div 
             initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
             className="bg-blue-900/10 border border-blue-900/30 rounded-2xl p-6 md:p-8 relative overflow-hidden"

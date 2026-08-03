@@ -26,45 +26,58 @@ import type {
 export interface KontorEscrowInterface extends Interface {
   getFunction(
     nameOrSignature:
-      | "approveTradeByOracle"
-      | "arbitrator"
+      | "arbitrators"
       | "createTrade"
+      | "feeBasisPoints"
+      | "feeTreasury"
       | "fundTrade"
+      | "hasVoted"
       | "nextTradeId"
       | "owner"
       | "raiseDispute"
+      | "releaseFunds"
       | "renounceOwnership"
-      | "resolveDispute"
-      | "setArbitrator"
+      | "setArbitrators"
       | "trades"
       | "transferOwnership"
+      | "voteDispute"
   ): FunctionFragment;
 
   getEvent(
     nameOrSignatureOrTopic:
+      | "ArbitratorVoted"
       | "DisputeRaised"
       | "DisputeResolved"
       | "OwnershipTransferred"
-      | "TradeApproved"
+      | "TradeCompleted"
       | "TradeCreated"
       | "TradeFunded"
+      | "TradePartialReleased"
   ): EventFragment;
 
   encodeFunctionData(
-    functionFragment: "approveTradeByOracle",
+    functionFragment: "arbitrators",
     values: [BigNumberish]
   ): string;
   encodeFunctionData(
-    functionFragment: "arbitrator",
+    functionFragment: "createTrade",
+    values: [AddressLike, AddressLike, BigNumberish, AddressLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "feeBasisPoints",
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: "createTrade",
-    values: [AddressLike, AddressLike, BigNumberish, AddressLike, string]
+    functionFragment: "feeTreasury",
+    values?: undefined
   ): string;
   encodeFunctionData(
     functionFragment: "fundTrade",
     values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "hasVoted",
+    values: [BigNumberish, AddressLike]
   ): string;
   encodeFunctionData(
     functionFragment: "nextTradeId",
@@ -76,16 +89,16 @@ export interface KontorEscrowInterface extends Interface {
     values: [BigNumberish]
   ): string;
   encodeFunctionData(
+    functionFragment: "releaseFunds",
+    values: [BigNumberish, BigNumberish]
+  ): string;
+  encodeFunctionData(
     functionFragment: "renounceOwnership",
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: "resolveDispute",
-    values: [BigNumberish, boolean]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "setArbitrator",
-    values: [AddressLike]
+    functionFragment: "setArbitrators",
+    values: [[AddressLike, AddressLike, AddressLike]]
   ): string;
   encodeFunctionData(
     functionFragment: "trades",
@@ -95,17 +108,29 @@ export interface KontorEscrowInterface extends Interface {
     functionFragment: "transferOwnership",
     values: [AddressLike]
   ): string;
+  encodeFunctionData(
+    functionFragment: "voteDispute",
+    values: [BigNumberish, boolean]
+  ): string;
 
   decodeFunctionResult(
-    functionFragment: "approveTradeByOracle",
+    functionFragment: "arbitrators",
     data: BytesLike
   ): Result;
-  decodeFunctionResult(functionFragment: "arbitrator", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "createTrade",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(
+    functionFragment: "feeBasisPoints",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "feeTreasury",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(functionFragment: "fundTrade", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "hasVoted", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "nextTradeId",
     data: BytesLike
@@ -116,15 +141,15 @@ export interface KontorEscrowInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(
+    functionFragment: "releaseFunds",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
     functionFragment: "renounceOwnership",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: "resolveDispute",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "setArbitrator",
+    functionFragment: "setArbitrators",
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "trades", data: BytesLike): Result;
@@ -132,6 +157,32 @@ export interface KontorEscrowInterface extends Interface {
     functionFragment: "transferOwnership",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(
+    functionFragment: "voteDispute",
+    data: BytesLike
+  ): Result;
+}
+
+export namespace ArbitratorVotedEvent {
+  export type InputTuple = [
+    tradeId: BigNumberish,
+    arbitrator: AddressLike,
+    refundBuyer: boolean
+  ];
+  export type OutputTuple = [
+    tradeId: bigint,
+    arbitrator: string,
+    refundBuyer: boolean
+  ];
+  export interface OutputObject {
+    tradeId: bigint;
+    arbitrator: string;
+    refundBuyer: boolean;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
 }
 
 export namespace DisputeRaisedEvent {
@@ -173,7 +224,7 @@ export namespace OwnershipTransferredEvent {
   export type LogDescription = TypedLogDescription<Event>;
 }
 
-export namespace TradeApprovedEvent {
+export namespace TradeCompletedEvent {
   export type InputTuple = [tradeId: BigNumberish];
   export type OutputTuple = [tradeId: bigint];
   export interface OutputObject {
@@ -215,6 +266,19 @@ export namespace TradeFundedEvent {
   export type OutputTuple = [tradeId: bigint];
   export interface OutputObject {
     tradeId: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace TradePartialReleasedEvent {
+  export type InputTuple = [tradeId: BigNumberish, amount: BigNumberish];
+  export type OutputTuple = [tradeId: bigint, amount: bigint];
+  export interface OutputObject {
+    tradeId: bigint;
+    amount: bigint;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -265,30 +329,33 @@ export interface KontorEscrow extends BaseContract {
     event?: TCEvent
   ): Promise<this>;
 
-  approveTradeByOracle: TypedContractMethod<
-    [_tradeId: BigNumberish],
-    [void],
-    "nonpayable"
-  >;
-
-  arbitrator: TypedContractMethod<[], [string], "view">;
+  arbitrators: TypedContractMethod<[arg0: BigNumberish], [string], "view">;
 
   createTrade: TypedContractMethod<
     [
       _buyer: AddressLike,
       _oracle: AddressLike,
       _amount: BigNumberish,
-      _tokenAddress: AddressLike,
-      _conditionDescription: string
+      _tokenAddress: AddressLike
     ],
     [bigint],
     "nonpayable"
   >;
 
+  feeBasisPoints: TypedContractMethod<[], [bigint], "view">;
+
+  feeTreasury: TypedContractMethod<[], [string], "view">;
+
   fundTrade: TypedContractMethod<
     [_tradeId: BigNumberish],
     [void],
     "nonpayable"
+  >;
+
+  hasVoted: TypedContractMethod<
+    [arg0: BigNumberish, arg1: AddressLike],
+    [boolean],
+    "view"
   >;
 
   nextTradeId: TypedContractMethod<[], [bigint], "view">;
@@ -301,16 +368,16 @@ export interface KontorEscrow extends BaseContract {
     "nonpayable"
   >;
 
-  renounceOwnership: TypedContractMethod<[], [void], "nonpayable">;
-
-  resolveDispute: TypedContractMethod<
-    [_tradeId: BigNumberish, refundBuyer: boolean],
+  releaseFunds: TypedContractMethod<
+    [_tradeId: BigNumberish, _amount: BigNumberish],
     [void],
     "nonpayable"
   >;
 
-  setArbitrator: TypedContractMethod<
-    [_newArbitrator: AddressLike],
+  renounceOwnership: TypedContractMethod<[], [void], "nonpayable">;
+
+  setArbitrators: TypedContractMethod<
+    [_newArbitrators: [AddressLike, AddressLike, AddressLike]],
     [void],
     "nonpayable"
   >;
@@ -318,14 +385,26 @@ export interface KontorEscrow extends BaseContract {
   trades: TypedContractMethod<
     [arg0: BigNumberish],
     [
-      [string, string, string, bigint, string, bigint, string] & {
+      [
+        string,
+        string,
+        string,
+        bigint,
+        bigint,
+        string,
+        bigint,
+        bigint,
+        bigint
+      ] & {
         buyer: string;
         seller: string;
         oracle: string;
-        amount: bigint;
+        totalAmount: bigint;
+        releasedAmount: bigint;
         token: string;
         status: bigint;
-        conditionDescription: string;
+        votesForBuyer: bigint;
+        votesForSeller: bigint;
       }
     ],
     "view"
@@ -337,16 +416,19 @@ export interface KontorEscrow extends BaseContract {
     "nonpayable"
   >;
 
+  voteDispute: TypedContractMethod<
+    [_tradeId: BigNumberish, refundBuyer: boolean],
+    [void],
+    "nonpayable"
+  >;
+
   getFunction<T extends ContractMethod = ContractMethod>(
     key: string | FunctionFragment
   ): T;
 
   getFunction(
-    nameOrSignature: "approveTradeByOracle"
-  ): TypedContractMethod<[_tradeId: BigNumberish], [void], "nonpayable">;
-  getFunction(
-    nameOrSignature: "arbitrator"
-  ): TypedContractMethod<[], [string], "view">;
+    nameOrSignature: "arbitrators"
+  ): TypedContractMethod<[arg0: BigNumberish], [string], "view">;
   getFunction(
     nameOrSignature: "createTrade"
   ): TypedContractMethod<
@@ -354,15 +436,27 @@ export interface KontorEscrow extends BaseContract {
       _buyer: AddressLike,
       _oracle: AddressLike,
       _amount: BigNumberish,
-      _tokenAddress: AddressLike,
-      _conditionDescription: string
+      _tokenAddress: AddressLike
     ],
     [bigint],
     "nonpayable"
   >;
   getFunction(
+    nameOrSignature: "feeBasisPoints"
+  ): TypedContractMethod<[], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "feeTreasury"
+  ): TypedContractMethod<[], [string], "view">;
+  getFunction(
     nameOrSignature: "fundTrade"
   ): TypedContractMethod<[_tradeId: BigNumberish], [void], "nonpayable">;
+  getFunction(
+    nameOrSignature: "hasVoted"
+  ): TypedContractMethod<
+    [arg0: BigNumberish, arg1: AddressLike],
+    [boolean],
+    "view"
+  >;
   getFunction(
     nameOrSignature: "nextTradeId"
   ): TypedContractMethod<[], [bigint], "view">;
@@ -373,31 +467,47 @@ export interface KontorEscrow extends BaseContract {
     nameOrSignature: "raiseDispute"
   ): TypedContractMethod<[_tradeId: BigNumberish], [void], "nonpayable">;
   getFunction(
-    nameOrSignature: "renounceOwnership"
-  ): TypedContractMethod<[], [void], "nonpayable">;
-  getFunction(
-    nameOrSignature: "resolveDispute"
+    nameOrSignature: "releaseFunds"
   ): TypedContractMethod<
-    [_tradeId: BigNumberish, refundBuyer: boolean],
+    [_tradeId: BigNumberish, _amount: BigNumberish],
     [void],
     "nonpayable"
   >;
   getFunction(
-    nameOrSignature: "setArbitrator"
-  ): TypedContractMethod<[_newArbitrator: AddressLike], [void], "nonpayable">;
+    nameOrSignature: "renounceOwnership"
+  ): TypedContractMethod<[], [void], "nonpayable">;
+  getFunction(
+    nameOrSignature: "setArbitrators"
+  ): TypedContractMethod<
+    [_newArbitrators: [AddressLike, AddressLike, AddressLike]],
+    [void],
+    "nonpayable"
+  >;
   getFunction(
     nameOrSignature: "trades"
   ): TypedContractMethod<
     [arg0: BigNumberish],
     [
-      [string, string, string, bigint, string, bigint, string] & {
+      [
+        string,
+        string,
+        string,
+        bigint,
+        bigint,
+        string,
+        bigint,
+        bigint,
+        bigint
+      ] & {
         buyer: string;
         seller: string;
         oracle: string;
-        amount: bigint;
+        totalAmount: bigint;
+        releasedAmount: bigint;
         token: string;
         status: bigint;
-        conditionDescription: string;
+        votesForBuyer: bigint;
+        votesForSeller: bigint;
       }
     ],
     "view"
@@ -405,7 +515,21 @@ export interface KontorEscrow extends BaseContract {
   getFunction(
     nameOrSignature: "transferOwnership"
   ): TypedContractMethod<[newOwner: AddressLike], [void], "nonpayable">;
+  getFunction(
+    nameOrSignature: "voteDispute"
+  ): TypedContractMethod<
+    [_tradeId: BigNumberish, refundBuyer: boolean],
+    [void],
+    "nonpayable"
+  >;
 
+  getEvent(
+    key: "ArbitratorVoted"
+  ): TypedContractEvent<
+    ArbitratorVotedEvent.InputTuple,
+    ArbitratorVotedEvent.OutputTuple,
+    ArbitratorVotedEvent.OutputObject
+  >;
   getEvent(
     key: "DisputeRaised"
   ): TypedContractEvent<
@@ -428,11 +552,11 @@ export interface KontorEscrow extends BaseContract {
     OwnershipTransferredEvent.OutputObject
   >;
   getEvent(
-    key: "TradeApproved"
+    key: "TradeCompleted"
   ): TypedContractEvent<
-    TradeApprovedEvent.InputTuple,
-    TradeApprovedEvent.OutputTuple,
-    TradeApprovedEvent.OutputObject
+    TradeCompletedEvent.InputTuple,
+    TradeCompletedEvent.OutputTuple,
+    TradeCompletedEvent.OutputObject
   >;
   getEvent(
     key: "TradeCreated"
@@ -448,8 +572,26 @@ export interface KontorEscrow extends BaseContract {
     TradeFundedEvent.OutputTuple,
     TradeFundedEvent.OutputObject
   >;
+  getEvent(
+    key: "TradePartialReleased"
+  ): TypedContractEvent<
+    TradePartialReleasedEvent.InputTuple,
+    TradePartialReleasedEvent.OutputTuple,
+    TradePartialReleasedEvent.OutputObject
+  >;
 
   filters: {
+    "ArbitratorVoted(uint256,address,bool)": TypedContractEvent<
+      ArbitratorVotedEvent.InputTuple,
+      ArbitratorVotedEvent.OutputTuple,
+      ArbitratorVotedEvent.OutputObject
+    >;
+    ArbitratorVoted: TypedContractEvent<
+      ArbitratorVotedEvent.InputTuple,
+      ArbitratorVotedEvent.OutputTuple,
+      ArbitratorVotedEvent.OutputObject
+    >;
+
     "DisputeRaised(uint256,address)": TypedContractEvent<
       DisputeRaisedEvent.InputTuple,
       DisputeRaisedEvent.OutputTuple,
@@ -483,15 +625,15 @@ export interface KontorEscrow extends BaseContract {
       OwnershipTransferredEvent.OutputObject
     >;
 
-    "TradeApproved(uint256)": TypedContractEvent<
-      TradeApprovedEvent.InputTuple,
-      TradeApprovedEvent.OutputTuple,
-      TradeApprovedEvent.OutputObject
+    "TradeCompleted(uint256)": TypedContractEvent<
+      TradeCompletedEvent.InputTuple,
+      TradeCompletedEvent.OutputTuple,
+      TradeCompletedEvent.OutputObject
     >;
-    TradeApproved: TypedContractEvent<
-      TradeApprovedEvent.InputTuple,
-      TradeApprovedEvent.OutputTuple,
-      TradeApprovedEvent.OutputObject
+    TradeCompleted: TypedContractEvent<
+      TradeCompletedEvent.InputTuple,
+      TradeCompletedEvent.OutputTuple,
+      TradeCompletedEvent.OutputObject
     >;
 
     "TradeCreated(uint256,address,address,uint256)": TypedContractEvent<
@@ -514,6 +656,17 @@ export interface KontorEscrow extends BaseContract {
       TradeFundedEvent.InputTuple,
       TradeFundedEvent.OutputTuple,
       TradeFundedEvent.OutputObject
+    >;
+
+    "TradePartialReleased(uint256,uint256)": TypedContractEvent<
+      TradePartialReleasedEvent.InputTuple,
+      TradePartialReleasedEvent.OutputTuple,
+      TradePartialReleasedEvent.OutputObject
+    >;
+    TradePartialReleased: TypedContractEvent<
+      TradePartialReleasedEvent.InputTuple,
+      TradePartialReleasedEvent.OutputTuple,
+      TradePartialReleasedEvent.OutputObject
     >;
   };
 }

@@ -79,7 +79,20 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
+    const address = req.nextUrl.searchParams.get("address");
+    
+    let whereClause = {};
+    if (address) {
+      whereClause = {
+        OR: [
+          { buyer: { walletAddress: address } },
+          { seller: { walletAddress: address } }
+        ]
+      };
+    }
+
     const trades = await prisma.tradeMetadata.findMany({
+      where: whereClause,
       include: { buyer: true, seller: true, conditions: true },
       orderBy: { createdAt: "desc" },
       take: 50,

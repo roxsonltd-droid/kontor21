@@ -14,8 +14,8 @@ declare global {
   }
 }
 
-const HARDHAT_CHAIN_ID = "0x7a69";
-const HARDHAT_RPC = "http://127.0.0.1:8545";
+const AMOY_CHAIN_ID = "0x13882"; // 80002 in hex
+const AMOY_RPC = "https://rpc-amoy.polygon.technology";
 
 export function useKontorEscrow() {
   const [escrowContract, setEscrowContract] = useState<Contract | null>(null);
@@ -42,14 +42,14 @@ export function useKontorEscrow() {
     setSignerAddress(address);
   }, []);
 
-  const ensureHardhatNetwork = async () => {
+  const ensureAmoyNetwork = async () => {
     if (!window.ethereum) return false;
     try {
       const chainId = await window.ethereum.request({ method: "eth_chainId" });
-      if (chainId !== HARDHAT_CHAIN_ID) {
+      if (chainId !== AMOY_CHAIN_ID) {
         await window.ethereum.request({
           method: "wallet_switchEthereumChain",
-          params: [{ chainId: HARDHAT_CHAIN_ID }],
+          params: [{ chainId: AMOY_CHAIN_ID }],
         });
       }
       return true;
@@ -60,10 +60,11 @@ export function useKontorEscrow() {
           await window.ethereum.request({
             method: "wallet_addEthereumChain",
             params: [{
-              chainId: HARDHAT_CHAIN_ID,
-              chainName: "Hardhat Localhost",
-              rpcUrls: [HARDHAT_RPC],
-              nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
+              chainId: AMOY_CHAIN_ID,
+              chainName: "Polygon Amoy Testnet",
+              rpcUrls: [AMOY_RPC],
+              nativeCurrency: { name: "MATIC", symbol: "MATIC", decimals: 18 },
+              blockExplorerUrls: ["https://amoy.polygonscan.com/"]
             }],
           });
           return true;
@@ -82,7 +83,7 @@ export function useKontorEscrow() {
     }
     setIsConnecting(true);
     try {
-      const netOk = await ensureHardhatNetwork();
+      const netOk = await ensureAmoyNetwork();
       if (!netOk) {
         setIsConnecting(false);
         return null;

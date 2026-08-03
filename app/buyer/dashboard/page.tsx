@@ -11,7 +11,34 @@ import LanguageSwitcher from '@/components/LanguageSwitcher';
 export default function BuyerDashboard() {
   const { t } = useLanguage();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [trades, setTrades] = useState<any[]>([]);
+  const [loadingTrades, setLoadingTrades] = useState(true);
   const { address, formattedAddress, isConnecting, connect, fundTrade } = useKontorEscrow();
+
+  useEffect(() => {
+    async function fetchTrades() {
+      try {
+        setLoadingTrades(true);
+        const res = await fetch(`/api/escrow${address ? `?address=${address}` : ''}`);
+        if (res.ok) {
+          const data = await res.json();
+          setTrades(data);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoadingTrades(false);
+      }
+    }
+    fetchTrades();
+  }, [address]);
+
+  // Derived stats
+  const activeCount = trades.filter(t => t.settlementStatus === "AWAITING_FUNDS" || t.operationalStatus === "PENDING").length;
+  const inEscrowUsdc = trades
+    .filter(t => t.settlementStatus === "FUNDED" || t.settlementStatus === "PARTIAL_RELEASE")
+    .reduce((sum, t) => sum + parseFloat(t.quantity) * parseFloat(t.priceUsdc), 0);
+  const completedCount = trades.filter(t => t.settlementStatus === "COMPLETED").length;
 
   const handleFundEscrow = async (tradeId: number) => {
     setIsProcessing(true);
@@ -172,7 +199,7 @@ export default function BuyerDashboard() {
             </div>
             <p className="text-xs text-zinc-500 mb-1 uppercase tracking-widest">{t('buyer.active')}</p>
             <div className="flex items-baseline gap-1.5">
-              <h2 className="text-2xl font-semibold text-white tracking-tight">2</h2>
+              <h2 className="text-2xl font-semibold text-white tracking-tight">{activeCount}</h2>
             </div>
           </motion.div>
 
@@ -188,7 +215,7 @@ export default function BuyerDashboard() {
             </div>
             <p className="text-xs text-zinc-500 mb-1 uppercase tracking-widest">{t('buyer.inEscrow')}</p>
             <div className="flex items-baseline gap-1.5">
-              <h2 className="text-2xl font-semibold text-white tracking-tight">75,000</h2>
+              <h2 className="text-2xl font-semibold text-white tracking-tight">{inEscrowUsdc.toLocaleString()}</h2>
               <span className="text-xs font-medium text-blue-400/80">USDC</span>
             </div>
           </motion.div>
@@ -204,7 +231,7 @@ export default function BuyerDashboard() {
             </div>
             <p className="text-xs text-zinc-500 mb-1 uppercase tracking-widest">{t('buyer.completed')}</p>
             <div className="flex items-baseline gap-1.5">
-              <h2 className="text-2xl font-semibold text-white tracking-tight">12</h2>
+              <h2 className="text-2xl font-semibold text-white tracking-tight">{completedCount}</h2>
             </div>
             <p className="text-[11px] text-emerald-400/80 mt-2 flex items-center gap-1">
               +3 този месец
@@ -240,70 +267,65 @@ export default function BuyerDashboard() {
               </thead>
               <tbody className="divide-y divide-zinc-800/50">
 
-                {/* Trade 103 */}
-                <tr className="hover:bg-zinc-800/20 transition-colors group">
-                  <td className="px-5 py-4 font-mono text-zinc-400 text-xs">#1</td>
-                  <td className="px-5 py-4 text-zinc-200 font-medium">Слънчоглед, 50t</td>
-                  <td className="px-5 py-4 font-semibold text-white">75,000</td>
-                  <td className="px-5 py-4">
-                    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-amber-500/10 text-amber-400 text-[11px] font-medium border border-amber-500/20">
-                      <Wallet className="w-3 h-3" /> Чака Депозит
-                    </span>
-                  </td>
-                  <td className="px-5 py-4">
-                    <span className="text-xs font-mono text-zinc-400">0x9D4...1F2</span>
-                  </td>
-                  <td className="px-5 py-4 text-right">
-                    <button
-                      onClick={() => handleFundEscrow(1)}
-                      disabled={isProcessing || !address}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Wallet className="w-3 h-3" />
-                      {isProcessing ? 'Заключване...' : 'Депозирай'}
-                    </button>
-                  </td>
-                </tr>
+                {loadingTrades ? (
+                  <tr><td colSpan={6} className="text-center py-8 text-zinc-500">Зареждане на сделки...</td></tr>
+                ) : trades.length === 0 ? (
+                  <tr><td colSpan={6} className="text-center py-8 text-zinc-500">Няма намерени сделки.</td></tr>
+                ) : (
+                  trades.map(trade => {
+                    const totalUsdc = parseFloat(trade.quantity) * parseFloat(trade.priceUsdc);
+                    const isDisputed = trade.settlementStatus === "DISPUTED";
+                    const isFunded = trade.settlementStatus === "FUNDED" || trade.settlementStatus === "PARTIAL_RELEASE";
+                    const isCompleted = trade.settlementStatus === "COMPLETED";
+                    const needsFunding = trade.settlementStatus === "AWAITING_FUNDS";
 
-                {/* Trade 104 — disputed */}
-                <tr className="hover:bg-zinc-800/20 transition-colors group">
-                  <td className="px-5 py-4 font-mono text-zinc-400 text-xs">#104</td>
-                  <td className="px-5 py-4 text-zinc-200 font-medium">Царевица, 200t</td>
-                  <td className="px-5 py-4 font-semibold text-white">120,000</td>
-                  <td className="px-5 py-4">
-                    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-red-500/10 text-red-400 text-[11px] font-medium border border-red-500/20">
-                      <AlertCircle className="w-3 h-3" /> Спор
-                    </span>
-                  </td>
-                  <td className="px-5 py-4">
-                    <span className="text-xs font-mono text-zinc-400">0x3A2...9B1</span>
-                  </td>
-                  <td className="px-5 py-4 text-right">
-                    <Link href="/trade/104" className="inline-flex items-center gap-1 text-xs font-medium text-zinc-400 hover:text-white transition-colors">
-                      Преглед <ChevronRight className="w-3 h-3" />
-                    </Link>
-                  </td>
-                </tr>
-
-                {/* Trade 101 — completed */}
-                <tr className="hover:bg-zinc-800/20 transition-colors group opacity-60">
-                  <td className="px-5 py-4 font-mono text-zinc-400 text-xs">#101</td>
-                  <td className="px-5 py-4 text-zinc-400 font-medium">Пшеница, 200t</td>
-                  <td className="px-5 py-4 font-semibold text-zinc-500">120,000</td>
-                  <td className="px-5 py-4">
-                    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-emerald-500/10 text-emerald-400/80 text-[11px] font-medium border border-emerald-500/20">
-                      <CheckCircle2 className="w-3 h-3" /> Завършена
-                    </span>
-                  </td>
-                  <td className="px-5 py-4">
-                    <span className="text-[10px] text-zinc-500">Условия изпълнени</span>
-                  </td>
-                  <td className="px-5 py-4 text-right">
-                    <button className="inline-flex items-center gap-1 text-xs font-medium text-zinc-500 hover:text-white transition-colors">
-                      Архив <ChevronRight className="w-3 h-3" />
-                    </button>
-                  </td>
-                </tr>
+                    return (
+                      <tr key={trade.id} className={`hover:bg-zinc-800/20 transition-colors group ${isCompleted ? 'opacity-60' : ''}`}>
+                        <td className="px-5 py-4 font-mono text-zinc-400 text-xs">#{trade.id.slice(0,6)}</td>
+                        <td className="px-5 py-4 text-zinc-200 font-medium">{trade.productName}, {parseFloat(trade.quantity)}t</td>
+                        <td className="px-5 py-4 font-semibold text-white">{totalUsdc.toLocaleString()}</td>
+                        <td className="px-5 py-4">
+                          {isDisputed ? (
+                            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-red-500/10 text-red-400 text-[11px] font-medium border border-red-500/20">
+                              <AlertCircle className="w-3 h-3" /> Спор
+                            </span>
+                          ) : isCompleted ? (
+                            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-emerald-500/10 text-emerald-400/80 text-[11px] font-medium border border-emerald-500/20">
+                              <CheckCircle2 className="w-3 h-3" /> Завършена
+                            </span>
+                          ) : needsFunding ? (
+                            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-amber-500/10 text-amber-400 text-[11px] font-medium border border-amber-500/20">
+                              <Wallet className="w-3 h-3" /> Чака Депозит
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-blue-500/10 text-blue-400 text-[11px] font-medium border border-blue-500/20">
+                              <ShieldCheck className="w-3 h-3" /> В Ескроу
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-5 py-4">
+                          <span className="text-xs font-mono text-zinc-400">{trade.seller?.walletAddress ? `${trade.seller.walletAddress.slice(0,5)}...${trade.seller.walletAddress.slice(-4)}` : 'N/A'}</span>
+                        </td>
+                        <td className="px-5 py-4 text-right">
+                          {needsFunding ? (
+                            <button
+                              onClick={() => handleFundEscrow(trade.blockchainTradeId || trade.id)}
+                              disabled={isProcessing || !address}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <Wallet className="w-3 h-3" />
+                              {isProcessing ? 'Заключване...' : 'Депозирай'}
+                            </button>
+                          ) : (
+                            <Link href={`/trade/${trade.id}`} className="inline-flex items-center gap-1 text-xs font-medium text-zinc-400 hover:text-white transition-colors">
+                              Преглед <ChevronRight className="w-3 h-3" />
+                            </Link>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
 
               </tbody>
             </table>

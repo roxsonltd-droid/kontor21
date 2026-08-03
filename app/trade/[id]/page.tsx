@@ -8,6 +8,8 @@ import { useKontorEscrow } from '@/hooks/useKontorEscrow';
 import { motion } from 'framer-motion';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { useLanguage } from '@/contexts/LanguageContext';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 type TradeMetadata = {
   id: string;
@@ -35,6 +37,7 @@ export default function TradeView() {
   const quantityNum = trade ? parseFloat(trade.quantity.toString()) : 0;
   const priceNum = trade ? parseFloat(trade.priceUsdc.toString()) : 0;
   const totalUsdc = quantityNum * priceNum;
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -70,6 +73,25 @@ export default function TradeView() {
     if (blockchainTradeId == null) return;
     const success = await raiseDispute(blockchainTradeId);
     if (success) setIsDisputed(true);
+  };
+
+  const exportPDF = async () => {
+    setIsExporting(true);
+    const element = document.getElementById("trade-pdf-content");
+    if (element) {
+      try {
+        const canvas = await html2canvas(element, { backgroundColor: '#09090b', scale: 2 });
+        const imgData = canvas.toDataURL("image/png");
+        const pdf = new jsPDF("p", "mm", "a4");
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+        pdf.save(`Trade_Contract_${trade?.id.slice(0, 8)}.pdf`);
+      } catch (error) {
+        console.error("PDF export failed", error);
+      }
+    }
+    setIsExporting(false);
   };
 
   if (loadError) {
@@ -125,13 +147,25 @@ export default function TradeView() {
             <ShieldCheck className="w-5 h-5" />
             <span className="text-sm font-semibold tracking-wider uppercase">{t('trade.secured')}</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight mb-4">
-            {t('trade.title')} #{trade.id.slice(0, 8)}
-          </h1>
-          <p className="text-lg text-zinc-400">{t('trade.pageDesc')}</p>
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight mb-4">
+                {t('trade.title')} #{trade.id.slice(0, 8)}
+              </h1>
+              <p className="text-lg text-zinc-400">{t('trade.pageDesc')}</p>
+            </div>
+            <button 
+              onClick={exportPDF}
+              disabled={isExporting}
+              className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
+            >
+              <Download className="w-4 h-4" />
+              {isExporting ? "Експорт..." : "Изтегли PDF"}
+            </button>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8" id="trade-pdf-content">
           <div className="lg:col-span-8 space-y-6">
             
             <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-6 md:p-8 backdrop-blur-sm">

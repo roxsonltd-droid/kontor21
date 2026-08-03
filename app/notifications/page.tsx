@@ -8,13 +8,7 @@ import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useKontorEscrow } from '@/hooks/useKontorEscrow';
 
-const INITIAL_NOTIFICATIONS = [
-  { id: 1, type: 'disputed', tradeId: 104, read: false, time: '2 mins ago', system: 'IoT Subsystem' },
-  { id: 2, type: 'funded', tradeId: 104, read: false, time: '2 hours ago', system: 'Blockchain' },
-  { id: 3, type: 'approved', tradeId: 103, read: true, time: '3 days ago', system: 'AI Vision' },
-  { id: 4, type: 'created', tradeId: 103, read: true, time: '3 days ago', system: 'Blockchain' },
-  { id: 5, type: 'resolved', tradeId: 102, read: true, time: '1 week ago', system: 'Oracle' },
-];
+import { useEffect } from 'react';
 
 const NOTIF_STYLES: Record<string, { icon: React.ReactNode, bg: string, text: string, border: string }> = {
   created: { icon: <Server className="w-5 h-5" />, bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20' },
@@ -26,9 +20,47 @@ const NOTIF_STYLES: Record<string, { icon: React.ReactNode, bg: string, text: st
 
 export default function Notifications() {
   const { t } = useLanguage();
-  const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const { address, formattedAddress, isConnecting, connect } = useKontorEscrow();
   const [filter, setFilter] = useState('all');
+
+  useEffect(() => {
+    async function fetchLogs() {
+      try {
+        setLoading(true);
+        const res = await fetch(`/api/logs${address ? `?address=${address}` : ''}`);
+        if (res.ok) {
+          const data = await res.json();
+          const transformed = data.map((log: any, i: number) => {
+            let type = 'created';
+            let system = 'System';
+            if (log.action.includes('CREATED')) { type = 'created'; system = 'Blockchain'; }
+            if (log.action.includes('FUNDED')) { type = 'funded'; system = 'Blockchain'; }
+            if (log.action.includes('EVIDENCE')) { type = 'approved'; system = 'Rules Engine'; }
+            if (log.action.includes('DISPUTE')) { type = 'disputed'; system = 'Rules Engine'; }
+            if (log.action.includes('RESOLVED')) { type = 'resolved'; system = 'Oracle'; }
+
+            return {
+              id: log.id,
+              type,
+              tradeId: log.trade?.blockchainTradeId || log.tradeId,
+              read: i > 2, 
+              time: new Date(log.timestamp).toLocaleString(),
+              system,
+              details: log.details
+            };
+          });
+          setNotifications(transformed);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchLogs();
+  }, [address]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -101,7 +133,11 @@ export default function Notifications() {
           </div>
         </div>
 
-        {filteredNotifications.length === 0 ? (
+        {loading ? (
+          <div className="text-center py-20 border border-dashed border-zinc-800 rounded-2xl bg-zinc-900/20">
+            <h3 className="text-lg font-medium text-zinc-400 mb-2">Loading...</h3>
+          </div>
+        ) : filteredNotifications.length === 0 ? (
           <div className="text-center py-20 border border-dashed border-zinc-800 rounded-2xl bg-zinc-900/20">
             <Cpu className="w-12 h-12 text-zinc-700 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-zinc-400 mb-2">{t('notif.empty')}</h3>
@@ -151,7 +187,7 @@ export default function Notifications() {
                             </div>
                             
                             <p className="text-sm text-zinc-400 leading-relaxed">
-                              {t(`notif.desc.${notif.type}`)}
+                              {notif.details || t(`notif.desc.${notif.type}`)}
                             </p>
                           </div>
 

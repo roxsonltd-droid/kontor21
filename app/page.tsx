@@ -6,15 +6,17 @@ import { ShieldCheck, Activity, ArrowRight, Wallet, Blocks, Zap } from 'lucide-r
 import Link from 'next/link';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { useLanguage } from '@/contexts/LanguageContext';
+import OnboardingTour from '@/components/OnboardingTour';
 
 export default function Home() {
   const { t } = useLanguage();
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-200 selection:bg-blue-500/30 font-sans">
+    <>
+      <div className="min-h-screen bg-zinc-950 text-zinc-200 selection:bg-blue-500/30 font-sans">
       
       {/* Navigation */}
       <nav className="border-b border-zinc-800/50 bg-zinc-950/80 backdrop-blur-md fixed w-full top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 sm:h-20 flex items-center justify-between gap-3">
           <Link href="/" className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-blue-400 flex items-center justify-center">
               <Blocks className="w-5 h-5 text-white" />
@@ -25,9 +27,9 @@ export default function Home() {
             <a href="#features" className="hover:text-white transition-colors">{t('hero.howItWorks')}</a>
             <Link href="/trust" className="hover:text-white transition-colors">{t('trust.nav')}</Link>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <LanguageSwitcher />
-            <Link href="/buyer/dashboard" className="px-5 py-2.5 rounded-lg bg-white text-zinc-950 font-semibold hover:bg-zinc-200 transition-colors text-sm">
+            <Link href="/demo" className="px-3 sm:px-5 py-2.5 rounded-lg bg-white text-zinc-950 font-semibold hover:bg-zinc-200 transition-colors text-xs sm:text-sm whitespace-nowrap">
               {t('nav.demo')}
             </Link>
           </div>
@@ -35,7 +37,7 @@ export default function Home() {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative pt-40 pb-32 overflow-hidden">
+      <section className="relative pt-32 pb-20 sm:pt-40 sm:pb-32 overflow-hidden">
         {/* Background glow */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-600/20 rounded-full blur-[120px] -z-10 pointer-events-none"></div>
         
@@ -49,7 +51,7 @@ export default function Home() {
               <Zap className="w-4 h-4" />
               {t('hero.badge')}
             </div>
-            <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-8 max-w-4xl mx-auto leading-tight">
+            <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold tracking-tight text-white mb-8 max-w-4xl mx-auto leading-tight">
               {t('hero.title')}
             </h1>
             <p className="text-lg md:text-xl text-zinc-400 max-w-2xl mx-auto mb-10 leading-relaxed">
@@ -60,9 +62,9 @@ export default function Home() {
                 {t('hero.startTrade')}
                 <ArrowRight className="w-5 h-5" />
               </Link>
-              <button className="px-8 py-4 rounded-xl bg-zinc-900 text-white font-semibold border border-zinc-800 hover:bg-zinc-800 transition-colors">
+              <Link href="/demo" className="px-8 py-4 rounded-xl bg-zinc-900 text-white font-semibold border border-zinc-800 hover:bg-zinc-800 transition-colors">
                 {t('nav.team')}
-              </button>
+              </Link>
             </div>
           </motion.div>
         </div>
@@ -202,6 +204,15 @@ export default function Home() {
             <div>
               <h3 className="text-white font-semibold mb-4">{t('demo.title')}</h3>
               <ul className="space-y-2 text-sm">
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => window.dispatchEvent(new Event("kontor21:open-onboarding"))}
+                    className="text-left text-zinc-400 hover:text-white transition-colors"
+                  >
+                    {t('onboarding.restartTour')}
+                  </button>
+                </li>
                 <li><Link href="/trade/history" className="text-zinc-400 hover:text-white transition-colors">{t('demo.buyer')}</Link></li>
                 <li><Link href="/notifications" className="text-zinc-400 hover:text-white transition-colors">{t('demo.oracle')}</Link></li>
                 <li><Link href="/admin/accounting" className="text-zinc-400 hover:text-white transition-colors">{t('demo.accounting')}</Link></li>
@@ -224,7 +235,9 @@ export default function Home() {
           </div>
         </div>
       </footer>
-    </div>
+      </div>
+      <OnboardingTour />
+    </>
   );
 }
 

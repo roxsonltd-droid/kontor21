@@ -58,38 +58,10 @@ export function useWallet() {
     return `${addr.substring(0, 5)}...${addr.substring(addr.length - 4)}`;
   };
 
-  // Fake transaction method for UI demo purposes
-  const mockTransaction = async (actionName: string) => {
-    if (!address) {
-      await connectWallet();
-      if (!window.ethereum) return false;
-    }
-    
-    if (!window.ethereum) return false;
-    try {
-      const params = [{
-        from: address,
-        to: address,
-        value: '0x0',
-      }];
-      
-      await window.ethereum.request({
-        method: 'eth_sendTransaction',
-        params,
-      });
-      
-      return true;
-    } catch (error) {
-      console.error(`Transaction failed: ${actionName}`, error);
-      return false;
-    }
-  };
-
   return {
     address,
     formattedAddress: formatAddress(address),
     isConnecting,
-    connectWallet,
-    mockTransaction
+    connectWallet
   };
 }

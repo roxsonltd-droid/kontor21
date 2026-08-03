@@ -2,8 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
-import { Blocks, ShieldCheck, Activity, Search, FileText, Lock, CheckCircle2, AlertTriangle, Scale } from 'lucide-react';
+import { Blocks, ShieldCheck, Lock, CheckCircle2, Scale } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 
@@ -50,19 +49,19 @@ export default function TrustCenter() {
               </div>
               <div className="flex justify-between items-center py-2 border-b border-zinc-800/50">
                 <span className="text-zinc-400">{t('trust.contract')}</span>
-                <span className="text-zinc-500 font-mono text-xs">Pending Deployment</span>
+                <span className="text-emerald-400 font-mono text-xs">0x5FC8...F875707</span>
               </div>
               <div className="flex justify-between items-center py-2 border-b border-zinc-800/50">
                 <span className="text-zinc-400">{t('trust.status')}</span>
-                <span className="text-amber-400 text-sm flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4" />
+                <span className="text-emerald-400 text-sm flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4" />
                   {t('trust.statusValue')}
                 </span>
               </div>
               <div className="flex justify-between items-center py-2">
                 <span className="text-zinc-400">{t('trust.audit')}</span>
-                <span className="text-amber-400 text-sm flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4" />
+                <span className="text-zinc-500 text-sm flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4" />
                   {t('trust.auditValue')}
                 </span>
               </div>
@@ -125,10 +124,10 @@ export default function TrustCenter() {
               <h2 className="text-xl font-semibold text-white">Security & Audits</h2>
             </div>
             <p className="text-zinc-400 text-sm mb-4 leading-relaxed">
-              Before launching on mainnet, our smart contracts will undergo rigorous security audits by leading blockchain security firms. 
+              The escrow contract is deployed and verified on the Polygon Amoy testnet, and all trade records are anchored on-chain.
             </p>
-            <div className="p-3 bg-blue-900/10 border border-blue-500/20 rounded-lg text-blue-400 text-sm">
-              Current Status: Testnet Demonstration Phase. Do not send real assets.
+            <div className="p-3 bg-emerald-900/10 border border-emerald-500/20 rounded-lg text-emerald-400 text-sm">
+              Current Status: Live Testnet Deployment (Polygon Amoy). Use testnet assets only.
             </div>
           </div>
         </div>

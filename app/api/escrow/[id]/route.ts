@@ -68,6 +68,26 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       include: { buyer: true, seller: true, oracle: true, conditions: true, evidence: true },
     });
 
+    const actions: string[] = [];
+    if (data.blockchainTradeId !== undefined && data.blockchainTradeId !== null) {
+      actions.push("BLOCKCHAIN_LINKED");
+    }
+    if (data.settlementStatus === "FUNDED") actions.push("TRADE_FUNDED");
+    if (data.settlementStatus === "RELEASED") actions.push("TRADE_APPROVED");
+    if (data.settlementStatus === "REFUNDED") actions.push("TRADE_REFUNDED");
+    if (data.operationalStatus === "DISPUTED") actions.push("TRADE_DISPUTED");
+    if (data.operationalStatus === "CONDITIONS_SATISFIED") actions.push("CONDITIONS_SATISFIED");
+    if (actions.length > 0) {
+      await prisma.auditLog.create({
+        data: {
+          tradeId: draft.id,
+          action: actions.join("|"),
+          actorWallet: "0xSystem",
+          documentIpfsHash: null,
+        },
+      });
+    }
+
     return NextResponse.json(updated);
   } catch (error) {
     console.error("[escrow-patch]", error);

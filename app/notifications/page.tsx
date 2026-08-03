@@ -2,13 +2,23 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Cpu, Blocks, Wallet, CheckCheck, Clock, ShieldCheck, AlertTriangle, Gavel, ArrowRight, Server, Search, CheckCircle2 } from 'lucide-react';
+import { Cpu, Blocks, CheckCheck, ShieldCheck, AlertTriangle, Gavel, ArrowRight, Server, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useKontorEscrow } from '@/hooks/useKontorEscrow';
 
 import { useEffect } from 'react';
+
+type NotificationItem = {
+  id: string;
+  type: string;
+  tradeId: string | number | null;
+  read: boolean;
+  time: string;
+  system: string;
+  details: string | null;
+};
 
 const NOTIF_STYLES: Record<string, { icon: React.ReactNode, bg: string, text: string, border: string }> = {
   created: { icon: <Server className="w-5 h-5" />, bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20' },
@@ -20,9 +30,9 @@ const NOTIF_STYLES: Record<string, { icon: React.ReactNode, bg: string, text: st
 
 export default function Notifications() {
   const { t } = useLanguage();
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const { address, formattedAddress, isConnecting, connect } = useKontorEscrow();
+  const { address } = useKontorEscrow();
   const [filter, setFilter] = useState('all');
 
   useEffect(() => {
@@ -32,7 +42,7 @@ export default function Notifications() {
         const res = await fetch(`/api/logs${address ? `?address=${address}` : ''}`);
         if (res.ok) {
           const data = await res.json();
-          const transformed = data.map((log: any, i: number) => {
+          const transformed = data.map((log: { id: string; action: string; tradeId?: string; createdAt: string; details?: string; trade?: { blockchainTradeId: number | null } }, i: number) => {
             let type = 'created';
             let system = 'System';
             if (log.action.includes('CREATED')) { type = 'created'; system = 'Blockchain'; }
@@ -46,7 +56,7 @@ export default function Notifications() {
               type,
               tradeId: log.trade?.blockchainTradeId || log.tradeId,
               read: i > 2, 
-              time: new Date(log.timestamp).toLocaleString(),
+              time: new Date(log.createdAt).toLocaleString(),
               system,
               details: log.details
             };
@@ -68,7 +78,7 @@ export default function Notifications() {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   };
 
-  const markAsRead = (id: number) => {
+  const markAsRead = (id: string | number) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
   };
 

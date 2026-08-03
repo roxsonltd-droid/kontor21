@@ -194,7 +194,7 @@ export default function Home() {
               <ul className="space-y-2 text-sm">
                 <li><Link href="/buyer/sourcing" className="text-zinc-400 hover:text-white transition-colors">1. Kontor21 Intelligence</Link></li>
                 <li><Link href="/oracle/dashboard" className="text-zinc-400 hover:text-white transition-colors">2. Independent Inspection</Link></li>
-                <li><Link href="/buyer/dashboard" className="text-zinc-400 hover:text-white transition-colors">3. Evidence Engine & Telemetry</Link></li>
+                <li><Link href="/trade/new" className="text-zinc-400 hover:text-white transition-colors">3. Evidence Engine & Telemetry</Link></li>
                 <li><Link href="/buyer/dashboard" className="text-zinc-400 hover:text-white transition-colors">4. Escrow Dashboard</Link></li>
                 <li><Link href="/trust" className="text-zinc-400 hover:text-white transition-colors">5. Trust Center</Link></li>
               </ul>
@@ -202,8 +202,8 @@ export default function Home() {
             <div>
               <h3 className="text-white font-semibold mb-4">{t('demo.title')}</h3>
               <ul className="space-y-2 text-sm">
-                <li><Link href="/buyer/dashboard" className="text-zinc-400 hover:text-white transition-colors">{t('demo.buyer')}</Link></li>
-                <li><Link href="/oracle/dashboard" className="text-zinc-400 hover:text-white transition-colors">{t('demo.oracle')}</Link></li>
+                <li><Link href="/trade/history" className="text-zinc-400 hover:text-white transition-colors">{t('demo.buyer')}</Link></li>
+                <li><Link href="/notifications" className="text-zinc-400 hover:text-white transition-colors">{t('demo.oracle')}</Link></li>
                 <li><Link href="/admin/accounting" className="text-zinc-400 hover:text-white transition-colors">{t('demo.accounting')}</Link></li>
                 <li><Link href="/admin/arbitration" className="text-zinc-400 hover:text-white transition-colors">{t('demo.arbitration')}</Link></li>
               </ul>

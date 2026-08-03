@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Blocks, Search, Cpu, CheckCircle2, Factory, Scale, FileCheck, ArrowRight, Sparkles, ShieldCheck, TrendingUp, Anchor, AlertTriangle, Info } from 'lucide-react';
+import { Blocks, Search, Cpu, CheckCircle2, Factory, Scale, ArrowRight, Sparkles, ShieldCheck, TrendingUp, Anchor, Info } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { useRouter } from 'next/navigation';

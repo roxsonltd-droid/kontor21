@@ -1,8 +1,8 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { Blocks, Wallet, Bell, Globe, Save } from 'lucide-react';
+import { Blocks, Wallet, Bell, Globe, Save, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -11,6 +11,31 @@ import { useKontorEscrow } from '@/hooks/useKontorEscrow';
 export default function Settings() {
   const { t, language, setLanguage } = useLanguage();
   const { address, formattedAddress, isConnecting, connect } = useKontorEscrow();
+  const [notifications, setNotifications] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('kontor_notif_prefs');
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch {
+          return { email: true, push: true };
+        }
+      }
+    }
+    return { email: true, push: true };
+  });
+  const [saved, setSaved] = useState(false);
+
+  const toggleNotif = (key: 'email' | 'push') => {
+    setNotifications((prev: { email: boolean; push: boolean }) => ({ ...prev, [key]: !prev[key] }));
+    setSaved(false);
+  };
+
+  const handleSave = () => {
+    localStorage.setItem('kontor_notif_prefs', JSON.stringify(notifications));
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-200 font-sans selection:bg-amber-500/30">
@@ -112,19 +137,34 @@ export default function Settings() {
               </div>
             </div>
             <div className="space-y-4">
-              {[t('settings.emailNotif'), t('settings.pushNotif')].map(label => (
-                <div key={label} className="flex items-center justify-between bg-zinc-950 rounded-xl p-4 border border-zinc-800">
+              {[
+                { key: 'email' as const, label: t('settings.emailNotif') },
+                { key: 'push' as const, label: t('settings.pushNotif') },
+              ].map(({ key, label }) => (
+                <div key={key} className="flex items-center justify-between bg-zinc-950 rounded-xl p-4 border border-zinc-800">
                   <span className="text-sm text-zinc-300">{label}</span>
-                  <div className="w-10 h-5 bg-zinc-700 rounded-full relative cursor-pointer">
-                    <div className="w-4 h-4 bg-zinc-400 rounded-full absolute top-0.5 left-0.5 transition-all"></div>
-                  </div>
+                  <button
+                    onClick={() => toggleNotif(key)}
+                    className={`w-10 h-5 rounded-full relative transition-colors ${notifications[key] ? 'bg-blue-600' : 'bg-zinc-700'}`}
+                    aria-label={label}
+                  >
+                    <div className={`w-4 h-4 bg-white rounded-full absolute top-0.5 transition-all ${notifications[key] ? 'left-[22px]' : 'left-0.5'}`}></div>
+                  </button>
                 </div>
               ))}
             </div>
           </motion.div>
 
-          <div className="flex justify-end pt-2">
-            <button className="flex items-center gap-2 bg-amber-600 hover:bg-amber-500 text-white py-3 px-6 rounded-xl font-semibold transition-all shadow-[0_0_15px_rgba(217,119,6,0.3)]">
+          <div className="flex justify-end items-center gap-4 pt-2">
+            {saved && (
+              <span className="flex items-center gap-1.5 text-sm text-emerald-400">
+                <CheckCircle2 className="w-4 h-4" /> Saved
+              </span>
+            )}
+            <button
+              onClick={handleSave}
+              className="flex items-center gap-2 bg-amber-600 hover:bg-amber-500 text-white py-3 px-6 rounded-xl font-semibold transition-all shadow-[0_0_15px_rgba(217,119,6,0.3)]"
+            >
               <Save className="w-4 h-4" />
               Save Settings
             </button>

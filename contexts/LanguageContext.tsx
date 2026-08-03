@@ -256,9 +256,9 @@ const translations: Translations = {
   "trust.network": { EN: "Network:", DE: "Netzwerk:", BG: "Мрежа:" },
   "trust.networkValue": { EN: "Polygon Amoy Testnet", DE: "Polygon Amoy Testnet", BG: "Polygon Amoy Testnet" },
   "trust.status": { EN: "Status:", DE: "Status:", BG: "Статус:" },
-  "trust.statusValue": { EN: "Deployment in progress (Will be published before production)", DE: "Bereitstellung in Arbeit (Wird vor Produktion veröffentlicht)", BG: "Деплоймънт в прогрес (Ще бъде публикуван преди продукция)" },
+  "trust.statusValue": { EN: "Live on Polygon Amoy Testnet", DE: "Live auf Polygon Amoy Testnet", BG: "Активен на Polygon Amoy Testnet" },
   "trust.audit": { EN: "Audit:", DE: "Audit:", BG: "Одит:" },
-  "trust.auditValue": { EN: "Pending Final Security Audit", DE: "Ausstehendes finales Sicherheitsaudit", BG: "Очаква финален секюрити одит" },
+  "trust.auditValue": { EN: "Contract verified on-chain", DE: "Vertrag auf der Blockchain verifiziert", BG: "Договорът е верифициран в блокчейна" },
   "trust.nav": { EN: "Trust Center", DE: "Trust Center", BG: "Център за Доверие" },
   
   // Evidence Engine
@@ -297,17 +297,6 @@ const translations: Translations = {
   "history.noTrades": { EN: "No trades yet", DE: "Noch keine Handelsgeschäfte", BG: "Все още няма сделки" },
   "history.noTradesDesc": { EN: "Your connected wallet has no trade history.", DE: "Ihr verbundenes Wallet hat keine Handelshistorie.", BG: "Свързаният портфейл няма история на сделки." },
   "history.search": { EN: "Search by trade ID...", DE: "Suche nach Handels-ID...", BG: "Търсене по ID на сделка..." },
-
-  // Notifications
-  "notif.title": { EN: "Notifications", DE: "Benachrichtigungen", BG: "Известия" },
-  "notif.empty": { EN: "No notifications yet", DE: "Noch keine Benachrichtigungen", BG: "Все още няма известия" },
-  "notif.emptyDesc": { EN: "You'll see trade updates here.", DE: "Sie sehen hier Handelsupdates.", BG: "Тук ще виждате обновления за сделките." },
-  "notif.markAll": { EN: "Mark all as read", DE: "Alle als gelesen markieren", BG: "Маркирай всички като прочетени" },
-  "notif.created": { EN: "New trade created", DE: "Neuer Handel erstellt", BG: "Нова сделка създадена" },
-  "notif.funded": { EN: "Trade funded", DE: "Handel finanziert", BG: "Сделката е финансирана" },
-  "notif.approved": { EN: "Trade approved by oracle", DE: "Handel vom Orakel genehmigt", BG: "Сделката е одобрена от оракул" },
-  "notif.disputed": { EN: "Dispute raised on trade", DE: "Streitfall für Handel eröffnet", BG: "Спор по сделката" },
-  "notif.resolved": { EN: "Dispute resolved", DE: "Streitfall gelöst", BG: "Спорът е разрешен" },
 
   // Seller Dashboard
   "seller.title": { EN: "Seller Overview", DE: "Verkäuferübersicht", BG: "Преглед на търговеца" },

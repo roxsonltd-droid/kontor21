@@ -8,10 +8,21 @@ import { useKontorEscrow } from '@/hooks/useKontorEscrow';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 
+type BuyerTrade = {
+  id: string;
+  blockchainTradeId: number | null;
+  productName: string;
+  quantity: string;
+  priceUsdc: string;
+  operationalStatus: string;
+  settlementStatus: string;
+  seller: { walletAddress: string };
+};
+
 export default function BuyerDashboard() {
   const { t } = useLanguage();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [trades, setTrades] = useState<any[]>([]);
+  const [trades, setTrades] = useState<BuyerTrade[]>([]);
   const [loadingTrades, setLoadingTrades] = useState(true);
   const { address, formattedAddress, isConnecting, connect, fundTrade } = useKontorEscrow();
 
@@ -270,44 +281,20 @@ export default function BuyerDashboard() {
                 {loadingTrades ? (
                   <tr><td colSpan={6} className="text-center py-8 text-zinc-500">Loading trades...</td></tr>
                 ) : trades.length === 0 ? (
-                  <>
-                    <tr>
-                      <td colSpan={6} className="text-center py-8 text-zinc-400">
-                        <div className="flex flex-col items-center gap-3">
-                          <p className="text-sm">No live trades yet.</p>
-                        </div>
-                      </td>
-                    </tr>
-                    {/* Demo Trade */}
-                    <tr className="hover:bg-blue-900/10 transition-colors group bg-blue-500/5 relative">
-                      <td className="px-5 py-4 font-mono text-blue-400 text-xs">
-                        <div className="flex items-center gap-2">
-                          #K21-102
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-500/20 text-blue-400 uppercase">Demo</span>
-                        </div>
-                      </td>
-                      <td className="px-5 py-4 text-zinc-200 font-medium">12 tons dried apricots</td>
-                      <td className="px-5 py-4 font-semibold text-white">14,400</td>
-                      <td className="px-5 py-4">
-                        <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 text-[11px] font-medium border border-emerald-500/20">
-                          <CheckCircle2 className="w-3 h-3" /> Inspection Completed
-                        </span>
-                      </td>
-                      <td className="px-5 py-4">
-                        <span className="text-xs font-mono text-zinc-400">Verified BG Producer</span>
-                      </td>
-                      <td className="px-5 py-4 text-right">
-                        <Link href={`/trade/new`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition-colors">
-                          Explore demo workflow <ChevronRight className="w-3 h-3" />
+                  <tr>
+                    <td colSpan={6} className="text-center py-8 text-zinc-400">
+                      <div className="flex flex-col items-center gap-3">
+                        <p className="text-sm">No trades yet. Start a secure trade.</p>
+                        <Link href={`/trade/new`} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition-colors">
+                          Start Secure Trade <ChevronRight className="w-3.5 h-3.5" />
                         </Link>
-                      </td>
-                    </tr>
-                  </>
+                      </div>
+                    </td>
+                  </tr>
                 ) : (
                   trades.map(trade => {
                     const totalUsdc = parseFloat(trade.quantity) * parseFloat(trade.priceUsdc);
                     const isDisputed = trade.settlementStatus === "DISPUTED";
-                    const isFunded = trade.settlementStatus === "FUNDED" || trade.settlementStatus === "PARTIAL_RELEASE";
                     const isCompleted = trade.settlementStatus === "COMPLETED";
                     const needsFunding = trade.settlementStatus === "AWAITING_FUNDS";
 
@@ -339,9 +326,9 @@ export default function BuyerDashboard() {
                           <span className="text-xs font-mono text-zinc-400">{trade.seller?.walletAddress ? `${trade.seller.walletAddress.slice(0,5)}...${trade.seller.walletAddress.slice(-4)}` : 'N/A'}</span>
                         </td>
                         <td className="px-5 py-4 text-right">
-                          {needsFunding ? (
+                          {needsFunding && trade.blockchainTradeId != null ? (
                             <button
-                              onClick={() => handleFundEscrow(trade.blockchainTradeId || trade.id)}
+                              onClick={() => handleFundEscrow(trade.blockchainTradeId!)}
                               disabled={isProcessing || !address}
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
@@ -350,7 +337,7 @@ export default function BuyerDashboard() {
                             </button>
                           ) : (
                             <Link href={`/trade/${trade.id}`} className="inline-flex items-center gap-1 text-xs font-medium text-zinc-400 hover:text-white transition-colors">
-                              View <ChevronRight className="w-3 h-3" />
+                              {trade.blockchainTradeId != null ? 'View' : 'Deploy'} <ChevronRight className="w-3 h-3" />
                             </Link>
                           )}
                         </td>

@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     let conditionsCreate = undefined;
     if (body.conditions && Array.isArray(body.conditions)) {
       conditionsCreate = {
-        create: body.conditions.map((c: any) => ({
+        create: body.conditions.map((c: { parameter: string; operator: string; value: string; unit?: string | null; providerRole?: string; isRequired?: boolean }) => ({
           parameter: c.parameter,
           operator: c.operator,
           value: c.value,
@@ -75,6 +75,15 @@ export async function POST(req: NextRequest) {
       }
     });
 
+    await prisma.auditLog.create({
+      data: {
+        tradeId: trade.id,
+        action: "TRADE_CREATED",
+        actorWallet: body.buyerWallet,
+        documentIpfsHash: null,
+      },
+    });
+
     return NextResponse.json({
       status: "draft_created",
       tradeId: trade.id,
@@ -91,9 +100,18 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   try {
     const address = req.nextUrl.searchParams.get("address");
+    const role = req.nextUrl.searchParams.get("role");
+    const disputes = req.nextUrl.searchParams.get("disputes");
     
-    let whereClause = {};
-    if (address) {
+    let whereClause: Record<string, unknown> = {};
+    if (disputes === "1") {
+      whereClause = {
+        operationalStatus: "DISPUTED",
+        blockchainTradeId: { not: null },
+      };
+    } else if (address && role === "oracle") {
+      whereClause = { oracle: { walletAddress: address } };
+    } else if (address) {
       whereClause = {
         OR: [
           { buyer: { walletAddress: address } },
@@ -104,7 +122,7 @@ export async function GET(req: NextRequest) {
 
     const trades = await prisma.tradeMetadata.findMany({
       where: whereClause,
-      include: { buyer: true, seller: true, conditions: true },
+      include: { buyer: true, seller: true, oracle: true, conditions: true },
       orderBy: { createdAt: "desc" },
       take: 50,
     });

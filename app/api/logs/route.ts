@@ -5,43 +5,43 @@ export async function GET(req: NextRequest) {
   try {
     const address = req.nextUrl.searchParams.get("address");
 
-    // Let's find trades associated with this address if provided
-    let tradeIds: number[] = [];
+    // Find trade UUIDs associated with this address if provided
+    let tradeIds: string[] = [];
     if (address) {
       const user = await prisma.user.findUnique({
         where: { walletAddress: address },
         include: {
-          buyerTrades: true,
-          sellerTrades: true
-        }
+          tradesAsBuyer: { select: { id: true } },
+          tradesAsSeller: { select: { id: true } },
+          tradesAsOracle: { select: { id: true } },
+        },
       });
       if (user) {
         tradeIds = [
-          ...user.buyerTrades.map(t => t.id),
-          ...user.sellerTrades.map(t => t.id)
+          ...user.tradesAsBuyer.map((t) => t.id),
+          ...user.tradesAsSeller.map((t) => t.id),
+          ...user.tradesAsOracle.map((t) => t.id),
         ];
       }
     }
 
-    let whereClause = {};
+    let whereClause: { tradeId?: { in: string[] } } = {};
     if (address && tradeIds.length > 0) {
-      whereClause = {
-        tradeId: { in: tradeIds }
-      };
+      whereClause = { tradeId: { in: tradeIds } };
     }
 
     const logs = await prisma.auditLog.findMany({
       where: whereClause,
-      orderBy: { timestamp: "desc" },
+      orderBy: { createdAt: "desc" },
       take: 50,
       include: {
         trade: {
           select: {
             productName: true,
-            blockchainTradeId: true
-          }
-        }
-      }
+            blockchainTradeId: true,
+          },
+        },
+      },
     });
 
     return NextResponse.json(logs);

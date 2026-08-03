@@ -1,48 +1,109 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShieldAlert, Gavel, Blocks, ArrowRight, MessageSquareWarning, CheckCircle2, Loader2, Navigation, Activity, Thermometer, Droplets, ArrowDownUp } from 'lucide-react';
+import { ShieldAlert, Gavel, Blocks, ArrowRight, MessageSquareWarning, CheckCircle2, Loader2, Wallet } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
+import { useKontorEscrow } from '@/hooks/useKontorEscrow';
+
+type DisputeTrade = {
+  id: string;
+  blockchainTradeId: number | null;
+  productName: string;
+  quantity: string;
+  unit: string;
+  priceUsdc: string;
+  operationalStatus: string;
+  settlementStatus: string;
+  createdAt: string;
+  buyer: { walletAddress: string; companyName: string | null };
+  seller: { walletAddress: string; companyName: string | null };
+};
 
 export default function ArbitrationDashboard() {
   const { language } = useLanguage();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [resolvedTrade, setResolvedTrade] = useState<string | null>(null);
-  const [selectedDispute, setSelectedDispute] = useState<boolean>(false);
+  const [resolvedId, setResolvedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [processingAction, setProcessingAction] = useState<'refund' | 'release' | null>(null);
+  const [trades, setTrades] = useState<DisputeTrade[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { address, formattedAddress, isConnecting, connect, voteDispute } = useKontorEscrow();
 
-  // Local translations for stability
-  const at = {
-    title: { EN: "Dispute Resolution", DE: "Streitbeilegung", BG: "Арбитражен Център" },
-    panelTitle: { EN: "Active Arbitration Cases", DE: "Aktive Schiedsverfahren", BG: "Активни Арбитражни Дела" },
-    panelDesc: { EN: "Review immutable IoT evidence and execute smart contract resolutions.", DE: "Überprüfen Sie unveränderliche IoT-Beweise und führen Sie Smart-Contract-Beschlüsse aus.", BG: "Преглед на неизменяеми IoT доказателства и изпълнение на блокчейн резолюции." },
-    disputed: { EN: "DISPUTED", DE: "UMSTRITTEN", BG: "СПОР" },
-    locked: { EN: "Locked Value", DE: "Gesperrter Wert", BG: "Замразена Сума" },
-    invTitle: { EN: "Trade #104 - Investigation", DE: "Trade #104 - Untersuchung", BG: "Сделка #104 - Разследване" },
-    claimTitle: { EN: "Automated Dispute Trigger", DE: "Automatischer Streitfall-Auslöser", BG: "Автоматичен Тригер на Спора" },
-    claimText: { EN: "Smart contract automatically froze funds because IoT Sensor Array detected moisture levels exceeding the 8.0% threshold during sea transit.", DE: "Der Smart Contract hat die Gelder automatisch eingefroren, da das IoT-Sensor-Array Feuchtigkeitswerte feststellte, die den Schwellenwert von 8,0 % während des Seetransports überschritten.", BG: "Смарт договорът автоматично замрази средствата, тъй като IoT сензорите отчетоха нива на влажност, надвишаващи прага от 8.0% по време на морския транспорт." },
-    evidence: { EN: "Immutable Evidence (IPFS & IoT)", DE: "Unveränderliche Beweise (IPFS & IoT)", BG: "Неизменяеми Доказателства (IPFS и IoT)" },
-    decision: { EN: "Blockchain Resolution", DE: "Blockchain-Auflösung", BG: "Блокчейн Резолюция (Отсъждане)" },
-    refundBtn: { EN: "Refund Buyer (41,000 USDC)", DE: "Käufer erstatten (41.000 USDC)", BG: "Върни парите на Купувача" },
-    releaseBtn: { EN: "Override & Release to Seller", DE: "Überschreiben & an Verkäufer freigeben", BG: "Освободи към Продавача" },
-    resolvedTitle: { EN: "Dispute Resolved", DE: "Streitfall gelöst", BG: "Спорът е разрешен" },
-    resolvedText: { EN: "The smart contract has executed the resolution. Funds have been distributed accordingly.", DE: "Der Smart Contract hat die Auflösung ausgeführt. Die Gelder wurden entsprechend verteilt.", BG: "Смарт договорът изпълни резолюцията. Средствата бяха преведени автоматично." }
-  };
+  const loadDisputes = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await fetch('/api/escrow?disputes=1');
+      if (res.ok) {
+        const data = await res.json();
+        setTrades(data);
+        if (data.length > 0 && !selectedId) {
+          setSelectedId(data[0].id);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Failed to load disputes");
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedId]);
 
-  const getTranslation = (key: keyof typeof at) => at[key][language] || at[key].EN;
+  useEffect(() => {
+    loadDisputes();
+  }, [loadDisputes]);
+
+  const selectedTrade = trades.find((t) => t.id === selectedId) || null;
 
   const handleResolve = async (action: 'refund' | 'release') => {
+    if (!selectedTrade) return;
+    if (selectedTrade.blockchainTradeId == null) {
+      setError("This trade is not on-chain yet — cannot execute an on-chain ruling.");
+      return;
+    }
     setProcessingAction(action);
     setIsProcessing(true);
-    
-    // Simulate Blockchain execution
-    setTimeout(() => {
+    setError(null);
+    try {
+      const refundBuyer = action === 'refund';
+      const success = await voteDispute(selectedTrade.blockchainTradeId, refundBuyer);
+      if (success) {
+        setResolvedId(selectedTrade.id);
+        await fetch(`/api/escrow/${selectedTrade.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            operationalStatus: "CONDITIONS_SATISFIED",
+            settlementStatus: refundBuyer ? "REFUNDED" : "RELEASED",
+          }),
+        });
+        await loadDisputes();
+      } else {
+        setError("On-chain vote failed. Connect an arbitrator wallet on Amoy and retry.");
+      }
+    } finally {
       setIsProcessing(false);
-      setResolvedTrade('104');
-    }, 3000);
+    }
+  };
+
+  const getTranslation = (key: string) => {
+    const at: Record<string, { EN: string; DE: string; BG: string }> = {
+      title: { EN: "Dispute Resolution", DE: "Streitbeilegung", BG: "Арбитражен Център" },
+      panelTitle: { EN: "Active Arbitration Cases", DE: "Aktive Schiedsverfahren", BG: "Активни Арбитражни Дела" },
+      panelDesc: { EN: "Review immutable evidence and execute smart contract resolutions.", DE: "Überprüfen Sie unveränderliche Beweise und führen Sie Smart-Contract-Beschlüsse aus.", BG: "Преглед на неизменяеми доказателства и изпълнение на блокчейн резолюции." },
+      disputed: { EN: "DISPUTED", DE: "UMSTRITTEN", BG: "СПОР" },
+      locked: { EN: "Locked Value", DE: "Gesperrter Wert", BG: "Замразена Сума" },
+      evidence: { EN: "Trade Details", DE: "Handelsdetails", BG: "Детайли на сделката" },
+      decision: { EN: "Blockchain Resolution", DE: "Blockchain-Auflösung", BG: "Блокчейн Резолюция (Отсъждане)" },
+      refundBtn: { EN: "Refund Buyer", DE: "Käufer erstatten", BG: "Върни парите на Купувача" },
+      releaseBtn: { EN: "Release to Seller", DE: "An Verkäufer freigeben", BG: "Освободи към Продавача" },
+      resolvedTitle: { EN: "Dispute Resolved", DE: "Streitfall gelöst", BG: "Спорът е разрешен" },
+      resolvedText: { EN: "The smart contract has executed the resolution. Funds have been distributed accordingly.", DE: "Der Smart Contract hat die Auflösung ausgeführt. Die Gelder wurden entsprechend verteilt.", BG: "Смарт договорът изпълни резолюцията. Средствата бяха преведени автоматично." },
+    };
+    return at[key]?.[language] || at[key]?.EN || key;
   };
 
   return (
@@ -69,10 +130,21 @@ export default function ArbitrationDashboard() {
           
           <div className="flex items-center gap-4">
             <LanguageSwitcher />
-            <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5">
-              <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-              <span className="text-xs font-medium text-zinc-300 font-mono">0xAdmin...94A2</span>
-            </div>
+            {address ? (
+              <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5">
+                <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                <span className="text-xs font-medium text-zinc-300 font-mono">{formattedAddress}</span>
+              </div>
+            ) : (
+              <button
+                onClick={connect}
+                disabled={isConnecting}
+                className="flex items-center gap-2 bg-red-600/10 border border-red-500/20 text-red-400 hover:bg-red-600/20 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
+              >
+                <Wallet className="w-3.5 h-3.5" />
+                {isConnecting ? "Connecting..." : "Connect Arbitrator"}
+              </button>
+            )}
           </div>
         </div>
       </nav>
@@ -84,48 +156,79 @@ export default function ArbitrationDashboard() {
           <p className="text-sm text-zinc-400 max-w-2xl">{getTranslation('panelDesc')}</p>
         </div>
 
+        {error && (
+          <div className="mb-6 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-sm p-4">
+            {error}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
           {/* Dispute List (Sidebar) */}
           <div className="lg:col-span-4 space-y-4">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-[10px] font-medium text-zinc-500 uppercase tracking-widest">Queue (1)</h3>
+              <h3 className="text-[10px] font-medium text-zinc-500 uppercase tracking-widest">
+                {loading ? "Loading..." : `Queue (${trades.length})`}
+              </h3>
             </div>
             
-            {resolvedTrade !== '104' ? (
-              <motion.div 
-                whileHover={{ scale: 1.02 }}
-                onClick={() => setSelectedDispute(true)}
-                className={`p-5 rounded-2xl border-2 cursor-pointer transition-all ${selectedDispute ? 'bg-red-950/40 border-red-500/50 shadow-[0_0_30px_rgba(220,38,38,0.15)]' : 'bg-zinc-900/40 border-zinc-800 hover:border-red-900/50'}`}
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <span className="text-sm font-mono text-white flex items-center gap-2 font-bold">
-                    <ShieldAlert className="w-4 h-4 text-red-500" /> Trade #104
-                  </span>
-                  <span className="text-[10px] font-bold bg-red-500 text-white px-2 py-1 rounded uppercase tracking-wider">{getTranslation('disputed')}</span>
-                </div>
-                <h4 className="text-sm font-medium text-zinc-300 mb-1">High-Oleic Sunflower Seeds</h4>
-                <p className="text-xs text-zinc-500 mb-4">Volume: 50 Tons</p>
-                
-                <div className="bg-black/50 rounded-lg p-3 border border-zinc-800">
-                  <p className="text-xs text-zinc-500 mb-1">{getTranslation('locked')}</p>
-                  <p className="text-lg text-red-400 font-mono font-bold">41,000 USDC</p>
-                </div>
-              </motion.div>
-            ) : (
-              <div className="p-5 rounded-2xl bg-zinc-900/20 border border-emerald-900/30 opacity-60">
-                <div className="flex justify-between items-start mb-4">
-                  <span className="text-sm font-mono text-zinc-400 line-through">Trade #104</span>
-                  <span className="text-[10px] bg-emerald-900/50 text-emerald-400 px-2 py-1 rounded uppercase">RESOLVED</span>
-                </div>
+            {loading ? (
+              <div className="p-6 rounded-2xl bg-zinc-900/40 border border-zinc-800 text-center text-sm text-zinc-500">
+                Loading disputes...
               </div>
+            ) : trades.length === 0 ? (
+              <div className="p-6 rounded-2xl bg-zinc-900/40 border border-zinc-800 text-center text-sm text-zinc-500">
+                No active disputes.
+              </div>
+            ) : (
+              trades.map((trade) => {
+                const isResolved = resolvedId === trade.id;
+                const total = parseFloat(trade.quantity) * parseFloat(trade.priceUsdc);
+                return (
+                  <div 
+                    key={trade.id}
+                    onClick={() => {
+                      if (!isResolved) {
+                        setSelectedId(trade.id);
+                        setError(null);
+                      }
+                    }}
+                    className={`p-5 rounded-2xl border-2 cursor-pointer transition-all ${
+                      isResolved
+                        ? 'bg-zinc-900/20 border-emerald-900/30 opacity-60'
+                        : selectedId === trade.id
+                          ? 'bg-red-950/40 border-red-500/50 shadow-[0_0_30px_rgba(220,38,38,0.15)]'
+                          : 'bg-zinc-900/40 border-zinc-800 hover:border-red-900/50'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start mb-4">
+                      <span className={`text-sm font-mono flex items-center gap-2 font-bold ${isResolved ? 'text-zinc-400 line-through' : 'text-white'}`}>
+                        <ShieldAlert className="w-4 h-4 text-red-500" />
+                        {trade.blockchainTradeId != null ? `Trade #${trade.blockchainTradeId}` : `Draft ${trade.id.slice(0, 6)}`}
+                      </span>
+                      {isResolved ? (
+                        <span className="text-[10px] bg-emerald-900/50 text-emerald-400 px-2 py-1 rounded uppercase">RESOLVED</span>
+                      ) : (
+                        <span className="text-[10px] font-bold bg-red-500 text-white px-2 py-1 rounded uppercase tracking-wider">{getTranslation('disputed')}</span>
+                      )}
+                    </div>
+                    <h4 className="text-sm font-medium text-zinc-300 mb-1">{trade.productName}</h4>
+                    <p className="text-xs text-zinc-500 mb-4">Volume: {parseFloat(trade.quantity)} {trade.unit}</p>
+                    
+                    <div className="bg-black/50 rounded-lg p-3 border border-zinc-800">
+                      <p className="text-xs text-zinc-500 mb-1">{getTranslation('locked')}</p>
+                      <p className="text-lg text-red-400 font-mono font-bold">{total.toLocaleString()} USDC</p>
+                    </div>
+                  </div>
+                );
+              })
             )}
           </div>
 
           {/* Dispute Details Panel (Main) */}
           <div className="lg:col-span-8">
             <AnimatePresence mode="wait">
-              {resolvedTrade === '104' ? (
+              {selectedTrade && resolvedId === selectedTrade.id ? (
                 <motion.div 
                   key="resolved"
                   initial={{ opacity: 0, scale: 0.95 }} 
@@ -135,11 +238,8 @@ export default function ArbitrationDashboard() {
                   <CheckCircle2 className="w-20 h-20 text-emerald-500 mb-6 drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
                   <h2 className="text-2xl font-bold text-white mb-2">{getTranslation('resolvedTitle')}</h2>
                   <p className="text-zinc-400 max-w-md">{getTranslation('resolvedText')}</p>
-                  <div className="mt-8 bg-black/40 px-4 py-2 rounded-lg font-mono text-sm text-emerald-400 border border-emerald-900/50">
-                    Tx: 0x8a92...f41e
-                  </div>
                 </motion.div>
-              ) : selectedDispute ? (
+              ) : selectedTrade ? (
                 <motion.div 
                   key="active"
                   initial={{ opacity: 0, y: 10 }} 
@@ -153,81 +253,44 @@ export default function ArbitrationDashboard() {
                       <MessageSquareWarning className="w-6 h-6" />
                     </div>
                     <div>
-                      <h2 className="text-2xl font-bold text-white">{getTranslation('invTitle')}</h2>
+                      <h2 className="text-2xl font-bold text-white">
+                        {selectedTrade.productName}
+                      </h2>
                       <div className="flex items-center gap-2 mt-1 text-xs text-zinc-400 font-mono">
-                        <span>Contract: 0x812...A1B2</span>
+                        <span>Buyer: {selectedTrade.buyer?.companyName || selectedTrade.buyer?.walletAddress?.slice(0, 10)}</span>
                         <span>•</span>
-                        <span>Oracle: IoT Sensor Network</span>
+                        <span>Seller: {selectedTrade.seller?.companyName || selectedTrade.seller?.walletAddress?.slice(0, 10)}</span>
                       </div>
                     </div>
                   </div>
 
                   <div className="space-y-8 mb-10">
-                    {/* The Trigger */}
+                    {/* The Trade */}
                     <div>
                       <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                        <Activity className="w-4 h-4 text-red-400" /> {getTranslation('claimTitle')}
+                        <Gavel className="w-4 h-4 text-red-400" /> {getTranslation('evidence')}
                       </h3>
-                      <div className="bg-red-950/20 border border-red-900/30 rounded-2xl p-5 text-sm text-red-200 leading-relaxed shadow-inner">
-                        {getTranslation('claimText')}
-                      </div>
-                    </div>
-
-                    {/* Immutable Evidence */}
-                    <div>
-                      <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                        <Navigation className="w-4 h-4 text-blue-400" /> {getTranslation('evidence')}
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        
-                        {/* IoT Data Block */}
-                        <div className="bg-black/50 border border-zinc-800 rounded-2xl p-5">
-                          <div className="flex justify-between items-start mb-4">
-                            <div className="flex items-center gap-2">
-                              <Droplets className="w-5 h-5 text-blue-400" />
-                              <span className="font-semibold text-white">Moisture Log</span>
-                            </div>
-                            <span className="text-[10px] bg-red-500/20 text-red-400 px-2 py-1 rounded font-mono">ALERT</span>
-                          </div>
-                          
-                          <div className="space-y-3">
-                            <div className="flex justify-between items-center text-xs">
-                              <span className="text-zinc-500">Contract Threshold</span>
-                              <span className="text-white font-mono">Max 8.0%</span>
-                            </div>
-                            <div className="flex justify-between items-center text-xs">
-                              <span className="text-zinc-500">Sensor Peak (Day 4)</span>
-                              <span className="text-red-400 font-mono font-bold text-sm">9.2%</span>
-                            </div>
-                            <div className="w-full h-1.5 bg-zinc-800 rounded-full mt-2 overflow-hidden flex">
-                              <div className="h-full bg-emerald-500 w-[80%]"></div>
-                              <div className="h-full bg-red-500 w-[20%]"></div>
-                            </div>
-                          </div>
+                      <div className="bg-red-950/20 border border-red-900/30 rounded-2xl p-5 space-y-3 text-sm shadow-inner">
+                        <div className="flex justify-between">
+                          <span className="text-zinc-400">Product</span>
+                          <span className="text-white font-medium">{selectedTrade.productName}</span>
                         </div>
-
-                        {/* Temperature Data Block */}
-                        <div className="bg-black/50 border border-zinc-800 rounded-2xl p-5">
-                          <div className="flex justify-between items-start mb-4">
-                            <div className="flex items-center gap-2">
-                              <Thermometer className="w-5 h-5 text-orange-400" />
-                              <span className="font-semibold text-white">Temp Log</span>
-                            </div>
-                            <span className="text-[10px] bg-zinc-800 text-zinc-400 px-2 py-1 rounded font-mono">OK</span>
-                          </div>
-                          
-                          <div className="space-y-3">
-                            <div className="flex justify-between items-center text-xs">
-                              <span className="text-zinc-500">Contract Threshold</span>
-                              <span className="text-white font-mono">Max 25°C</span>
-                            </div>
-                            <div className="flex justify-between items-center text-xs">
-                              <span className="text-zinc-500">Sensor Peak</span>
-                              <span className="text-emerald-400 font-mono text-sm">22°C</span>
-                            </div>
-                          </div>
+                        <div className="flex justify-between">
+                          <span className="text-zinc-400">Volume</span>
+                          <span className="text-white font-medium">{parseFloat(selectedTrade.quantity)} {selectedTrade.unit}</span>
                         </div>
-
+                        <div className="flex justify-between">
+                          <span className="text-zinc-400">Locked Value</span>
+                          <span className="text-red-400 font-mono font-bold">{(parseFloat(selectedTrade.quantity) * parseFloat(selectedTrade.priceUsdc)).toLocaleString()} USDC</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-zinc-400">Status</span>
+                          <span className="text-white font-mono">{selectedTrade.operationalStatus} / {selectedTrade.settlementStatus}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-zinc-400">On-chain ID</span>
+                          <span className="text-white font-mono">{selectedTrade.blockchainTradeId ?? "Not deployed"}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -238,39 +301,45 @@ export default function ArbitrationDashboard() {
                       <Gavel className="w-4 h-4 text-purple-400" /> {getTranslation('decision')}
                     </h3>
                     
-                    <div className="flex flex-col sm:flex-row gap-4">
-                      <button 
-                        onClick={() => handleResolve('refund')}
-                        disabled={isProcessing}
-                        className={`flex-1 py-4 px-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-                          isProcessing && processingAction === 'refund' 
-                            ? 'bg-red-600/50 text-white cursor-not-allowed' 
-                            : 'bg-red-600 hover:bg-red-500 text-white shadow-[0_0_20px_rgba(220,38,38,0.3)] disabled:opacity-50'
-                        }`}
-                      >
-                        {isProcessing && processingAction === 'refund' ? (
-                          <><Loader2 className="w-5 h-5 animate-spin" /> Deploying...</>
-                        ) : (
-                          <><ArrowDownUp className="w-4 h-4" /> {getTranslation('refundBtn')}</>
-                        )}
-                      </button>
-                      
-                      <button 
-                        onClick={() => handleResolve('release')}
-                        disabled={isProcessing}
-                        className={`flex-1 py-4 px-4 rounded-xl border border-zinc-700 text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-                          isProcessing && processingAction === 'release' 
-                            ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' 
-                            : 'bg-zinc-900 hover:bg-zinc-800 text-white disabled:opacity-50'
-                        }`}
-                      >
-                        {isProcessing && processingAction === 'release' ? (
-                          <><Loader2 className="w-5 h-5 animate-spin" /> Deploying...</>
-                        ) : (
-                          <>{getTranslation('releaseBtn')} <ArrowRight className="w-4 h-4" /></>
-                        )}
-                      </button>
-                    </div>
+                    {selectedTrade.blockchainTradeId == null ? (
+                      <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-sm p-4">
+                        This trade is not deployed on-chain. Deploy the smart contract from the trade view before executing a ruling.
+                      </div>
+                    ) : (
+                      <div className="flex flex-col sm:flex-row gap-4">
+                        <button 
+                          onClick={() => handleResolve('refund')}
+                          disabled={isProcessing}
+                          className={`flex-1 py-4 px-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                            isProcessing && processingAction === 'refund' 
+                              ? 'bg-red-600/50 text-white cursor-not-allowed' 
+                              : 'bg-red-600 hover:bg-red-500 text-white shadow-[0_0_20px_rgba(220,38,38,0.3)] disabled:opacity-50'
+                          }`}
+                        >
+                          {isProcessing && processingAction === 'refund' ? (
+                            <><Loader2 className="w-5 h-5 animate-spin" /> Deploying...</>
+                          ) : (
+                            <>{getTranslation('refundBtn')}</>
+                          )}
+                        </button>
+                        
+                        <button 
+                          onClick={() => handleResolve('release')}
+                          disabled={isProcessing}
+                          className={`flex-1 py-4 px-4 rounded-xl border border-zinc-700 text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                            isProcessing && processingAction === 'release' 
+                              ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' 
+                              : 'bg-zinc-900 hover:bg-zinc-800 text-white disabled:opacity-50'
+                          }`}
+                        >
+                          {isProcessing && processingAction === 'release' ? (
+                            <><Loader2 className="w-5 h-5 animate-spin" /> Deploying...</>
+                          ) : (
+                            <>{getTranslation('releaseBtn')} <ArrowRight className="w-4 h-4" /></>
+                          )}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               ) : (
@@ -278,7 +347,7 @@ export default function ArbitrationDashboard() {
                   <ShieldAlert className="w-16 h-16 text-zinc-800 mb-6" />
                   <h3 className="text-xl font-bold text-zinc-500 mb-2">No Dispute Selected</h3>
                   <p className="text-sm text-zinc-600 max-w-sm">
-                    Select a case from the queue to review the immutable evidence and execute a ruling.
+                    Select a case from the queue to review the details and execute a ruling.
                   </p>
                 </div>
               )}

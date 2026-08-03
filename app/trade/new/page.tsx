@@ -1,15 +1,15 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShieldCheck, ArrowRight, ArrowLeft, Wallet, CheckCircle2, Loader2, Blocks, Navigation, Factory, FileText, Anchor } from "lucide-react";
+import { ShieldCheck, ArrowRight, ArrowLeft, Wallet, CheckCircle2, Loader2, Blocks, Navigation } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 function NewTradeWizard() {
   const searchParams = useSearchParams();
-  const { t, language } = useLanguage();
+  const { language } = useLanguage();
   
   // Step State
   const [step, setStep] = useState(1);
@@ -20,8 +20,8 @@ function NewTradeWizard() {
   const [product, setProduct] = useState(searchParams.get("product") || "High-Oleic Sunflower Seeds");
   const [quantity, setQuantity] = useState(searchParams.get("quantity") || "50");
   const [price, setPrice] = useState(searchParams.get("price") || "820");
-  const [buyerWallet, setBuyerWallet] = useState(searchParams.get("buyer") || "0x742d35Cc6634C0532925a3b844Bc454e4438f44e");
-  const [sellerWallet, setSellerWallet] = useState(searchParams.get("seller") || "0x9D4...1F2");
+  const buyerWallet = searchParams.get("buyer") || "0x742d35Cc6634C0532925a3b844Bc454e4438f44e";
+  const sellerWallet = searchParams.get("seller") || "0x9D4...1F2";
   const [deliveryTerms, setDeliveryTerms] = useState(searchParams.get("terms") || "FOB");
   const [deliveryPort, setDeliveryPort] = useState(searchParams.get("port") || "Varna");
   const [oracle, setOracle] = useState("sgs");
@@ -62,42 +62,40 @@ function NewTradeWizard() {
 
   const handleDeploy = async () => {
     setSubmitting(true);
-    // Simulate Blockchain transaction delay for presentation Wow-factor
-    setTimeout(async () => {
-      try {
-        const res = await fetch("/api/escrow", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            productName: product,
-            quantity: parseFloat(quantity),
-            priceUsdc: parseFloat(price),
-            buyerWallet,
-            sellerWallet,
-            oracleWallet: oracleWallet || undefined,
-            unit: "tons",
-            conditions: conditions.map(c => ({
-              parameter: c.parameter,
-              operator: c.operator,
-              value: c.value,
-              unit: c.unit,
-              providerRole: c.providerRole,
-              isRequired: c.isRequired
-            })),
-          }),
-        });
-        const data = await res.json();
-        if (res.ok) {
-          setResult(data);
-        } else {
-          alert(`Error: ${data.error}`);
-        }
-      } catch (err) {
-        alert("Failed to deploy escrow");
-      } finally {
-        setSubmitting(false);
+    try {
+      const res = await fetch("/api/escrow", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productName: product,
+          quantity: parseFloat(quantity),
+          priceUsdc: parseFloat(price),
+          buyerWallet,
+          sellerWallet,
+          oracleWallet: oracleWallet || undefined,
+          unit: "tons",
+          conditions: conditions.map(c => ({
+            parameter: c.parameter,
+            operator: c.operator,
+            value: c.value,
+            unit: c.unit,
+            providerRole: c.providerRole,
+            isRequired: c.isRequired
+          })),
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setResult(data);
+      } else {
+        alert(`Error: ${data.error}`);
       }
-    }, 2500); // 2.5s delay for effect
+    } catch (err) {
+      console.error(err);
+      alert("Failed to deploy escrow");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (result) {
@@ -116,13 +114,13 @@ function NewTradeWizard() {
           >
             <CheckCircle2 className="w-20 h-20 text-emerald-400 mx-auto mb-6 drop-shadow-[0_0_15px_rgba(52,211,153,0.5)]" />
           </motion.div>
-          <h1 className="text-3xl font-bold text-white mb-3">Smart Contract Deployed!</h1>
+          <h1 className="text-3xl font-bold text-white mb-3">Escrow Draft Created!</h1>
           <p className="text-zinc-400 mb-8 text-lg">
-            {language === 'BG' ? 'Сделката е защитена математически на блокчейна.' : 'Your trade is now mathematically secured on the blockchain.'}
+            {language === 'BG' ? 'Сделката е записана. Деплойнирай смарт договора, за да я закотвиш на блокчейна.' : 'Your trade is saved. Deploy the smart contract to anchor it on-chain.'}
           </p>
           <div className="bg-black/30 rounded-xl p-4 mb-8 font-mono text-sm text-zinc-300 border border-zinc-800/50">
-            Contract Address: <br/>
-            <span className="text-emerald-400">0x{(Math.random()*1e16).toString(16)}...</span>
+            Draft ID: <br/>
+            <span className="text-emerald-400">{result.tradeId}</span>
           </div>
           <a
             href={result.kontor21_url || `/trade/${result.tradeId}`}
@@ -279,7 +277,7 @@ function NewTradeWizard() {
                   </div>
                   
                   <div className="space-y-3">
-                    {conditions.map((c, idx) => (
+                    {conditions.map((c) => (
                       <div key={c.id} className="flex items-center gap-2 bg-black/40 p-3 rounded-lg border border-zinc-800/50">
                         <select value={c.providerRole} onChange={e => updateCondition(c.id, 'providerRole', e.target.value)} className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-300 outline-none">
                           <option value="LAB">LAB</option>

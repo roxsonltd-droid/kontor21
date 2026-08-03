@@ -54,7 +54,7 @@ export default function TradeHistory() {
         const res = await fetch('/api/escrow');
         if (!res.ok) throw new Error('Failed to fetch trades');
         const data = await res.json();
-        const mapped: TradeRecord[] = (data as any[]).map((t: any) => ({
+        const mapped: TradeRecord[] = (data as { id: string; productName: string; priceUsdc: string; operationalStatus: string; createdAt: string; buyer?: { walletAddress: string }; seller?: { walletAddress: string } }[]).map((t) => ({
           id: t.id,
           shortId: t.id.slice(0, 8).toUpperCase(),
           product: t.productName,

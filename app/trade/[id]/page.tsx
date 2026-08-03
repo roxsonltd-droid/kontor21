@@ -8,8 +8,6 @@ import { useKontorEscrow } from '@/hooks/useKontorEscrow';
 import { CONTRACT_ADDRESSES } from '@/lib/abis';
 import { motion } from 'framer-motion';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
-import EvidenceList from '@/components/EvidenceList';
-import CertificateGallery from '@/components/CertificateGallery';
 import { useLanguage } from '@/contexts/LanguageContext';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -116,13 +114,29 @@ export default function TradeView() {
   const handleFundEscrow = async () => {
     if (blockchainTradeId == null) return;
     const success = await fundTrade(blockchainTradeId);
-    if (success) setIsFunded(true);
+    if (success) {
+      setIsFunded(true);
+      await fetch(`/api/escrow/${trade?.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ settlementStatus: "FUNDED" }),
+      });
+      await loadTrade();
+    }
   };
 
   const handleRaiseDispute = async () => {
     if (blockchainTradeId == null) return;
     const success = await raiseDispute(blockchainTradeId);
-    if (success) setIsDisputed(true);
+    if (success) {
+      setIsDisputed(true);
+      await fetch(`/api/escrow/${trade?.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ operationalStatus: "DISPUTED", settlementStatus: "DISPUTED" }),
+      });
+      await loadTrade();
+    }
   };
 
   const exportPDF = async () => {

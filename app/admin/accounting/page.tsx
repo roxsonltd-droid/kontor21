@@ -1,61 +1,48 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { FileSpreadsheet, Download, FileCheck2, ShieldCheck, Database, Calendar, Euro, Fingerprint, Activity, Clock, Blocks, Landmark, TrendingUp, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 
-// Extended mock data to include fee logic
-const completedTrades = [
-  {
-    id: "TRD-102",
-    date: "2026-07-25",
-    buyer: "Agro Export GmbH",
-    buyerVat: "DE123456789",
-    seller: "BG Wheat Traders OOD",
-    sellerVat: "BG987654321",
-    amountUSDC: 125000,
-    feeUSDC: 312.5, // 0.25%
-    amountEUR: 114500,
-    txHash: "0x8f2a...3c9b",
-    status: "BOOKED",
-    ipfsHash: "QmYwAP...7xH"
-  },
-  {
-    id: "TRD-103",
-    date: "2026-07-27",
-    buyer: "Hamburg Food Co",
-    buyerVat: "DE987654321",
-    seller: "Varna Logistics",
-    sellerVat: "BG123456789",
-    amountUSDC: 42000,
-    feeUSDC: 105, // 0.25%
-    amountEUR: 38200,
-    txHash: "0x1a4b...9e2f",
-    status: "PENDING_EXPORT",
-    ipfsHash: "QmTzQp...9xL"
-  },
-  {
-    id: "TRD-104",
-    date: "2026-07-30",
-    buyer: "Swiss Agrifood",
-    buyerVat: "CH123456",
-    seller: "Sofia Grains",
-    sellerVat: "BG456789123",
-    amountUSDC: 500000,
-    feeUSDC: 1250, // 0.25%
-    amountEUR: 458000,
-    txHash: "0x9c3d...1a2b",
-    status: "BOOKED",
-    ipfsHash: "QmX8cV...2bN"
-  }
-];
+type AccountingTrade = {
+  id: string;
+  blockchainTradeId: number | null;
+  productName: string;
+  quantity: string;
+  priceUsdc: string;
+  operationalStatus: string;
+  settlementStatus: string;
+  createdAt: string;
+  buyer: { companyName: string | null; vatNumber: string | null; walletAddress: string };
+  seller: { companyName: string | null; vatNumber: string | null; walletAddress: string };
+};
+
+const FEE_BASIS_POINTS = 0.0025; // 0.25%
 
 export default function AccountingDashboard() {
   const { language } = useLanguage();
   const [isExporting, setIsExporting] = useState(false);
+  const [trades, setTrades] = useState<AccountingTrade[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchTrades() {
+      try {
+        const res = await fetch('/api/escrow');
+        if (res.ok) {
+          setTrades(await res.json());
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchTrades();
+  }, []);
 
   // Local translations to ensure stability
   const at = {
@@ -75,6 +62,26 @@ export default function AccountingDashboard() {
   };
 
   const getTranslation = (key: keyof typeof at) => at[key][language] || at[key].EN;
+
+  const completedTrades = trades.map((trade) => {
+    const amountUSDC = parseFloat(trade.quantity) * parseFloat(trade.priceUsdc);
+    const feeUSDC = amountUSDC * FEE_BASIS_POINTS;
+    return {
+      id: trade.blockchainTradeId != null ? `#${trade.blockchainTradeId}` : trade.id.slice(0, 8).toUpperCase(),
+      uuid: trade.id,
+      date: new Date(trade.createdAt).toISOString().slice(0, 10),
+      buyer: trade.buyer?.companyName || trade.buyer?.walletAddress?.slice(0, 8) || "Unknown",
+      buyerVat: trade.buyer?.vatNumber || "—",
+      seller: trade.seller?.companyName || trade.seller?.walletAddress?.slice(0, 8) || "Unknown",
+      sellerVat: trade.seller?.vatNumber || "—",
+      amountUSDC,
+      feeUSDC,
+      amountEUR: amountUSDC * 0.916,
+      txHash: trade.blockchainTradeId != null ? `Blockchain #${trade.blockchainTradeId}` : "Not on-chain",
+      status: trade.settlementStatus,
+      ipfsHash: "—",
+    };
+  });
 
   const totalVolume = completedTrades.reduce((acc, curr) => acc + curr.amountUSDC, 0);
   const totalFees = completedTrades.reduce((acc, curr) => acc + curr.feeUSDC, 0);
@@ -254,12 +261,17 @@ export default function AccountingDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-800/50">
-                {completedTrades.map((trade, idx) => (
+                {loading ? (
+                  <tr><td colSpan={6} className="px-6 py-8 text-center text-zinc-500">Loading trades...</td></tr>
+                ) : completedTrades.length === 0 ? (
+                  <tr><td colSpan={6} className="px-6 py-8 text-center text-zinc-500">No trades yet.</td></tr>
+                ) : (
+                completedTrades.map((trade, idx) => (
                   <motion.tr 
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.1 }}
-                    key={trade.id} 
+                    transition={{ delay: idx * 0.05 }}
+                    key={trade.uuid} 
                     className="hover:bg-zinc-800/30 transition-colors"
                   >
                     <td className="px-6 py-4">
@@ -292,27 +304,28 @@ export default function AccountingDashboard() {
                       <div className="space-y-1">
                         <div className="flex items-center gap-1.5 text-xs font-mono bg-black/40 px-2 py-1 rounded text-zinc-400 border border-zinc-800/50">
                           <Fingerprint className="w-3 h-3 text-blue-400" />
-                          Tx: {trade.txHash}
-                        </div>
-                        <div className="flex items-center gap-1.5 text-xs font-mono bg-black/40 px-2 py-1 rounded text-zinc-400 border border-zinc-800/50">
-                          <Database className="w-3 h-3 text-purple-400" />
-                          IPFS: {trade.ipfsHash}
+                          {trade.txHash}
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      {trade.status === 'BOOKED' ? (
+                      {trade.status === "RELEASED" || trade.status === "COMPLETED" ? (
                         <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-full">
-                          <CheckCircle2 className="w-3.5 h-3.5" /> Booked
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Settled
+                        </span>
+                      ) : trade.status === "DISPUTED" ? (
+                        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-red-400 bg-red-500/10 border border-red-500/20 px-2.5 py-1 rounded-full">
+                          <Activity className="w-3.5 h-3.5" /> Disputed
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-full">
-                          <Clock className="w-3.5 h-3.5" /> Pending
+                          <Clock className="w-3.5 h-3.5" /> {trade.status}
                         </span>
                       )}
                     </td>
                   </motion.tr>
-                ))}
+                ))
+                )}
               </tbody>
             </table>
           </div>

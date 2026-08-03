@@ -282,6 +282,7 @@ const translations: Translations = {
 
   // Trade History
   "history.title": { EN: "Trade History", DE: "Handelsverlauf", BG: "История на сделките" },
+  "history.loading": { EN: "Loading...", DE: "Laden...", BG: "Зареждане..." },
   "history.desc": { EN: "View all your trades across the platform.", DE: "Alle Ihre Handelsgeschäfte auf der Plattform.", BG: "Преглед на всички ваши сделки." },
   "history.all": { EN: "All", DE: "Alle", BG: "Всички" },
   "history.active": { EN: "Active", DE: "Aktiv", BG: "Активни" },

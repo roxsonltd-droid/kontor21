@@ -8,38 +8,69 @@ type RouteContext = {
 export async function GET(_req: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params;
-    const trade = await prisma.tradeMetadata.findUnique({
-      where: { id },
-      include: { 
-        buyer: true, 
-        seller: true,
-        conditions: true,
-        evidence: true
-      },
-    });
+
+    const isNumeric = /^\d+$/.test(id);
+    const trade = isNumeric
+      ? await prisma.tradeMetadata.findFirst({
+          where: { blockchainTradeId: parseInt(id, 10) },
+          include: { buyer: true, seller: true, oracle: true, conditions: true, evidence: true },
+        })
+      : await prisma.tradeMetadata.findUnique({
+          where: { id },
+          include: { buyer: true, seller: true, oracle: true, conditions: true, evidence: true },
+        });
 
     if (!trade) {
-      // Fallback to mock data for demo purposes if not found in DB
-      return NextResponse.json({
-        id,
-        blockchainTradeId: 1,
-        productName: "High-Oleic Sunflower Seeds",
-        quantity: 50,
-        unit: "Tons",
-        priceUsdc: 1500,
-        conditions: [
-          { parameter: "moisture", operator: "<=", value: "8", unit: "%", providerRole: "LAB" }
-        ],
-        operationalStatus: "PENDING",
-        settlementStatus: "AWAITING_FUNDS",
-        buyer: { walletAddress: "0x1A2...3B4", companyName: "AgriBuyer GmbH" },
-        seller: { walletAddress: "0x9D4...1F2", companyName: "BioFood BG Ltd." },
-      });
+      return NextResponse.json({ error: "Trade not found" }, { status: 404 });
     }
 
     return NextResponse.json(trade);
   } catch (error) {
     console.error("[escrow-read]", error);
     return NextResponse.json({ error: "Failed to load escrow draft" }, { status: 500 });
+  }
+}
+
+export async function PATCH(req: NextRequest, context: RouteContext) {
+  try {
+    const { id } = await context.params;
+
+    const draft = await prisma.tradeMetadata.findUnique({ where: { id } });
+    if (!draft) {
+      return NextResponse.json({ error: "Trade not found" }, { status: 404 });
+    }
+
+    const body = await req.json();
+    const data: { blockchainTradeId?: number | null; operationalStatus?: string; settlementStatus?: string } = {};
+
+    if ("blockchainTradeId" in body) {
+      data.blockchainTradeId =
+        body.blockchainTradeId === null || body.blockchainTradeId === undefined
+          ? null
+          : parseInt(body.blockchainTradeId, 10);
+    }
+
+    if ("operationalStatus" in body && typeof body.operationalStatus === "string") {
+      data.operationalStatus = body.operationalStatus;
+    }
+
+    if ("settlementStatus" in body && typeof body.settlementStatus === "string") {
+      data.settlementStatus = body.settlementStatus;
+    }
+
+    if (Object.keys(data).length === 0) {
+      return NextResponse.json({ error: "No updatable fields provided" }, { status: 400 });
+    }
+
+    const updated = await prisma.tradeMetadata.update({
+      where: { id: draft.id },
+      data,
+      include: { buyer: true, seller: true, oracle: true, conditions: true, evidence: true },
+    });
+
+    return NextResponse.json(updated);
+  } catch (error) {
+    console.error("[escrow-patch]", error);
+    return NextResponse.json({ error: "Failed to update escrow draft" }, { status: 500 });
   }
 }

@@ -32,6 +32,16 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    let oracle = null;
+    if (body.oracleWallet) {
+      oracle = await prisma.user.findUnique({ where: { walletAddress: body.oracleWallet } });
+      if (!oracle) {
+        oracle = await prisma.user.create({
+          data: { walletAddress: body.oracleWallet, companyName: body.oracleName || null, role: "ORACLE" },
+        });
+      }
+    }
+
     // Prepare nested conditions creation if provided
     let conditionsCreate = undefined;
     if (body.conditions && Array.isArray(body.conditions)) {
@@ -55,6 +65,7 @@ export async function POST(req: NextRequest) {
         priceUsdc: body.priceUsdc,
         buyerId: buyer.id,
         sellerId: seller.id,
+        oracleId: oracle?.id || null,
         operationalStatus: "PENDING",
         settlementStatus: "AWAITING_FUNDS",
         conditions: conditionsCreate

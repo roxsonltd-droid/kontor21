@@ -25,6 +25,7 @@ function NewTradeWizard() {
   const [deliveryTerms, setDeliveryTerms] = useState(searchParams.get("terms") || "FOB");
   const [deliveryPort, setDeliveryPort] = useState(searchParams.get("port") || "Varna");
   const [oracle, setOracle] = useState("sgs");
+  const [oracleWallet, setOracleWallet] = useState(searchParams.get("oracle") || "");
   
   // Nexus Core: Structured Conditions
   const [conditions, setConditions] = useState([
@@ -73,6 +74,7 @@ function NewTradeWizard() {
             priceUsdc: parseFloat(price),
             buyerWallet,
             sellerWallet,
+            oracleWallet: oracleWallet || undefined,
             unit: "tons",
             conditions: conditions.map(c => ({
               parameter: c.parameter,
@@ -253,6 +255,16 @@ function NewTradeWizard() {
                     <h3 className="text-lg font-bold text-white mb-2">IoT Sensor Array</h3>
                     <p className="text-sm text-zinc-400">Automated unlocking based on GPS arrival and telemetry data.</p>
                   </div>
+                </div>
+
+                <div>
+                  <label className="text-xs text-zinc-500 font-semibold uppercase tracking-wider mb-2 block">Oracle Wallet (SGS Inspector)</label>
+                  <input
+                    value={oracleWallet}
+                    onChange={e => setOracleWallet(e.target.value)}
+                    placeholder="0x... (optional — required for on-chain deploy)"
+                    className="w-full bg-black/50 border border-zinc-700 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl px-4 py-3 text-white font-mono text-xs transition-all outline-none"
+                  />
                 </div>
 
                 <div className="mt-8 border-t border-zinc-800/50 pt-8">

@@ -19,6 +19,7 @@ model User {
   // Relations
   tradesAsBuyer  TradeMetadata[] @relation("BuyerTrades")
   tradesAsSeller TradeMetadata[] @relation("SellerTrades")
+  tradesAsOracle TradeMetadata[] @relation("OracleTrades")
 }
 
 model TradeMetadata {
@@ -33,6 +34,9 @@ model TradeMetadata {
   sellerId String
   buyer    User @relation("BuyerTrades", fields: [buyerId], references: [id])
   seller   User @relation("SellerTrades", fields: [sellerId], references: [id])
+
+  oracleId String?
+  oracle   User? @relation("OracleTrades", fields: [oracleId], references: [id])
 
   // Nexus Core: Separation of physical state and financial state
   operationalStatus String   @default("PENDING") // PENDING, SHIPPED, INSPECTED, CONDITIONS_SATISFIED, DISPUTED

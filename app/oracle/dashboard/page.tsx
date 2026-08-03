@@ -42,7 +42,7 @@ export default function OracleDashboard() {
     formattedAddress, 
     isConnecting, 
     connect: connectWallet, 
-    approveTradeByOracle 
+    proposeFullRelease
   } = useKontorEscrow();
 
   const loadTrades = useCallback(async (wallet: string | null) => {
@@ -115,13 +115,13 @@ export default function OracleDashboard() {
       const evidenceResult = await evidenceResponse.json();
       if (!evidenceResponse.ok) throw new Error(evidenceResult.error || "Evidence validation failed");
 
-      const success = await approveTradeByOracle(activeTrade.blockchainTradeId);
-      if (!success) throw new Error("On-chain release failed");
+      const success = await proposeFullRelease(activeTrade.blockchainTradeId, ipfsHash);
+      if (!success) throw new Error("On-chain release proposal failed");
 
       setIsApproved(true);
       await signedFetch(`/api/escrow/${activeTrade.id}`, {
         method: "PATCH",
-        body: JSON.stringify({ settlementStatus: "RELEASED", operationalStatus: "CONDITIONS_SATISFIED" }),
+        body: JSON.stringify({ operationalStatus: "CONDITIONS_SATISFIED" }),
       });
       await loadTrades(address);
     } catch (approvalError) {

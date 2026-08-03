@@ -25,7 +25,7 @@ export default function BuyerDashboard() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [trades, setTrades] = useState<BuyerTrade[]>([]);
   const [loadingTrades, setLoadingTrades] = useState(true);
-  const { address, formattedAddress, isConnecting, connect, fundTrade } = useKontorEscrow();
+  const { address, formattedAddress, isConnecting, connect, fundTrade, approveRelease } = useKontorEscrow();
 
   useEffect(() => {
     async function fetchTrades() {
@@ -61,6 +61,26 @@ export default function BuyerDashboard() {
     } else {
       alert("Error funding trade.");
     }
+  };
+
+  const handleApproveRelease = async (trade: BuyerTrade) => {
+    if (trade.blockchainTradeId == null) return;
+    setIsProcessing(true);
+    const success = await approveRelease(trade.blockchainTradeId);
+    if (success) {
+      await signedFetch(`/api/escrow/${trade.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ settlementStatus: "RELEASED" }),
+      });
+      setTrades((current) =>
+        current.map((item) =>
+          item.id === trade.id ? { ...item, settlementStatus: "RELEASED" } : item
+        )
+      );
+    } else {
+      alert("No pending release proposal or approval failed.");
+    }
+    setIsProcessing(false);
   };
 
   return (
@@ -335,6 +355,15 @@ export default function BuyerDashboard() {
                             >
                               <Wallet className="w-3 h-3" />
                               {isProcessing ? 'Locking...' : 'Deposit'}
+                            </button>
+                          ) : trade.settlementStatus === "FUNDED" && trade.blockchainTradeId != null ? (
+                            <button
+                              onClick={() => handleApproveRelease(trade)}
+                              disabled={isProcessing || !address}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <CheckCircle2 className="w-3 h-3" />
+                              {isProcessing ? "Approving..." : "Approve release"}
                             </button>
                           ) : (
                             <Link href={`/trade/${trade.id}`} className="inline-flex items-center gap-1 text-xs font-medium text-zinc-400 hover:text-white transition-colors">

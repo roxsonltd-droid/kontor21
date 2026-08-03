@@ -27,7 +27,8 @@ async function main() {
     oracle.address,
     seller.address,
     deployer.address,
-    25
+    25,
+    usdcAddress
   );
   await escrow.waitForDeployment();
   const escrowAddress = await escrow.getAddress();
@@ -62,9 +63,11 @@ async function main() {
 
   // 6. Partial Release (Rules Engine / Oracle)
   const partialAmount = ethers.parseUnits("25000", 6);
-  console.log(`\nOracle releasing partial amount: ${ethers.formatUnits(partialAmount, 6)} USDC...`);
-  const releaseTx = await escrow.connect(oracle).releaseFunds(tradeId, partialAmount);
-  await releaseTx.wait();
+  const evidenceRoot = ethers.keccak256(ethers.toUtf8Bytes("ipfs://demo-evidence"));
+  console.log(`\nOracle proposing partial amount: ${ethers.formatUnits(partialAmount, 6)} USDC...`);
+  await (await escrow.connect(oracle).proposeRelease(tradeId, partialAmount, evidenceRoot)).wait();
+  console.log("Buyer approving the proposed release...");
+  await (await escrow.connect(buyer).approveRelease(tradeId)).wait();
   console.log("Partial funds released to Seller.");
 
   // 7. Dispute & Resolution (Multisig)

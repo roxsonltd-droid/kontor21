@@ -2,6 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { authenticateWalletRequest, isConfiguredArbitrator } from "@/lib/api-auth";
 import { getAddress, isAddress } from "ethers";
+import { ConditionOperator, ProviderRole } from "@prisma/client";
+
+const CONDITION_OPERATORS: Record<string, ConditionOperator> = {
+  "<=": ConditionOperator.LTE,
+  ">=": ConditionOperator.GTE,
+  "<": ConditionOperator.LT,
+  ">": ConditionOperator.GT,
+  "==": ConditionOperator.EQ,
+};
+const PROVIDER_ROLES = new Set<ProviderRole>(Object.values(ProviderRole));
 
 const PUBLIC_ORIGIN = (
   process.env.NEXT_PUBLIC_APP_URL ||
@@ -12,7 +22,7 @@ const PUBLIC_ORIGIN = (
 export async function POST(req: NextRequest) {
   try {
     const rawBody = await req.text();
-    const actorWallet = authenticateWalletRequest(req, rawBody);
+    const actorWallet = await authenticateWalletRequest(req, rawBody);
     if (!actorWallet) {
       return NextResponse.json({ error: "Valid wallet signature required" }, { status: 401 });
     }
@@ -61,13 +71,21 @@ export async function POST(req: NextRequest) {
     // Prepare nested conditions creation if provided
     let conditionsCreate = undefined;
     if (body.conditions && Array.isArray(body.conditions)) {
+      const validConditions = body.conditions.every(
+        (condition: { operator?: string; providerRole?: string }) =>
+          Boolean(condition.operator && CONDITION_OPERATORS[condition.operator]) &&
+          Boolean(condition.providerRole && PROVIDER_ROLES.has(condition.providerRole as ProviderRole))
+      );
+      if (!validConditions) {
+        return NextResponse.json({ error: "Invalid condition operator or provider role" }, { status: 400 });
+      }
       conditionsCreate = {
         create: body.conditions.map((c: { parameter: string; operator: string; value: string; unit?: string | null; providerRole?: string; isRequired?: boolean }) => ({
           parameter: c.parameter,
-          operator: c.operator,
+          operator: CONDITION_OPERATORS[c.operator],
           value: c.value,
           unit: c.unit || null,
-          providerRole: c.providerRole || "INSPECTOR",
+          providerRole: c.providerRole as ProviderRole,
           isRequired: c.isRequired !== undefined ? c.isRequired : true
         }))
       };
@@ -115,7 +133,7 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
-    const actorWallet = authenticateWalletRequest(req, "");
+    const actorWallet = await authenticateWalletRequest(req, "");
     if (!actorWallet) {
       return NextResponse.json({ error: "Valid wallet signature required" }, { status: 401 });
     }

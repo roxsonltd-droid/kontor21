@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { authenticateWalletRequest, isConfiguredArbitrator } from "@/lib/api-auth";
+import type { OperationalStatus, SettlementStatus } from "@prisma/client";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -42,12 +43,16 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     }
 
     const rawBody = await req.text();
-    const actorWallet = authenticateWalletRequest(req, rawBody);
+    const actorWallet = await authenticateWalletRequest(req, rawBody);
     if (!actorWallet) {
       return NextResponse.json({ error: "Valid wallet signature required" }, { status: 401 });
     }
     const body = JSON.parse(rawBody);
-    const data: { blockchainTradeId?: number | null; operationalStatus?: string; settlementStatus?: string } = {};
+    const data: {
+      blockchainTradeId?: number | null;
+      operationalStatus?: OperationalStatus;
+      settlementStatus?: SettlementStatus;
+    } = {};
 
     if ("blockchainTradeId" in body) {
       const parsedTradeId =
@@ -65,7 +70,7 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       if (!allowedOperationalStatuses.includes(body.operationalStatus)) {
         return NextResponse.json({ error: "Invalid operationalStatus" }, { status: 400 });
       }
-      data.operationalStatus = body.operationalStatus;
+      data.operationalStatus = body.operationalStatus as OperationalStatus;
     }
 
     if ("settlementStatus" in body && typeof body.settlementStatus === "string") {
@@ -73,7 +78,7 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       if (!allowedSettlementStatuses.includes(body.settlementStatus)) {
         return NextResponse.json({ error: "Invalid settlementStatus" }, { status: 400 });
       }
-      data.settlementStatus = body.settlementStatus;
+      data.settlementStatus = body.settlementStatus as SettlementStatus;
     }
 
     if (Object.keys(data).length === 0) {
@@ -96,7 +101,8 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       (data.blockchainTradeId !== undefined && isSeller) ||
       (data.settlementStatus === "FUNDED" && isBuyer) ||
       (data.operationalStatus === "DISPUTED" && (isBuyer || isSeller)) ||
-      ((data.settlementStatus === "RELEASED" || data.operationalStatus === "CONDITIONS_SATISFIED") && isOracle) ||
+      (data.operationalStatus === "CONDITIONS_SATISFIED" && isOracle) ||
+      (data.settlementStatus === "RELEASED" && isBuyer) ||
       (data.settlementStatus === "REFUNDED" && isArbitrator);
     if (!allowed) {
       return NextResponse.json({ error: "Wallet is not authorized for this transition" }, { status: 403 });

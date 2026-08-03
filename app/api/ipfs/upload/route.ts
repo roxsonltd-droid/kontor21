@@ -9,7 +9,7 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp"]);
 
 export async function POST(req: NextRequest) {
-  const actorWallet = authenticateWalletRequest(req, "");
+  const actorWallet = await authenticateWalletRequest(req, "");
   if (!actorWallet) {
     return NextResponse.json({ error: "Valid wallet signature required" }, { status: 401 });
   }

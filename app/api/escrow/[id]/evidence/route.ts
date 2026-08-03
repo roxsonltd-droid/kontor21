@@ -26,7 +26,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params;
     const rawBody = await req.text();
-    const actorWallet = authenticateWalletRequest(req, rawBody);
+    const actorWallet = await authenticateWalletRequest(req, rawBody);
     if (!actorWallet) {
       return NextResponse.json({ error: "Valid wallet signature required" }, { status: 401 });
     }
@@ -73,11 +73,11 @@ export async function POST(req: NextRequest, context: RouteContext) {
       
       if (!isNaN(numValue) && !isNaN(conditionNum)) {
         switch (targetCondition.operator) {
-          case "<=": isValid = numValue <= conditionNum; break;
-          case ">=": isValid = numValue >= conditionNum; break;
-          case "<": isValid = numValue < conditionNum; break;
-          case ">": isValid = numValue > conditionNum; break;
-          case "==": isValid = numValue === conditionNum; break;
+          case "LTE": isValid = numValue <= conditionNum; break;
+          case "GTE": isValid = numValue >= conditionNum; break;
+          case "LT": isValid = numValue < conditionNum; break;
+          case "GT": isValid = numValue > conditionNum; break;
+          case "EQ": isValid = numValue === conditionNum; break;
           default: isValid = verifiedValue === targetCondition.value;
         }
       } else {
@@ -93,7 +93,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
         documentHash,
         providerWallet: actorWallet,
         verifiedValue: verifiedValue || null,
-        isValid
+        validationStatus: isValid === true ? "VALID" : isValid === false ? "INVALID" : "PENDING"
       }
     });
 
@@ -114,7 +114,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
     const requiredConditions = trade.conditions.filter(c => c.isRequired);
     const metConditions = requiredConditions.filter(c => {
       // Find valid evidence for this condition
-      return allEvidence.some(e => e.conditionId === c.id && e.isValid === true);
+      return allEvidence.some(e => e.conditionId === c.id && e.validationStatus === "VALID");
     });
 
     if (requiredConditions.length > 0 && metConditions.length === requiredConditions.length) {

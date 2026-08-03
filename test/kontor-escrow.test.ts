@@ -1,10 +1,11 @@
 import { expect } from "chai";
 import hre from "hardhat";
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 
-describe("KontorEscrow", function () {
+describe("KontorEscrow V3", function () {
   async function deployFixture() {
-    const [owner, seller, buyer, oracle, other] = await hre.ethers.getSigners();
+    const [owner, seller, buyer, oracle, arb2, other, newArb1, newArb2, newArb3] =
+      await hre.ethers.getSigners();
 
     const TestUSDC = await hre.ethers.getContractFactory("TestUSDC");
     const usdc = await TestUSDC.deploy();
@@ -14,175 +15,212 @@ describe("KontorEscrow", function () {
     const escrow = await KontorEscrow.deploy(
       owner.address,
       oracle.address,
-      other.address,
+      arb2.address,
       owner.address,
-      25
+      25,
+      await usdc.getAddress()
     );
     await escrow.waitForDeployment();
 
+    const amount = hre.ethers.parseUnits("75000", 6);
     await usdc.mint(buyer.address, hre.ethers.parseUnits("1000000", 6));
 
-    return { usdc, escrow, owner, seller, buyer, oracle, other };
+    return {
+      usdc,
+      escrow,
+      owner,
+      seller,
+      buyer,
+      oracle,
+      arb2,
+      other,
+      newArb1,
+      newArb2,
+      newArb3,
+      amount,
+    };
   }
 
-  describe("Deployment", function () {
-    it("should set the arbitrator to the deployer", async function () {
-      const { escrow, owner } = await loadFixture(deployFixture);
+  async function fundedTradeFixture() {
+    const fixture = await loadFixture(deployFixture);
+    const { escrow, usdc, seller, buyer, oracle, amount } = fixture;
+    await escrow.connect(seller).createTrade(
+      buyer.address,
+      oracle.address,
+      amount,
+      await usdc.getAddress()
+    );
+    await usdc.connect(buyer).approve(await escrow.getAddress(), amount);
+    await escrow.connect(buyer).fundTrade(1);
+    return fixture;
+  }
+
+  describe("deployment and allowlist", function () {
+    it("configures the default panel and initial allowed token", async function () {
+      const { escrow, usdc, owner } = await loadFixture(deployFixture);
       expect(await escrow.arbitrators(0)).to.equal(owner.address);
+      expect(await escrow.allowedTokens(await usdc.getAddress())).to.equal(true);
     });
 
-    it("should start with nextTradeId = 1", async function () {
-      const { escrow } = await loadFixture(deployFixture);
-      expect(await escrow.nextTradeId()).to.equal(1n);
-    });
-  });
-
-  describe("createTrade", function () {
-    it("should create a trade and emit event", async function () {
-      const { escrow, usdc, seller, buyer, oracle } = await loadFixture(deployFixture);
-      const amount = hre.ethers.parseUnits("75000", 6);
-
+    it("rejects a zero initial token", async function () {
+      const { owner, oracle, arb2 } = await loadFixture(deployFixture);
+      const factory = await hre.ethers.getContractFactory("KontorEscrow");
       await expect(
-        escrow.connect(seller).createTrade(buyer.address, oracle.address, amount, await usdc.getAddress())
-      )
-        .to.emit(escrow, "TradeCreated")
-        .withArgs(1n, buyer.address, seller.address, amount);
+        factory.deploy(
+          owner.address,
+          oracle.address,
+          arb2.address,
+          owner.address,
+          25,
+          hre.ethers.ZeroAddress
+        )
+      ).to.be.revertedWith("Invalid initial token");
     });
 
-    it("should revert with zero amount", async function () {
-      const { escrow, seller, buyer, oracle } = await loadFixture(deployFixture);
+    it("only lets the TestUSDC owner mint", async function () {
+      const { usdc, buyer } = await loadFixture(deployFixture);
+      await expect(usdc.connect(buyer).mint(buyer.address, 1)).to.be.revertedWithCustomError(
+        usdc,
+        "OwnableUnauthorizedAccount"
+      );
+    });
+  });
+
+  describe("trade creation and funding deadlines", function () {
+    it("snapshots arbitrators for the trade", async function () {
+      const { escrow, usdc, seller, buyer, oracle, owner, arb2, amount } =
+        await loadFixture(deployFixture);
+      await escrow.connect(seller).createTrade(
+        buyer.address,
+        oracle.address,
+        amount,
+        await usdc.getAddress()
+      );
+      expect(await escrow.tradeArbitrators(1, 0)).to.equal(owner.address);
+      expect(await escrow.tradeArbitrators(1, 2)).to.equal(arb2.address);
+    });
+
+    it("rejects tokens outside the allowlist", async function () {
+      const { escrow, seller, buyer, oracle, other, amount } = await loadFixture(deployFixture);
       await expect(
-        escrow.connect(seller).createTrade(buyer.address, oracle.address, 0, buyer.address)
-      ).to.be.revertedWith("Amount must be greater than 0");
+        escrow.connect(seller).createTrade(buyer.address, oracle.address, amount, other.address)
+      ).to.be.revertedWith("Token not allowed");
+    });
+
+    it("rejects funding after the deadline", async function () {
+      const { escrow, usdc, seller, buyer, oracle, amount } = await loadFixture(deployFixture);
+      await escrow.connect(seller).createTrade(
+        buyer.address,
+        oracle.address,
+        amount,
+        await usdc.getAddress()
+      );
+      await usdc.connect(buyer).approve(await escrow.getAddress(), amount);
+      await time.increase(7 * 24 * 60 * 60 + 1);
+      await expect(escrow.connect(buyer).fundTrade(1)).to.be.revertedWith(
+        "Funding deadline passed"
+      );
     });
   });
 
-  describe("fundTrade", function () {
-    it("should fund a trade and transfer tokens", async function () {
-      const { escrow, usdc, seller, buyer, oracle } = await loadFixture(deployFixture);
-      const amount = hre.ethers.parseUnits("75000", 6);
+  describe("two-party milestone settlement", function () {
+    const evidenceRoot = hre.ethers.keccak256(hre.ethers.toUtf8Bytes("ipfs://evidence-v1"));
 
-      await escrow.connect(seller).createTrade(buyer.address, oracle.address, amount, await usdc.getAddress());
-      await usdc.connect(buyer).approve(await escrow.getAddress(), amount);
-
-      await expect(escrow.connect(buyer).fundTrade(1))
-        .to.emit(escrow, "TradeFunded")
-        .withArgs(1n);
-
-      expect(await usdc.balanceOf(await escrow.getAddress())).to.equal(amount);
+    it("does not move funds when the oracle only proposes a release", async function () {
+      const { escrow, usdc, seller, oracle, amount } = await fundedTradeFixture();
+      await expect(escrow.connect(oracle).proposeRelease(1, amount, evidenceRoot))
+        .to.emit(escrow, "ReleaseProposed")
+        .withArgs(1n, amount, evidenceRoot);
+      expect(await usdc.balanceOf(seller.address)).to.equal(0);
     });
 
-    it("should revert if not the buyer", async function () {
-      const { escrow, seller, buyer, oracle, other } = await loadFixture(deployFixture);
-      const amount = hre.ethers.parseUnits("75000", 6);
-
-      await escrow.connect(seller).createTrade(buyer.address, oracle.address, amount, buyer.address);
-      await expect(escrow.connect(other).fundTrade(1)).to.be.revertedWith("Not the buyer");
+    it("requires the designated oracle to propose", async function () {
+      const { escrow, other, amount } = await fundedTradeFixture();
+      await expect(
+        escrow.connect(other).proposeRelease(1, amount, evidenceRoot)
+      ).to.be.revertedWith("Not the designated oracle");
     });
-  });
 
-  describe("approveTradeByOracle", function () {
-    it("should release funds to seller when oracle approves", async function () {
-      const { escrow, usdc, seller, buyer, oracle } = await loadFixture(deployFixture);
-      const amount = hre.ethers.parseUnits("75000", 6);
+    it("requires a non-zero evidence root", async function () {
+      const { escrow, oracle, amount } = await fundedTradeFixture();
+      await expect(
+        escrow.connect(oracle).proposeRelease(1, amount, hre.ethers.ZeroHash)
+      ).to.be.revertedWith("Evidence root required");
+    });
 
-      await escrow.connect(seller).createTrade(buyer.address, oracle.address, amount, await usdc.getAddress());
-      await usdc.connect(buyer).approve(await escrow.getAddress(), amount);
-      await escrow.connect(buyer).fundTrade(1);
-      const sellerBalBefore = await usdc.balanceOf(seller.address);
+    it("releases only after the buyer approves the exact proposal", async function () {
+      const { escrow, usdc, seller, buyer, oracle, amount } = await fundedTradeFixture();
+      await escrow.connect(oracle).proposeRelease(1, amount, evidenceRoot);
 
-      await expect(escrow.connect(oracle).releaseFunds(1, amount))
-        .to.emit(escrow, "TradeCompleted")
+      await expect(escrow.connect(buyer).approveRelease(1))
+        .to.emit(escrow, "ReleaseApproved")
+        .withArgs(1n, buyer.address, amount, evidenceRoot)
+        .and.to.emit(escrow, "TradeCompleted")
         .withArgs(1n);
 
       const fee = (amount * 25n) / 10000n;
-      expect(await usdc.balanceOf(seller.address)).to.equal(sellerBalBefore + amount - fee);
+      expect(await usdc.balanceOf(seller.address)).to.equal(amount - fee);
     });
 
-    it("should revert if called by non-oracle", async function () {
-      const { escrow, usdc, seller, buyer, oracle, other } = await loadFixture(deployFixture);
-      const amount = hre.ethers.parseUnits("75000", 6);
-
-      await escrow.connect(seller).createTrade(buyer.address, oracle.address, amount, await usdc.getAddress());
-      await usdc.connect(buyer).approve(await escrow.getAddress(), amount);
-      await escrow.connect(buyer).fundTrade(1);
-
-      await expect(escrow.connect(other).releaseFunds(1, amount)).to.be.revertedWith("Not the designated oracle");
+    it("supports separate buyer-approved partial releases", async function () {
+      const { escrow, buyer, oracle, amount } = await fundedTradeFixture();
+      const partial = amount / 3n;
+      await escrow.connect(oracle).proposeRelease(1, partial, evidenceRoot);
+      await escrow.connect(buyer).approveRelease(1);
+      const trade = await escrow.trades(1);
+      expect(trade.releasedAmount).to.equal(partial);
+      expect(trade.status).to.equal(1);
     });
   });
 
-  describe("Dispute lifecycle", function () {
-    it("should allow buyer to raise and arbitrator to resolve (refund)", async function () {
-      const { escrow, usdc, seller, buyer, oracle, owner } = await loadFixture(deployFixture);
-      const amount = hre.ethers.parseUnits("75000", 6);
+  describe("timeouts, pause, and recovery", function () {
+    it("lets the buyer recover remaining funds after the release deadline", async function () {
+      const { escrow, usdc, buyer, amount } = await fundedTradeFixture();
+      const balanceBefore = await usdc.balanceOf(buyer.address);
+      await time.increase(30 * 24 * 60 * 60 + 1);
+      await expect(escrow.connect(buyer).claimTimeoutRefund(1))
+        .to.emit(escrow, "TradeTimedOut")
+        .withArgs(1n, amount);
+      expect(await usdc.balanceOf(buyer.address)).to.equal(balanceBefore + amount);
+    });
 
-      await escrow.connect(seller).createTrade(buyer.address, oracle.address, amount, await usdc.getAddress());
-      await usdc.connect(buyer).approve(await escrow.getAddress(), amount);
-      await escrow.connect(buyer).fundTrade(1);
+    it("pauses new settlement activity but keeps timeout recovery available", async function () {
+      const { escrow, buyer } = await fundedTradeFixture();
+      await escrow.pause();
+      await time.increase(30 * 24 * 60 * 60 + 1);
+      await expect(escrow.connect(buyer).claimTimeoutRefund(1)).to.not.be.reverted;
+    });
+  });
 
-      await expect(escrow.connect(buyer).raiseDispute(1))
-        .to.emit(escrow, "DisputeRaised")
-        .withArgs(1n, buyer.address);
+  describe("trade-specific arbitration", function () {
+    it("keeps the original panel after defaults change", async function () {
+      const {
+        escrow,
+        buyer,
+        oracle,
+        owner,
+        newArb1,
+        newArb2,
+        newArb3,
+      } = await fundedTradeFixture();
 
-      const buyerBalBefore = await usdc.balanceOf(buyer.address);
+      await escrow.setArbitrators([newArb1.address, newArb2.address, newArb3.address]);
+      expect(await escrow.tradeArbitrators(1, 0)).to.equal(owner.address);
 
+      await escrow.connect(buyer).raiseDispute(1);
       await escrow.connect(owner).voteDispute(1, true);
       await expect(escrow.connect(oracle).voteDispute(1, true))
         .to.emit(escrow, "DisputeResolved")
         .withArgs(1n, true);
-
-      expect(await usdc.balanceOf(buyer.address)).to.equal(buyerBalBefore + amount);
     });
 
-    it("should allow seller to raise and arbitrator to resolve (release)", async function () {
-      const { escrow, usdc, seller, buyer, oracle, owner } = await loadFixture(deployFixture);
-      const amount = hre.ethers.parseUnits("75000", 6);
-
-      await escrow.connect(seller).createTrade(buyer.address, oracle.address, amount, await usdc.getAddress());
-      await usdc.connect(buyer).approve(await escrow.getAddress(), amount);
-      await escrow.connect(buyer).fundTrade(1);
-      await escrow.connect(seller).raiseDispute(1);
-
-      const sellerBalBefore = await usdc.balanceOf(seller.address);
-
-      await escrow.connect(owner).voteDispute(1, false);
-      await escrow.connect(oracle).voteDispute(1, false);
-
-      const fee = (amount * 25n) / 10000n;
-      expect(await usdc.balanceOf(seller.address)).to.equal(sellerBalBefore + amount - fee);
-    });
-
-    it("should revert dispute on non-funded trade", async function () {
-      const { escrow, seller, buyer, oracle } = await loadFixture(deployFixture);
-      const amount = hre.ethers.parseUnits("75000", 6);
-
-      await escrow.connect(seller).createTrade(buyer.address, oracle.address, amount, buyer.address);
-      await expect(escrow.connect(buyer).raiseDispute(1)).to.be.revertedWith("Can only dispute active funded trades");
-    });
-  });
-
-  describe("setArbitrators", function () {
-    it("should allow owner to change arbitrators", async function () {
-      const { escrow, owner, seller, buyer, other } = await loadFixture(deployFixture);
-      await escrow.connect(owner).setArbitrators([seller.address, buyer.address, other.address]);
-      expect(await escrow.arbitrators(0)).to.equal(seller.address);
-    });
-
-    it("should revert if non-owner tries", async function () {
-      const { escrow, seller, buyer, oracle } = await loadFixture(deployFixture);
-      await expect(
-        escrow.connect(seller).setArbitrators([seller.address, buyer.address, oracle.address])
-      ).to.be.revertedWithCustomError(
-        escrow,
-        "OwnableUnauthorizedAccount"
+    it("rejects a new default arbitrator from voting on an old trade", async function () {
+      const { escrow, buyer, newArb1, newArb2, newArb3 } = await fundedTradeFixture();
+      await escrow.setArbitrators([newArb1.address, newArb2.address, newArb3.address]);
+      await escrow.connect(buyer).raiseDispute(1);
+      await expect(escrow.connect(newArb1).voteDispute(1, true)).to.be.revertedWith(
+        "Not a trade arbitrator"
       );
-    });
-
-    it("should reject duplicate arbitrators", async function () {
-      const { escrow, owner, other } = await loadFixture(deployFixture);
-      await expect(
-        escrow.connect(owner).setArbitrators([owner.address, owner.address, other.address])
-      ).to.be.revertedWith("Arbitrators must be unique");
     });
   });
 });

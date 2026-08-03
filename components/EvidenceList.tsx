@@ -7,7 +7,7 @@ type EvidenceItem = {
   documentHash: string;
   providerWallet: string;
   verifiedValue?: string | null;
-  isValid?: boolean | null;
+  validationStatus: "PENDING" | "VALID" | "INVALID" | "CONFLICTING" | "EXPIRED" | "REVOKED" | "MANUAL_REVIEW";
   createdAt: string;
 };
 
@@ -71,7 +71,7 @@ export default function EvidenceList({ tradeId }: EvidenceListProps) {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                {e.isValid && (
+                {e.validationStatus === "VALID" && (
                   <span className="text-emerald-400 text-sm font-medium">{t('trade.valid')}</span>
                 )}
                 <a

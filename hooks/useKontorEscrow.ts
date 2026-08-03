@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { BrowserProvider, Contract, parseUnits, formatUnits } from "ethers";
+import { BrowserProvider, Contract, parseUnits, formatUnits, keccak256, toUtf8Bytes } from "ethers";
 import {
   CONTRACT_ADDRESSES,
   KONTOR_ESCROW_ABI,
@@ -169,34 +169,68 @@ export function useKontorEscrow() {
     [escrowContract, usdcContract]
   );
 
-  const releaseFunds = useCallback(
-    async (tradeId: number, amount: number) => {
+  const proposeRelease = useCallback(
+    async (tradeId: number, amount: number, evidenceCid: string) => {
       if (!escrowContract) return false;
       try {
         const amountWei = parseUnits(amount.toString(), 6);
-        const tx = await escrowContract.releaseFunds(tradeId, amountWei);
+        const evidenceRoot = keccak256(toUtf8Bytes(`ipfs://${evidenceCid}`));
+        const tx = await escrowContract.proposeRelease(tradeId, amountWei, evidenceRoot);
         await tx.wait();
         return true;
       } catch (error) {
-        console.error("releaseFunds failed", error);
+        console.error("proposeRelease failed", error);
         return false;
       }
     },
     [escrowContract]
   );
 
-  const approveTradeByOracle = useCallback(
-    async (tradeId: number) => {
+  const proposeFullRelease = useCallback(
+    async (tradeId: number, evidenceCid: string) => {
       if (!escrowContract) return false;
       try {
         const trade = await escrowContract.trades(tradeId);
         const remaining = trade.totalAmount - trade.releasedAmount;
         if (remaining <= BigInt(0)) return false;
-        const tx = await escrowContract.releaseFunds(tradeId, remaining);
+        const evidenceRoot = keccak256(toUtf8Bytes(`ipfs://${evidenceCid}`));
+        const tx = await escrowContract.proposeRelease(tradeId, remaining, evidenceRoot);
         await tx.wait();
         return true;
       } catch (error) {
-        console.error("approveTradeByOracle failed", error);
+        console.error("proposeFullRelease failed", error);
+        return false;
+      }
+    },
+    [escrowContract]
+  );
+
+  const approveRelease = useCallback(
+    async (tradeId: number) => {
+      if (!escrowContract) return false;
+      try {
+        const pendingAmount = await escrowContract.pendingReleaseAmounts(tradeId);
+        if (pendingAmount <= BigInt(0)) return false;
+        const tx = await escrowContract.approveRelease(tradeId);
+        await tx.wait();
+        return true;
+      } catch (error) {
+        console.error("approveRelease failed", error);
+        return false;
+      }
+    },
+    [escrowContract]
+  );
+
+  const claimTimeoutRefund = useCallback(
+    async (tradeId: number) => {
+      if (!escrowContract) return false;
+      try {
+        const tx = await escrowContract.claimTimeoutRefund(tradeId);
+        await tx.wait();
+        return true;
+      } catch (error) {
+        console.error("claimTimeoutRefund failed", error);
         return false;
       }
     },
@@ -282,8 +316,10 @@ export function useKontorEscrow() {
     connect,
     createTrade,
     fundTrade,
-    releaseFunds,
-    approveTradeByOracle,
+    proposeRelease,
+    proposeFullRelease,
+    approveRelease,
+    claimTimeoutRefund,
     raiseDispute,
     voteDispute,
     getTrade,

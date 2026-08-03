@@ -1,8 +1,138 @@
 # Kontor21
 
-Kontor21 is a Web3 escrow platform for agricultural B2B trades. It combines a
-Next.js application, PostgreSQL/Prisma metadata, IPFS evidence, and a Polygon
-smart contract with milestone releases and 2-of-3 arbitration.
+Kontor21 is a testnet trade-assurance and escrow prototype for agricultural B2B
+transactions. It combines a Next.js application, PostgreSQL/Prisma metadata,
+IPFS evidence, and a Polygon smart contract with buyer-approved milestone
+releases and trade-specific 2-of-3 arbitration.
+
+> **Testnet warning:** The current deployment flow uses `TestUSDC`, a mock token
+> with no monetary value. Kontor21 has not completed an independent smart
+> contract audit and must not be used with real funds.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    B[Buyer wallet] --> UI[Next.js application]
+    S[Seller wallet] --> UI
+    P[Inspector or laboratory wallet] --> UI
+    O[Oracle wallet] --> UI
+    UI --> API[Signed API routes]
+    API --> DB[(PostgreSQL)]
+    API --> IPFS[Pinata / IPFS]
+    UI --> SC[KontorEscrow V3<br/>Polygon Amoy]
+    A1[Trade arbitrator 1] --> SC
+    A2[Trade arbitrator 2] --> SC
+    A3[Trade arbitrator 3] --> SC
+    O -->|propose release + evidence root| SC
+    B -->|approve exact proposal| SC
+```
+
+The smart contract is a settlement adapter. PostgreSQL and IPFS hold the
+structured trade and evidence workflow; the contract controls token custody and
+requires separate oracle and buyer actions before a milestone can be paid.
+
+## Settlement security model
+
+1. The seller creates a trade using an allowlisted token.
+2. The buyer funds it before the seven-day funding deadline.
+3. Approved evidence providers upload documents to IPFS and submit measured
+   values to the rules API.
+4. The designated oracle proposes an on-chain release amount and evidence root.
+5. The buyer must separately approve that exact pending proposal.
+6. If no release completes within 30 days of funding, the buyer can recover the
+   remaining escrow balance.
+7. Either trading party can raise a dispute. Two of the three arbitrators
+   snapshotted when the trade was created resolve the remaining balance.
+
+Changing the default arbitrator list affects future trades only. Existing trade
+panels cannot be replaced by the owner.
+
+## Trust assumptions and administrative powers
+
+- The buyer controls final approval of normal milestone releases.
+- The oracle can propose, but cannot unilaterally transfer funds.
+- Evidence validity still depends on the approved provider registry and the
+  off-chain rules implementation.
+- Three independently controlled arbitrator keys are required. Two can resolve
+  a dispute.
+- The contract owner can pause new creation, funding, and releases; change the
+  token allowlist; and change the default panel for future trades.
+- Timeout refunds and dispute resolution remain available during a pause.
+- The owner should be a multisig before any non-demo deployment. A timelock is
+  not implemented yet.
+- Pinata availability is not required to verify an existing CID, but document
+  retrieval depends on at least one IPFS provider retaining the content.
+
+## API authentication
+
+Protected API requests use a wallet signature bound to:
+
+- request domain;
+- Polygon Amoy chain ID;
+- one-time server nonce;
+- issuance timestamp and five-minute expiry;
+- HTTP method;
+- route path;
+- exact request body.
+
+The nonce is atomically marked as used before authorization succeeds, preventing
+the same captured request from being replayed. Authentication proves wallet
+control; each route must still enforce buyer, seller, oracle, provider, or
+arbitrator authorization separately.
+
+## IPFS threat model
+
+- A CID proves content identity, not truth, authorship, legality, or quality.
+- Provider wallet authorization is checked before evidence is accepted.
+- The server calculates a SHA-256 digest and records it in Pinata metadata.
+- A malicious or compromised provider can still submit false source data.
+- Public IPFS documents must not contain secrets or regulated personal data.
+- Availability requires pinning redundancy; the current MVP uses one configured
+  Pinata account.
+- Certificate revocation, issuer signatures, schema versions, and accreditation
+  expiry are known future requirements.
+
+## Demo versus implemented functionality
+
+Implemented:
+
+- wallet-signed API mutations with one-time nonces;
+- PostgreSQL trade, condition, evidence, and audit records;
+- Pinata/IPFS file upload;
+- token allowlist and zero-address validation;
+- buyer-approved partial settlement;
+- funding and release deadlines;
+- timeout refunds;
+- per-trade 2-of-3 arbitration;
+- emergency pause;
+- interactive no-wallet product demo.
+
+Prototype or presentation-only:
+
+- market intelligence and AI sourcing content;
+- OCR and automated document extraction;
+- provider accreditation and certificate revocation;
+- organization membership and granular permissions;
+- blockchain event indexer and automated database reconciliation;
+- email and push notification delivery;
+- legal, KYC/KYB, accounting, and tax integrations.
+
+Do not describe the current system as fully decentralized or mathematically
+verifying the truth of manually supplied evidence.
+
+## Contract addresses
+
+The files `contract-addresses.json` and `lib/contract-addresses.json` are updated
+by the deployment script.
+
+| Environment | Escrow | Token | Explorer |
+|---|---|---|---|
+| Local Hardhat | Generated per run | TestUSDC | Not applicable |
+| Polygon Amoy staging | Pending deployment | TestUSDC — no value | Pending Polygonscan link |
+| Polygon mainnet | Not approved | Not approved | Not applicable |
+
+Never copy local Hardhat addresses into staging documentation.
 
 ## Local setup
 
@@ -18,11 +148,12 @@ npm run dev
 Required environment variables:
 
 - `DATABASE_URL` — PostgreSQL connection string.
-- `PINATA_JWT` — server-only Pinata token with file pinning permission.
+- `PINATA_JWT` — server-only Pinata token with file-pinning permission.
 - `AMOY_RPC_URL` — Polygon Amoy RPC endpoint.
 - `DEPLOYER_PRIVATE_KEY` — deployment wallet key; never expose it to the browser.
-- `POLYGONSCAN_API_KEY` — contract verification key.
-- `ARBITRATOR_WALLETS` — three unique, controlled addresses separated by commas.
+- `POLYGONSCAN_API_KEY` — optional contract-verification key.
+- `ARBITRATOR_WALLETS` — three unique controlled addresses, comma-separated.
+- `API_CHAIN_ID` — signed API chain binding, `80002` for Amoy.
 - `NEXT_PUBLIC_APP_URL` — public application origin.
 - `NEXT_PUBLIC_IPFS_GATEWAY` — public IPFS gateway prefix.
 
@@ -35,23 +166,64 @@ npm test
 npm run build
 ```
 
-## Smart contract deployment
+`npm test` currently covers the smart contract and wallet-auth message binding.
+Database route integration tests and browser end-to-end tests remain planned.
 
-Use test wallets and test funds on Polygon Amoy:
+## Deployment environments
+
+- **Local:** Hardhat, local PostgreSQL, mock TestUSDC.
+- **Staging:** Render, managed PostgreSQL, Pinata, Polygon Amoy, TestUSDC.
+- **Production:** intentionally undefined until independent audit, multisig owner,
+  provider governance, monitoring, incident response, and legal review exist.
+
+`render.yaml` defines the staging web service, PostgreSQL database, migration
+command, health check, and secret placeholders. The pre-deploy command runs
+`prisma migrate deploy`; application startup never modifies the schema.
+
+Deploy the testnet contracts with:
 
 ```bash
 npm run deploy:amoy
 ```
 
-The deployment script updates both `contract-addresses.json` and
-`lib/contract-addresses.json`. Commit the resulting addresses before deploying
-the web application.
+The deployment script writes both address files. Commit the resulting addresses
+and add the Polygonscan links above only after verifying the deployment.
 
-## Render staging
+## Recovery procedures
 
-`render.yaml` defines the Next.js web service, PostgreSQL database, migration
-command, and health check. Secret values are intentionally marked `sync: false`
-and must be entered in Render.
+- **Lost deployer/owner key:** there is no recovery for a single-key owner.
+  Use a multisig owner before non-demo use.
+- **Lost oracle key:** existing funded trades cannot replace their oracle.
+  Buyers can use timeout refund or open a dispute. Create future trades with the
+  replacement oracle.
+- **Lost arbitrator key:** one unavailable arbitrator is tolerated. Two lost
+  keys prevent a 2-of-3 resolution; the current V3 has no panel recovery.
+- **Pinata outage:** retrieve by CID from another gateway and repin the content.
+- **Database failure:** restore the managed PostgreSQL backup, rerun migrations,
+  then reconcile records against on-chain events before reopening writes.
+- **Suspected compromise:** pause the contract, disable deployments, preserve
+  logs, rotate server secrets, and publish an incident notice.
 
-The pre-deploy command runs `prisma migrate deploy`; application startup never
-changes the database schema.
+## Known limitations
+
+- Owner is not yet enforced as a multisig or timelock on-chain.
+- Arbitration resolves the remaining balance entirely to buyer or seller.
+- No on-chain verification of each evidence provider signature.
+- No organization/membership/permission domain model yet.
+- No versioned rules-policy registry or milestone database entities yet.
+- No event-indexing worker or automatic chain/database reconciliation.
+- No independent security audit, formal verification, bug bounty, or SLA.
+
+## Security reporting
+
+Do not disclose suspected vulnerabilities in a public issue. Send a concise
+report with reproduction conditions and impact to `info@agrinexus.eu` with the
+subject `Kontor21 Security`. Do not include real private keys, seed phrases, or
+confidential customer documents.
+
+## Legal disclaimer
+
+Kontor21 is testnet research software, not a bank, custodian, payment institution,
+investment service, inspection authority, or legal guarantee. Users remain
+responsible for trade contracts, sanctions, KYC/KYB, tax, commodity, data
+protection, and payment-law compliance. Testnet tokens have no monetary value.

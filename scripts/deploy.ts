@@ -44,7 +44,14 @@ async function main() {
   const feeBasisPoints = 25; // 0.25%
   
   // Pass 3 arbitrators instead of 1
-  const escrow = await KontorEscrow.deploy(arb1, arb2, arb3, feeTreasury, feeBasisPoints);
+  const escrow = await KontorEscrow.deploy(
+    arb1,
+    arb2,
+    arb3,
+    feeTreasury,
+    feeBasisPoints,
+    usdcAddress
+  );
   await escrow.waitForDeployment();
   const escrowAddress = await escrow.getAddress();
   console.log("KontorEscrow deployed to:", escrowAddress);

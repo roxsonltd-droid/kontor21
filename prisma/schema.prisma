@@ -7,12 +7,62 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserRole {
+  TRADER
+  ORACLE
+  ADMIN
+  LAB
+  INSPECTOR
+}
+
+enum OperationalStatus {
+  PENDING
+  SHIPPED
+  INSPECTED
+  CONDITIONS_SATISFIED
+  DISPUTED
+}
+
+enum SettlementStatus {
+  AWAITING_FUNDS
+  FUNDED
+  RELEASED
+  REFUNDED
+  PARTIAL_SETTLEMENT
+  DISPUTED
+}
+
+enum ProviderRole {
+  ORACLE
+  LAB
+  INSPECTOR
+  CARRIER
+}
+
+enum ConditionOperator {
+  LTE @map("<=")
+  GTE @map(">=")
+  LT  @map("<")
+  GT  @map(">")
+  EQ  @map("==")
+}
+
+enum EvidenceValidationStatus {
+  PENDING
+  VALID
+  INVALID
+  CONFLICTING
+  EXPIRED
+  REVOKED
+  MANUAL_REVIEW
+}
+
 model User {
   id            String   @id @default(uuid())
   walletAddress String   @unique
   companyName   String?
   vatNumber     String?  // ЕИК/VAT
-  role          String   @default("TRADER") // TRADER, ORACLE, ADMIN, LAB, INSPECTOR
+  role          UserRole @default(TRADER)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   
@@ -41,8 +91,8 @@ model TradeMetadata {
   oracle   User? @relation("OracleTrades", fields: [oracleId], references: [id])
 
   // Nexus Core: Separation of physical state and financial state
-  operationalStatus String   @default("PENDING") // PENDING, SHIPPED, INSPECTED, CONDITIONS_SATISFIED, DISPUTED
-  settlementStatus  String   @default("AWAITING_FUNDS") // AWAITING_FUNDS, FUNDED, RELEASED, REFUNDED, PARTIAL_SETTLEMENT
+  operationalStatus OperationalStatus @default(PENDING)
+  settlementStatus  SettlementStatus  @default(AWAITING_FUNDS)
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -61,10 +111,10 @@ model TradeCondition {
   id           String   @id @default(uuid())
   tradeId      String
   parameter    String   // e.g. "moisture", "location", "weight"
-  operator     String   // e.g. "<=", "==", ">="
+  operator     ConditionOperator
   value        String   // e.g. "8.0", "Hamad Port"
   unit         String?  // e.g. "%", "tons"
-  providerRole String   // e.g. "LAB", "INSPECTOR", "CARRIER"
+  providerRole ProviderRole
   isRequired   Boolean  @default(true)
   
   trade        TradeMetadata @relation(fields: [tradeId], references: [id])
@@ -81,7 +131,7 @@ model Evidence {
   documentHash   String   // IPFS hash of the actual PDF/Cert
   providerWallet String   // Who uploaded it (e.g. SGS Oracle)
   verifiedValue  String?  // The extracted value (e.g. "4.8" for moisture)
-  isValid        Boolean? // Evaluated by Rules Engine / AI
+  validationStatus EvidenceValidationStatus @default(PENDING)
   createdAt      DateTime @default(now())
 
   trade     TradeMetadata   @relation(fields: [tradeId], references: [id])
@@ -102,4 +152,15 @@ model AuditLog {
   trade TradeMetadata @relation(fields: [tradeId], references: [id])
 
   @@index([tradeId])
+}
+
+model AuthNonce {
+  id            String    @id @default(uuid())
+  walletAddress String
+  nonce         String    @unique
+  expiresAt     DateTime
+  usedAt        DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([walletAddress, expiresAt])
 }

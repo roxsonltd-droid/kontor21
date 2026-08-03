@@ -11,7 +11,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract TestUSDC is ERC20, Ownable {
     constructor() ERC20("USD Coin (Test)", "USDC") Ownable(msg.sender) {}
 
-    function mint(address to, uint256 amount) public {
+    function mint(address to, uint256 amount) public onlyOwner {
         _mint(to, amount);
     }
     

@@ -15,12 +15,36 @@ export async function signedFetch(input: string, init: RequestInit = {}) {
   const provider = new BrowserProvider(window.ethereum);
   const signer = await provider.getSigner();
   const address = await signer.getAddress();
-  const signature = await signer.signMessage(buildAuthMessage(method, pathname, timestamp, body));
+  const nonceResponse = await fetch("/api/auth/nonce", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ address }),
+  });
+  const challenge = await nonceResponse.json() as {
+    nonce?: string;
+    chainId?: number;
+    error?: string;
+  };
+  if (!nonceResponse.ok || !challenge.nonce || !challenge.chainId) {
+    throw new Error(challenge.error || "Unable to create authentication challenge");
+  }
+
+  const walletChainId = Number(await window.ethereum.request({ method: "eth_chainId" }));
+  if (walletChainId !== challenge.chainId) {
+    throw new Error(`Switch wallet network to Polygon Amoy (${challenge.chainId})`);
+  }
+  const domain = window.location.host;
+  const signature = await signer.signMessage(
+    buildAuthMessage(method, pathname, timestamp, body, challenge.nonce, domain, challenge.chainId)
+  );
   const headers = new Headers(init.headers);
 
   headers.set("x-wallet-address", address);
   headers.set("x-wallet-timestamp", timestamp);
   headers.set("x-wallet-signature", signature);
+  headers.set("x-wallet-nonce", challenge.nonce);
+  headers.set("x-wallet-domain", domain);
+  headers.set("x-wallet-chain-id", challenge.chainId.toString());
   if (body && !headers.has("content-type")) headers.set("content-type", "application/json");
 
   return fetch(input, { ...init, method, body: init.body, headers });

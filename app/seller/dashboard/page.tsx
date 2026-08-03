@@ -62,8 +62,7 @@ export default function SellerDashboard() {
       testBuyer,
       testOracle,
       75000,
-      CONTRACT_ADDRESSES.testUSDC,
-      "Dried apricots, 12 tons; Moisture < 20%"
+      CONTRACT_ADDRESSES.testUSDC
     );
     setIsProcessing(false);
     if (tradeId !== null) {

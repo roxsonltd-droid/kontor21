@@ -187,6 +187,25 @@ export const KONTOR_ESCROW_ABI = [
     "inputs": [
       {
         "indexed": true,
+        "internalType": "uint256",
+        "name": "tradeId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "refundedAmount",
+        "type": "uint256"
+      }
+    ],
+    "name": "DisputeTimedOut",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
         "internalType": "address",
         "name": "previousOwner",
         "type": "address"
@@ -411,6 +430,19 @@ export const KONTOR_ESCROW_ABI = [
   },
   {
     "inputs": [],
+    "name": "DISPUTE_WINDOW",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "FUNDING_WINDOW",
     "outputs": [
       {
@@ -460,6 +492,16 @@ export const KONTOR_ESCROW_ABI = [
         "internalType": "uint256",
         "name": "tradeId",
         "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "expectedAmount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "expectedEvidenceRoot",
+        "type": "bytes32"
       }
     ],
     "name": "approveRelease",
@@ -484,6 +526,19 @@ export const KONTOR_ESCROW_ABI = [
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "tradeId",
+        "type": "uint256"
+      }
+    ],
+    "name": "claimDisputeTimeoutRefund",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -531,6 +586,25 @@ export const KONTOR_ESCROW_ABI = [
       }
     ],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "disputeDeadlines",
+    "outputs": [
+      {
+        "internalType": "uint64",
+        "name": "",
+        "type": "uint64"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -1322,5 +1396,3 @@ export const TEST_USDC_ABI = [
     "type": "function"
   }
 ] as const;
-
-

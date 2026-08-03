@@ -29,7 +29,7 @@ export async function authenticateWalletRequest(req: NextRequest, body: string):
     }
     const message = buildAuthMessage(
       req.method,
-      req.nextUrl.pathname,
+      `${req.nextUrl.pathname}${req.nextUrl.search}`,
       timestamp,
       body,
       nonce,

@@ -55,14 +55,14 @@ export default function SellerDashboard() {
 
   // Derived stats
   const totalRevenueUsdc = trades
-    .filter(t => t.settlementStatus === "COMPLETED")
+    .filter(t => t.settlementStatus === "RELEASED")
     .reduce((sum, t) => sum + parseFloat(t.quantity) * parseFloat(t.priceUsdc), 0);
   const inEscrowUsdc = trades
-    .filter(t => t.settlementStatus === "FUNDED" || t.settlementStatus === "PARTIAL_RELEASE")
+    .filter(t => t.settlementStatus === "FUNDED" || t.settlementStatus === "PARTIAL_SETTLEMENT")
     .reduce((sum, t) => sum + parseFloat(t.quantity) * parseFloat(t.priceUsdc), 0);
-  const successfulCount = trades.filter(t => t.settlementStatus === "COMPLETED").length;
-  const activeCount = trades.filter(t => t.settlementStatus === "FUNDED" || t.settlementStatus === "PARTIAL_RELEASE" || t.settlementStatus === "AWAITING_FUNDS").length;
-  const hasFundedTrade = trades.some(t => t.settlementStatus === "FUNDED" || t.settlementStatus === "PARTIAL_RELEASE");
+  const successfulCount = trades.filter(t => t.settlementStatus === "RELEASED").length;
+  const activeCount = trades.filter(t => t.settlementStatus === "FUNDED" || t.settlementStatus === "PARTIAL_SETTLEMENT" || t.settlementStatus === "AWAITING_FUNDS").length;
+  const hasFundedTrade = trades.some(t => t.settlementStatus === "FUNDED" || t.settlementStatus === "PARTIAL_SETTLEMENT");
 
   const handleCreateContract = async () => {
     setIsProcessing(true);
@@ -279,8 +279,8 @@ export default function SellerDashboard() {
                 ) : (
                   trades.map(trade => {
                     const totalUsdc = parseFloat(trade.quantity) * parseFloat(trade.priceUsdc);
-                    const isFunded = trade.settlementStatus === "FUNDED" || trade.settlementStatus === "PARTIAL_RELEASE";
-                    const isCompleted = trade.settlementStatus === "COMPLETED";
+                    const isFunded = trade.settlementStatus === "FUNDED" || trade.settlementStatus === "PARTIAL_SETTLEMENT";
+                    const isCompleted = trade.settlementStatus === "RELEASED";
 
                     return (
                       <tr key={trade.id} className={`hover:bg-zinc-800/20 transition-colors group ${isCompleted ? 'opacity-60' : ''}`}>

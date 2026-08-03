@@ -1,15 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { authenticateWalletRequest } from "@/lib/api-auth";
 
 export async function GET(req: NextRequest) {
   try {
+    const actorWallet = await authenticateWalletRequest(req, "");
+    if (!actorWallet) {
+      return NextResponse.json({ error: "Valid wallet signature required" }, { status: 401 });
+    }
     const address = req.nextUrl.searchParams.get("address");
+    if (address && address.toLowerCase() !== actorWallet.toLowerCase()) {
+      return NextResponse.json({ error: "Cannot list another wallet's logs" }, { status: 403 });
+    }
 
     // Find trade UUIDs associated with this address if provided
     let tradeIds: string[] = [];
-    if (address) {
+    const effectiveAddress = address || actorWallet;
+    if (effectiveAddress) {
       const user = await prisma.user.findUnique({
-        where: { walletAddress: address },
+        where: { walletAddress: effectiveAddress },
         include: {
           tradesAsBuyer: { select: { id: true } },
           tradesAsSeller: { select: { id: true } },
@@ -25,10 +34,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    let whereClause: { tradeId?: { in: string[] } } = {};
-    if (address && tradeIds.length > 0) {
-      whereClause = { tradeId: { in: tradeIds } };
-    }
+    const whereClause: { tradeId: { in: string[] } } = { tradeId: { in: tradeIds } };
 
     const logs = await prisma.auditLog.findMany({
       where: whereClause,

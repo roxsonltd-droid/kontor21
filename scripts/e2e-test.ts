@@ -67,7 +67,7 @@ async function main() {
   console.log(`\nOracle proposing partial amount: ${ethers.formatUnits(partialAmount, 6)} USDC...`);
   await (await escrow.connect(oracle).proposeRelease(tradeId, partialAmount, evidenceRoot)).wait();
   console.log("Buyer approving the proposed release...");
-  await (await escrow.connect(buyer).approveRelease(tradeId)).wait();
+  await (await escrow.connect(buyer).approveRelease(tradeId, partialAmount, evidenceRoot)).wait();
   console.log("Partial funds released to Seller.");
 
   // 7. Dispute & Resolution (Multisig)

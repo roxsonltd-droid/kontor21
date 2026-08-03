@@ -154,6 +154,8 @@ Required environment variables:
 - `POLYGONSCAN_API_KEY` — optional contract-verification key.
 - `ARBITRATOR_WALLETS` — three unique controlled addresses, comma-separated.
 - `API_CHAIN_ID` — signed API chain binding, `80002` for Amoy.
+- `ESCROW_RPC_URL` — server-side RPC used to verify API status changes against the contract.
+- `KONTOR_ESCROW_ADDRESS` — deployed escrow address used for server-side verification.
 - `NEXT_PUBLIC_APP_URL` — public application origin.
 - `NEXT_PUBLIC_IPFS_GATEWAY` — public IPFS gateway prefix.
 

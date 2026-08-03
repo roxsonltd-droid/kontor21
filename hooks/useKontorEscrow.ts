@@ -210,8 +210,13 @@ export function useKontorEscrow() {
       if (!escrowContract) return false;
       try {
         const pendingAmount = await escrowContract.pendingReleaseAmounts(tradeId);
-        if (pendingAmount <= BigInt(0)) return false;
-        const tx = await escrowContract.approveRelease(tradeId);
+        const pendingEvidenceRoot = await escrowContract.pendingEvidenceRoots(tradeId);
+        if (pendingAmount <= BigInt(0) || pendingEvidenceRoot === `0x${"0".repeat(64)}`) return false;
+        const tx = await escrowContract.approveRelease(
+          tradeId,
+          pendingAmount,
+          pendingEvidenceRoot
+        );
         await tx.wait();
         return true;
       } catch (error) {
@@ -231,6 +236,21 @@ export function useKontorEscrow() {
         return true;
       } catch (error) {
         console.error("claimTimeoutRefund failed", error);
+        return false;
+      }
+    },
+    [escrowContract]
+  );
+
+  const claimDisputeTimeoutRefund = useCallback(
+    async (tradeId: number) => {
+      if (!escrowContract) return false;
+      try {
+        const tx = await escrowContract.claimDisputeTimeoutRefund(tradeId);
+        await tx.wait();
+        return true;
+      } catch (error) {
+        console.error("claimDisputeTimeoutRefund failed", error);
         return false;
       }
     },
@@ -320,6 +340,7 @@ export function useKontorEscrow() {
     proposeFullRelease,
     approveRelease,
     claimTimeoutRefund,
+    claimDisputeTimeoutRefund,
     raiseDispute,
     voteDispute,
     getTrade,

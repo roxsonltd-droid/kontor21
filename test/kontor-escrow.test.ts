@@ -152,7 +152,7 @@ describe("KontorEscrow V3", function () {
       const { escrow, usdc, seller, buyer, oracle, amount } = await fundedTradeFixture();
       await escrow.connect(oracle).proposeRelease(1, amount, evidenceRoot);
 
-      await expect(escrow.connect(buyer).approveRelease(1))
+      await expect(escrow.connect(buyer).approveRelease(1, amount, evidenceRoot))
         .to.emit(escrow, "ReleaseApproved")
         .withArgs(1n, buyer.address, amount, evidenceRoot)
         .and.to.emit(escrow, "TradeCompleted")
@@ -166,10 +166,22 @@ describe("KontorEscrow V3", function () {
       const { escrow, buyer, oracle, amount } = await fundedTradeFixture();
       const partial = amount / 3n;
       await escrow.connect(oracle).proposeRelease(1, partial, evidenceRoot);
-      await escrow.connect(buyer).approveRelease(1);
+      await escrow.connect(buyer).approveRelease(1, partial, evidenceRoot);
       const trade = await escrow.trades(1);
       expect(trade.releasedAmount).to.equal(partial);
       expect(trade.status).to.equal(1);
+    });
+
+    it("rejects approval after the oracle changes the pending proposal", async function () {
+      const { escrow, buyer, oracle, amount } = await fundedTradeFixture();
+      const originalAmount = amount / 2n;
+      const changedRoot = hre.ethers.keccak256(hre.ethers.toUtf8Bytes("ipfs://changed"));
+      await escrow.connect(oracle).proposeRelease(1, originalAmount, evidenceRoot);
+      await escrow.connect(oracle).proposeRelease(1, amount, changedRoot);
+
+      await expect(
+        escrow.connect(buyer).approveRelease(1, originalAmount, evidenceRoot)
+      ).to.be.revertedWith("Release amount changed");
     });
   });
 
@@ -189,6 +201,18 @@ describe("KontorEscrow V3", function () {
       await escrow.pause();
       await time.increase(30 * 24 * 60 * 60 + 1);
       await expect(escrow.connect(buyer).claimTimeoutRefund(1)).to.not.be.reverted;
+    });
+
+    it("lets the buyer recover funds when arbitrators miss the dispute deadline", async function () {
+      const { escrow, usdc, buyer, amount } = await fundedTradeFixture();
+      const balanceBefore = await usdc.balanceOf(buyer.address);
+      await escrow.connect(buyer).raiseDispute(1);
+      await time.increase(30 * 24 * 60 * 60 + 1);
+
+      await expect(escrow.connect(buyer).claimDisputeTimeoutRefund(1))
+        .to.emit(escrow, "DisputeTimedOut")
+        .withArgs(1n, amount);
+      expect(await usdc.balanceOf(buyer.address)).to.equal(balanceBefore + amount);
     });
   });
 

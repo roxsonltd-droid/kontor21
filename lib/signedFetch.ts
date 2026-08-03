@@ -9,8 +9,20 @@ export async function signedFetch(input: string, init: RequestInit = {}) {
   }
 
   const method = (init.method || "GET").toUpperCase();
-  const body = typeof init.body === "string" ? init.body : "";
-  const pathname = new URL(input, window.location.origin).pathname;
+  let body = typeof init.body === "string" ? init.body : "";
+  let contentSha256 = "";
+  if (init.body instanceof FormData) {
+    const file = init.body.get("file");
+    if (file instanceof File) {
+      const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
+      contentSha256 = Array.from(new Uint8Array(digest))
+        .map((byte) => byte.toString(16).padStart(2, "0"))
+        .join("");
+      body = `sha256:${contentSha256}`;
+    }
+  }
+  const requestUrl = new URL(input, window.location.origin);
+  const pathname = `${requestUrl.pathname}${requestUrl.search}`;
   const timestamp = Date.now().toString();
   const provider = new BrowserProvider(window.ethereum);
   const signer = await provider.getSigner();
@@ -45,6 +57,7 @@ export async function signedFetch(input: string, init: RequestInit = {}) {
   headers.set("x-wallet-nonce", challenge.nonce);
   headers.set("x-wallet-domain", domain);
   headers.set("x-wallet-chain-id", challenge.chainId.toString());
+  if (contentSha256) headers.set("x-content-sha256", contentSha256);
   if (body && !headers.has("content-type")) headers.set("content-type", "application/json");
 
   return fetch(input, { ...init, method, body: init.body, headers });

@@ -48,9 +48,9 @@ export default function BuyerDashboard() {
   // Derived stats
   const activeCount = trades.filter(t => t.settlementStatus === "AWAITING_FUNDS" || t.operationalStatus === "PENDING").length;
   const inEscrowUsdc = trades
-    .filter(t => t.settlementStatus === "FUNDED" || t.settlementStatus === "PARTIAL_RELEASE")
+    .filter(t => t.settlementStatus === "FUNDED" || t.settlementStatus === "PARTIAL_SETTLEMENT")
     .reduce((sum, t) => sum + parseFloat(t.quantity) * parseFloat(t.priceUsdc), 0);
-  const completedCount = trades.filter(t => t.settlementStatus === "COMPLETED").length;
+  const completedCount = trades.filter(t => t.settlementStatus === "RELEASED").length;
 
   const handleFundEscrow = async (tradeId: number) => {
     setIsProcessing(true);
@@ -316,7 +316,7 @@ export default function BuyerDashboard() {
                   trades.map(trade => {
                     const totalUsdc = parseFloat(trade.quantity) * parseFloat(trade.priceUsdc);
                     const isDisputed = trade.settlementStatus === "DISPUTED";
-                    const isCompleted = trade.settlementStatus === "COMPLETED";
+                    const isCompleted = trade.settlementStatus === "RELEASED";
                     const needsFunding = trade.settlementStatus === "AWAITING_FUNDS";
 
                     return (

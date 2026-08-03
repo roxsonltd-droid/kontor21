@@ -209,7 +209,7 @@ export default function OracleDashboard() {
               <>
                 {trades.map((trade) => {
                   const isFunded = trade.settlementStatus === "FUNDED" || trade.settlementStatus === "PARTIAL_SETTLEMENT";
-                  const isDone = trade.settlementStatus === "RELEASED" || trade.settlementStatus === "COMPLETED" || trade.settlementStatus === "REFUNDED";
+                  const isDone = trade.settlementStatus === "RELEASED" || trade.settlementStatus === "REFUNDED";
                   const total = parseFloat(trade.quantity) * parseFloat(trade.priceUsdc);
                   return (
                     <div 

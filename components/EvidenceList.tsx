@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { FileText, Download } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { signedFetch } from '@/lib/signedFetch';
 
 type EvidenceItem = {
   id: string;
@@ -24,7 +25,7 @@ export default function EvidenceList({ tradeId }: EvidenceListProps) {
   useEffect(() => {
     const fetchEvidence = async () => {
       try {
-        const res = await fetch(`/api/escrow/${encodeURIComponent(tradeId)}/evidence`, {
+        const res = await signedFetch(`/api/escrow/${encodeURIComponent(tradeId)}/evidence`, {
           cache: 'no-store',
         });
         const data = await res.json();

@@ -5,6 +5,17 @@ CREATE TYPE "ProviderRole" AS ENUM ('ORACLE', 'LAB', 'INSPECTOR', 'CARRIER');
 CREATE TYPE "ConditionOperator" AS ENUM ('<=', '>=', '<', '>', '==');
 CREATE TYPE "EvidenceValidationStatus" AS ENUM ('PENDING', 'VALID', 'INVALID', 'CONFLICTING', 'EXPIRED', 'REVOKED', 'MANUAL_REVIEW');
 
+UPDATE "TradeMetadata"
+SET "settlementStatus" = CASE
+  WHEN "settlementStatus" = 'COMPLETED' THEN 'RELEASED'
+  WHEN "settlementStatus" = 'PARTIAL_RELEASE' THEN 'PARTIAL_SETTLEMENT'
+  ELSE "settlementStatus"
+END;
+
+UPDATE "TradeMetadata"
+SET "operationalStatus" = 'CONDITIONS_SATISFIED'
+WHERE "operationalStatus" = 'COMPLETED';
+
 ALTER TABLE "User"
   ALTER COLUMN "role" DROP DEFAULT,
   ALTER COLUMN "role" TYPE "UserRole" USING ("role"::"UserRole"),

@@ -40,4 +40,28 @@ describe("wallet API authentication message", function () {
 
     expect(verifyMessage(replayTarget, signature)).to.not.equal(wallet.address);
   });
+
+  it("binds signed GET requests to their query string", async function () {
+    const wallet = Wallet.createRandom();
+    const base = buildAuthMessage(
+      "GET",
+      "/api/escrow?disputes=1",
+      "1700000000000",
+      "",
+      "nonce",
+      "kontor21.example",
+      80002
+    );
+    const changed = buildAuthMessage(
+      "GET",
+      "/api/escrow?address=0x0000000000000000000000000000000000000001",
+      "1700000000000",
+      "",
+      "nonce",
+      "kontor21.example",
+      80002
+    );
+    const signature = await wallet.signMessage(base);
+    expect(verifyMessage(changed, signature)).to.not.equal(wallet.address);
+  });
 });

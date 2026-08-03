@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useKontorEscrow } from '@/hooks/useKontorEscrow';
+import { signedFetch } from '@/lib/signedFetch';
 
 import { useEffect } from 'react';
 
@@ -37,9 +38,13 @@ export default function Notifications() {
 
   useEffect(() => {
     async function fetchLogs() {
+      if (!address) {
+        setLoading(false);
+        return;
+      }
       try {
         setLoading(true);
-        const res = await fetch(`/api/logs${address ? `?address=${address}` : ''}`);
+        const res = await signedFetch(`/api/logs?address=${encodeURIComponent(address)}`);
         if (res.ok) {
           const data = await res.json();
           const transformed = data.map((log: { id: string; action: string; tradeId?: string; createdAt: string; details?: string; trade?: { blockchainTradeId: number | null } }, i: number) => {

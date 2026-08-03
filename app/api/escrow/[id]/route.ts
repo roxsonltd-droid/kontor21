@@ -2,13 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { authenticateWalletRequest, isConfiguredArbitrator } from "@/lib/api-auth";
 import type { OperationalStatus, SettlementStatus } from "@prisma/client";
+import { isAuthorizedTradeTransition } from "@/lib/trade-transition-auth";
+import {
+  verifyOnchainTradeParticipants,
+  verifyOnchainTradeStatus,
+} from "@/lib/onchain-escrow";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
-export async function GET(_req: NextRequest, context: RouteContext) {
+export async function GET(req: NextRequest, context: RouteContext) {
   try {
+    const actorWallet = await authenticateWalletRequest(req, "");
+    if (!actorWallet) {
+      return NextResponse.json({ error: "Valid wallet signature required" }, { status: 401 });
+    }
     const { id } = await context.params;
 
     const isNumeric = /^\d+$/.test(id);
@@ -24,6 +33,15 @@ export async function GET(_req: NextRequest, context: RouteContext) {
 
     if (!trade) {
       return NextResponse.json({ error: "Trade not found" }, { status: 404 });
+    }
+    const actor = actorWallet.toLowerCase();
+    const canRead =
+      trade.buyer.walletAddress.toLowerCase() === actor ||
+      trade.seller.walletAddress.toLowerCase() === actor ||
+      trade.oracle?.walletAddress.toLowerCase() === actor ||
+      isConfiguredArbitrator(actorWallet);
+    if (!canRead) {
+      return NextResponse.json({ error: "Wallet is not authorized to read this trade" }, { status: 403 });
     }
 
     return NextResponse.json(trade);
@@ -97,15 +115,49 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     const isSeller = fullDraft.seller.walletAddress.toLowerCase() === actor;
     const isOracle = fullDraft.oracle?.walletAddress.toLowerCase() === actor;
     const isArbitrator = isConfiguredArbitrator(actorWallet);
-    const allowed =
-      (data.blockchainTradeId !== undefined && isSeller) ||
-      (data.settlementStatus === "FUNDED" && isBuyer) ||
-      (data.operationalStatus === "DISPUTED" && (isBuyer || isSeller)) ||
-      (data.operationalStatus === "CONDITIONS_SATISFIED" && isOracle) ||
-      (data.settlementStatus === "RELEASED" && isBuyer) ||
-      (data.settlementStatus === "REFUNDED" && isArbitrator);
+    const allowed = isAuthorizedTradeTransition(data, {
+      currentBlockchainTradeId: fullDraft.blockchainTradeId,
+      currentOperationalStatus: fullDraft.operationalStatus,
+      currentSettlementStatus: fullDraft.settlementStatus,
+      isBuyer,
+      isSeller,
+      isOracle: Boolean(isOracle),
+      isArbitrator,
+    });
     if (!allowed) {
       return NextResponse.json({ error: "Wallet is not authorized for this transition" }, { status: 403 });
+    }
+
+    const chainTradeId = data.blockchainTradeId ?? fullDraft.blockchainTradeId;
+    if (!chainTradeId) {
+      return NextResponse.json({ error: "Trade is not linked on-chain" }, { status: 409 });
+    }
+    try {
+      let chainStateMatches = true;
+      if (data.blockchainTradeId !== undefined) {
+        chainStateMatches = await verifyOnchainTradeParticipants(chainTradeId, {
+          buyer: fullDraft.buyer.walletAddress,
+          seller: fullDraft.seller.walletAddress,
+          oracle: fullDraft.oracle?.walletAddress,
+        });
+      } else if (data.settlementStatus === "FUNDED") {
+        chainStateMatches = await verifyOnchainTradeStatus(chainTradeId, 1);
+      } else if (
+        data.operationalStatus === "DISPUTED" ||
+        data.settlementStatus === "DISPUTED"
+      ) {
+        chainStateMatches = await verifyOnchainTradeStatus(chainTradeId, 3);
+      } else if (data.settlementStatus === "RELEASED") {
+        chainStateMatches = await verifyOnchainTradeStatus(chainTradeId, 2);
+      } else if (data.settlementStatus === "REFUNDED") {
+        chainStateMatches = await verifyOnchainTradeStatus(chainTradeId, 4);
+      }
+      if (!chainStateMatches) {
+        return NextResponse.json({ error: "Requested transition does not match on-chain state" }, { status: 409 });
+      }
+    } catch (error) {
+      console.error("[escrow-chain-verification]", error);
+      return NextResponse.json({ error: "Unable to verify on-chain state" }, { status: 503 });
     }
 
     const updated = await prisma.tradeMetadata.update({

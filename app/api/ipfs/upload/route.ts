@@ -9,7 +9,11 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp"]);
 
 export async function POST(req: NextRequest) {
-  const actorWallet = await authenticateWalletRequest(req, "");
+  const claimedSha256 = req.headers.get("x-content-sha256") || "";
+  const actorWallet = await authenticateWalletRequest(
+    req,
+    claimedSha256 ? `sha256:${claimedSha256}` : ""
+  );
   if (!actorWallet) {
     return NextResponse.json({ error: "Valid wallet signature required" }, { status: 401 });
   }
@@ -38,6 +42,9 @@ export async function POST(req: NextRequest) {
 
   const bytes = Buffer.from(await file.arrayBuffer());
   const sha256 = createHash("sha256").update(bytes).digest("hex");
+  if (!claimedSha256 || claimedSha256 !== sha256) {
+    return NextResponse.json({ error: "Signed file hash does not match upload" }, { status: 400 });
+  }
   const pinataForm = new FormData();
   pinataForm.append("file", new File([bytes], file.name, { type: file.type }));
   pinataForm.append("pinataMetadata", JSON.stringify({

@@ -18,6 +18,7 @@ contract KontorEscrow is Ownable, Pausable, ReentrancyGuard {
 
     uint256 public constant FUNDING_WINDOW = 7 days;
     uint256 public constant RELEASE_WINDOW = 30 days;
+    uint256 public constant DISPUTE_WINDOW = 30 days;
 
     enum TradeStatus {
         AWAITING_FUNDS,
@@ -45,6 +46,7 @@ contract KontorEscrow is Ownable, Pausable, ReentrancyGuard {
     mapping(address => bool) public allowedTokens;
     mapping(uint256 => uint64) public fundingDeadlines;
     mapping(uint256 => uint64) public releaseDeadlines;
+    mapping(uint256 => uint64) public disputeDeadlines;
     mapping(uint256 => uint256) public pendingReleaseAmounts;
     mapping(uint256 => bytes32) public pendingEvidenceRoots;
 
@@ -67,6 +69,7 @@ contract KontorEscrow is Ownable, Pausable, ReentrancyGuard {
     event TradeCompleted(uint256 indexed tradeId);
     event TradeTimedOut(uint256 indexed tradeId, uint256 refundedAmount);
     event DisputeRaised(uint256 indexed tradeId, address raisedBy);
+    event DisputeTimedOut(uint256 indexed tradeId, uint256 refundedAmount);
     event ArbitratorVoted(uint256 indexed tradeId, address arbitrator, bool refundBuyer);
     event DisputeResolved(uint256 indexed tradeId, bool refundBuyer);
     event DefaultArbitratorsUpdated(address indexed arb1, address indexed arb2, address indexed arb3);
@@ -188,7 +191,7 @@ contract KontorEscrow is Ownable, Pausable, ReentrancyGuard {
         emit ReleaseProposed(tradeId, amount, evidenceRoot);
     }
 
-    function approveRelease(uint256 tradeId)
+    function approveRelease(uint256 tradeId, uint256 expectedAmount, bytes32 expectedEvidenceRoot)
         external
         onlyBuyer(tradeId)
         whenNotPaused
@@ -201,6 +204,8 @@ contract KontorEscrow is Ownable, Pausable, ReentrancyGuard {
         uint256 amount = pendingReleaseAmounts[tradeId];
         bytes32 evidenceRoot = pendingEvidenceRoots[tradeId];
         require(amount > 0 && evidenceRoot != bytes32(0), "No pending release");
+        require(amount == expectedAmount, "Release amount changed");
+        require(evidenceRoot == expectedEvidenceRoot, "Evidence root changed");
 
         pendingReleaseAmounts[tradeId] = 0;
         pendingEvidenceRoots[tradeId] = bytes32(0);
@@ -240,9 +245,30 @@ contract KontorEscrow is Ownable, Pausable, ReentrancyGuard {
         require(trade.status == TradeStatus.FUNDED, "Can only dispute active funded trades");
 
         trade.status = TradeStatus.DISPUTED;
+        disputeDeadlines[tradeId] = uint64(block.timestamp + DISPUTE_WINDOW);
         pendingReleaseAmounts[tradeId] = 0;
         pendingEvidenceRoots[tradeId] = bytes32(0);
         emit DisputeRaised(tradeId, msg.sender);
+    }
+
+    /**
+     * @notice Returns the unresolved balance to the buyer if the arbitrator panel
+     * fails to reach a majority before the dispute deadline.
+     */
+    function claimDisputeTimeoutRefund(uint256 tradeId)
+        external
+        onlyBuyer(tradeId)
+        nonReentrant
+    {
+        Trade storage trade = trades[tradeId];
+        require(trade.status == TradeStatus.DISPUTED, "Trade is not disputed");
+        require(block.timestamp > disputeDeadlines[tradeId], "Dispute deadline active");
+
+        uint256 remainingAmount = trade.totalAmount - trade.releasedAmount;
+        trade.status = TradeStatus.REFUNDED;
+        trade.token.safeTransfer(trade.buyer, remainingAmount);
+
+        emit DisputeTimedOut(tradeId, remainingAmount);
     }
 
     function voteDispute(uint256 tradeId, bool refundBuyer)

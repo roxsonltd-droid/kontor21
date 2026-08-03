@@ -18,10 +18,7 @@ export async function POST(req: NextRequest) {
   await prisma.$transaction([
     prisma.authNonce.deleteMany({
       where: {
-        OR: [
-          { walletAddress, usedAt: null },
-          { expiresAt: { lt: new Date() } },
-        ],
+        expiresAt: { lt: new Date() },
       },
     }),
     prisma.authNonce.create({

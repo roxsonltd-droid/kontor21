@@ -46,7 +46,7 @@ export default function TradeView() {
 
   const loadTrade = async () => {
     try {
-      const response = await fetch(`/api/escrow/${encodeURIComponent(params.id)}`, {
+      const response = await signedFetch(`/api/escrow/${encodeURIComponent(params.id)}`, {
         cache: "no-store",
       });
       const data = (await response.json()) as TradeMetadata & { error?: string };
@@ -60,8 +60,9 @@ export default function TradeView() {
   useEffect(() => {
     let cancelled = false;
     const run = async () => {
+      if (!address) return;
       try {
-        const response = await fetch(`/api/escrow/${encodeURIComponent(params.id)}`, {
+        const response = await signedFetch(`/api/escrow/${encodeURIComponent(params.id)}`, {
           cache: "no-store",
         });
         const data = (await response.json()) as TradeMetadata & { error?: string };
@@ -77,7 +78,7 @@ export default function TradeView() {
     return () => {
       cancelled = true;
     };
-  }, [params.id]);
+  }, [params.id, address]);
 
   const handleCreateContract = async () => {
     if (!trade || !address) return;

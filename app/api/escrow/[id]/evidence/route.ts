@@ -1,19 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { authenticateWalletRequest } from "@/lib/api-auth";
+import { authenticateWalletRequest, isConfiguredArbitrator } from "@/lib/api-auth";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
-export async function GET(_req: NextRequest, context: RouteContext) {
+export async function GET(req: NextRequest, context: RouteContext) {
   const { id } = await context.params;
+  const actorWallet = await authenticateWalletRequest(req, "");
+  if (!actorWallet) {
+    return NextResponse.json({ error: "Valid wallet signature required" }, { status: 401 });
+  }
   const trade = await prisma.tradeMetadata.findUnique({
     where: { id },
-    select: { id: true },
+    include: { buyer: true, seller: true, oracle: true },
   });
   if (!trade) {
     return NextResponse.json({ error: "Trade not found" }, { status: 404 });
+  }
+  const actor = actorWallet.toLowerCase();
+  const canRead =
+    trade.buyer.walletAddress.toLowerCase() === actor ||
+    trade.seller.walletAddress.toLowerCase() === actor ||
+    trade.oracle?.walletAddress.toLowerCase() === actor ||
+    isConfiguredArbitrator(actorWallet);
+  if (!canRead) {
+    return NextResponse.json({ error: "Wallet is not authorized to read this evidence" }, { status: 403 });
   }
   const evidence = await prisma.evidence.findMany({
     where: { tradeId: id },
@@ -42,7 +55,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
 
     const trade = await prisma.tradeMetadata.findUnique({
       where: { id },
-      include: { conditions: true, evidence: true }
+      include: { conditions: true, evidence: true, oracle: true }
     });
 
     if (!trade) {
@@ -62,7 +75,12 @@ export async function POST(req: NextRequest, context: RouteContext) {
       // Auto-match if we can (naive first match for the provider)
       targetCondition = trade.conditions.find(c => c.providerRole === "LAB" || c.providerRole === "INSPECTOR");
     }
-    if (!targetCondition || (provider.role !== "ORACLE" && targetCondition.providerRole !== provider.role)) {
+    const isDesignatedOracle =
+      provider.role === "ORACLE" &&
+      trade.oracle?.walletAddress.toLowerCase() === actorWallet.toLowerCase();
+    const hasRequiredProviderRole =
+      provider.role !== "ORACLE" && targetCondition?.providerRole === provider.role;
+    if (!targetCondition || (!isDesignatedOracle && !hasRequiredProviderRole)) {
       return NextResponse.json({ error: "Provider is not authorized for this condition" }, { status: 403 });
     }
 

@@ -7,6 +7,8 @@ import { ShieldCheck, Truck, Clock, FileText, Download, CheckCircle, ArrowRight,
 import { useKontorEscrow } from '@/hooks/useKontorEscrow';
 import { motion } from 'framer-motion';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
+import EvidenceList from '@/components/EvidenceList';
+import CertificateGallery from '@/components/CertificateGallery';
 import { useLanguage } from '@/contexts/LanguageContext';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';

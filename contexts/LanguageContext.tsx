@@ -22,17 +22,17 @@ const translations: Translations = {
 
   // Landing Page
   "hero.title": { 
-    EN: "Cross-Border Trade Without Boundaries. Trust Through Code.", 
-    DE: "Grenzüberschreitender Handel ohne Grenzen. Vertrauen durch Code.", 
-    BG: "Търговия без граници. Доверие чрез код." 
+    EN: "AI Trade Assurance Platform", 
+    DE: "AI-Handelssicherungsplattform", 
+    BG: "AI Платформа за Търговска Сигурност" 
   },
   "hero.subtitle": { 
-    EN: "The first B2B escrow platform integrating Smart Contracts, physical SGS inspections, and GoBD compliant accounting.", 
-    DE: "Die erste B2B-Treuhandplattform, die Smart Contracts, physische SGS-Inspektionen und GoBD-konforme Buchhaltung integriert.", 
-    BG: "Първата B2B ескроу платформа, интегрираща смарт договори, физически инспекции от SGS и GoBD съвместимо счетоводство." 
+    EN: "One trusted workflow from supplier verification to delivery and settlement for secure cross-border agri-trade.", 
+    DE: "Ein vertrauenswürdiger Workflow von der Lieferantenprüfung bis zur Lieferung und Abwicklung für sicheren grenzüberschreitenden Agrarhandel.", 
+    BG: "Един доверен работен процес от проверка на доставчика до доставка и разплащане за сигурна трансгранична агро-търговия." 
   },
   "hero.startTrade": { EN: "Start Secure Trade", DE: "Sicheren Handel starten", BG: "Започни сигурна сделка" },
-  "hero.howItWorks": { EN: "How it works", DE: "Wie es funktioniert", BG: "Как работи" },
+  "hero.howItWorks": { EN: "Explore Workflow", DE: "Workflow erkunden", BG: "Разгледай процеса" },
   
   // Buyer Dashboard & AI
   "buyer.title": { EN: "My Trades", DE: "Meine Trades", BG: "Моите Сделки" },
@@ -180,75 +180,91 @@ const translations: Translations = {
 
   // Landing Page — Hero
   "hero.badge": {
-    EN: "The first Web3 escrow platform for agri-trade",
-    DE: "Die erste Web3-Treuhandplattform für den Agrarhandel",
-    BG: "Първата Web3 ескроу платформа за агро-търговия"
+    EN: "Kontor 21 — AI Trade Assurance Platform",
+    DE: "Kontor 21 — AI-Handelssicherungsplattform",
+    BG: "Kontor 21 — AI Платформа за Търговска Сигурност"
   },
 
   // Landing Page — Features
   "features.title": {
-    EN: "How does programmable escrow work?",
-    DE: "Wie funktioniert programmierbare Treuhand?",
-    BG: "Как работи програмируемият ескроу?"
+    EN: "How does AI Trade Assurance work?",
+    DE: "Wie funktioniert AI Trade Assurance?",
+    BG: "Как работи AI Търговската Сигурност?"
   },
   "features.subtitle": {
-    EN: "Traditional letters of credit take weeks. We do it in seconds.",
-    DE: "Traditionelle Akkreditive dauern Wochen. Wir erledigen es in Sekunden.",
-    BG: "Традиционните акредитиви отнемат седмици. Ние го правим за секунди."
+    EN: "We combine verified trade documents, independent inspections, IoT evidence and configurable settlement options.",
+    DE: "Wir kombinieren verifizierte Handelsdokumente, unabhängige Inspektionen, IoT-Beweise und konfigurierbare Abwicklungsoptionen.",
+    BG: "Обединяваме проверени търговски документи, независими инспекции, IoT доказателства и гъвкави опции за разплащане."
   },
   "features.step1Title": {
-    EN: "1. Deposit in Smart Contract",
-    DE: "1. Einzahlung in Smart Contract",
-    BG: "1. Депозит в Смарт Договор"
+    EN: "1. Kontor21 Intelligence",
+    DE: "1. Kontor21 Intelligence",
+    BG: "1. Kontor21 Intelligence"
   },
   "features.step1Desc": {
-    EN: "The buyer locks USDC directly in the blockchain (Polygon). Funds are safe and cannot be touched by us or the seller.",
-    DE: "Der Käufer sperrt USDC direkt in der Blockchain (Polygon). Das Geld ist sicher und kann weder von uns noch vom Verkäufer berührt werden.",
-    BG: "Купувачът заключва средствата в USDC директно в блокчейна (Polygon). Парите са в безопасност и не могат да бъдат докоснати нито от нас, нито от продавача."
+    EN: "Verify suppliers, assess risk, and predict price/harvest trends before entering a trade agreement.",
+    DE: "Überprüfen Sie Lieferanten, bewerten Sie das Risiko und prognostizieren Sie Preis-/Erntetrends, bevor Sie eine Handelsvereinbarung treffen.",
+    BG: "Проверете доставчиците, оценете риска и прогнозирайте ценовите/реколтните тенденции преди сключване на търговско споразумение."
   },
   "features.step2Title": {
-    EN: "2. Oracles & IoT Data",
-    DE: "2. Orakel & IoT-Daten",
-    BG: "2. Оракули и IoT Данни"
+    EN: "2. Independent Inspection & Evidence",
+    DE: "2. Unabhängige Inspektion & Beweise",
+    BG: "2. Независима инспекция и доказателства"
   },
   "features.step2Desc": {
-    EN: "Independent inspectors (like SGS) and IoT sensors feed real-time data to the smart contract. Every condition is mathematically verified.",
-    DE: "Unabhängige Prüfer (wie SGS) und IoT-Sensoren speisen Echtzeitdaten in den Smart Contract ein. Jede Bedingung wird mathematisch überprüft.",
-    BG: "Независими инспектори (като SGS) и IoT сензори в контейнера подават данни в реално време към смарт договора. Всяко условие е математически проверено."
+    EN: "Inspection results and IoT evidence are evaluated against predefined contractual rules. (Compatible with independent inspection companies such as SGS, Bureau Veritas or Intertek)",
+    DE: "Inspektionsergebnisse und IoT-Beweise werden anhand vordefinierter vertraglicher Regeln bewertet. (Kompatibel mit unabhängigen Inspektionsunternehmen wie SGS, Bureau Veritas oder Intertek)",
+    BG: "Резултатите от инспекцията и IoT доказателствата се оценяват спрямо предварително дефинирани договорни правила. (Съвместимо с независими инспекционни компании като SGS, Bureau Veritas или Intertek)"
   },
   "features.step3Title": {
-    EN: "3. Automatic Settlement",
-    DE: "3. Automatische Abwicklung",
-    BG: "3. Автоматичен Сетълмент"
+    EN: "3. Flexible Settlement",
+    DE: "3. Flexible Abwicklung",
+    BG: "3. Гъвкаво Разплащане"
   },
   "features.step3Desc": {
-    EN: "When all conditions are met (humidity, location, documents), the code automatically releases the payment to the seller. No waiting for SWIFT transfers.",
-    DE: "Wenn alle Bedingungen erfüllt sind (Feuchtigkeit, Standort, Dokumente), gibt der Code die Zahlung automatisch an den Verkäufer frei. Kein Warten auf SWIFT-Überweisungen.",
-    BG: "Когато всички условия са изпълнени (влажност, локация, документи), кодът автоматично освобождава плащането към продавача. Без чакане на SWIFT преводи."
+    EN: "Choose your preferred settlement method: Smart Contract Escrow (USDC/USDT), traditional Bank Wire, or Letter of Credit.",
+    DE: "Wählen Sie Ihre bevorzugte Abwicklungsmethode: Smart Contract Treuhand (USDC/USDT), klassische Banküberweisung oder Akkreditiv.",
+    BG: "Изберете предпочитания метод за разплащане: Ескроу със смарт договор (USDC/USDT), традиционен банков превод или акредитив."
   },
+
 
   // Landing Page — Comparison
   "compare.title": {
-    EN: "Leave banks in the 20th century.",
-    DE: "Lassen Sie Banken im 20. Jahrhundert.",
-    BG: "Оставете банките в 20-ти век."
+    EN: "Secure Settlement Options",
+    DE: "Sichere Abwicklungsoptionen",
+    BG: "Сигурни Опции за Разплащане"
   },
   "compare.subtitle": {
-    EN: "Cross-border bank transfers cost 6.3% in fees and take up to 7 days, leaving you vulnerable to geopolitical crises and currency fluctuations. Our programmable escrow with stablecoins (USDC/USDT) bypasses the banking system entirely—securing funds mathematically and settling instantly upon Oracle confirmation.",
-    DE: "Grenzüberschreitende Banküberweisungen kosten 6,3% Gebühren und dauern bis zu 7 Tage, was Sie geopolitischen Krisen und Währungsschwankungen aussetzt. Unser programmierbarer Treuhandservice mit Stablecoins (USDC/USDT) umgeht das Bankensystem vollständig – sichert Gelder mathematisch und wickelt sofort nach Oracle-Bestätigung ab.",
-    BG: "Трансграничните банкови преводи струват 6.3% в такси и отнемат до 7 дни, излагайки ви на геополитически рискове и валутни колебания. Нашият програмируем ескроу със стейбълкойни (USDC/USDT) заобикаля банковата система изцяло – осигурява средствата математически и прави моментален сетълмент при одобрение от Оракул."
+    EN: "Kontor21 reduces dependence on correspondent banking and enables blockchain-based settlement where legally permitted. Our programmable escrow with stablecoins (USDC/USDT) settles instantly upon verification.",
+    DE: "Kontor21 reduziert die Abhängigkeit von Korrespondenzbanken und ermöglicht blockchainbasierte Abwicklungen, sofern gesetzlich zulässig. Unser programmierbarer Treuhandservice mit Stablecoins (USDC/USDT) wickelt sofort nach Verifizierung ab.",
+    BG: "Kontor21 намалява зависимостта от кореспондентско банкиране и позволява базиран на блокчейн сетълмент, където е законово допустимо. Нашият програмируем ескроу със стейбълкойни (USDC/USDT) извършва моментален сетълмент при потвърждение."
   },
-  "compare.benefit1": { EN: "Instant settlement (T+0)", DE: "Sofortige Abwicklung (T+0)", BG: "Моментално плащане (T+0 сетълмент)" },
-  "compare.benefit2": { EN: "Full protection from currency fluctuations", DE: "Vollständiger Schutz vor Währungsschwankungen", BG: "Пълна защита от валутни колебания" },
-  "compare.benefit3": { EN: "Works 24/7, no bank holidays", DE: "Funktioniert 24/7, keine Bankfeiertage", BG: "Работи 24/7, без банкови празници" },
+  "compare.benefit1": { EN: "Instant settlement (T+0) via Blockchain", DE: "Sofortige Abwicklung (T+0) via Blockchain", BG: "Моментален сетълмент (T+0) чрез Блокчейн" },
+  "compare.benefit2": { EN: "Reduces settlement-period FX exposure for USD-denominated transactions.", DE: "Reduziert FX-Risiken in der Abwicklungsperiode für USD-denominierte Transaktionen.", BG: "Намалява валутния риск (FX) по време на сетълмент за транзакции в USD." },
+  "compare.benefit3": { EN: "Works 24/7, programmable automated execution", DE: "Funktioniert 24/7, programmierbare automatisierte Ausführung", BG: "Работи 24/7, програмируемо автоматизирано изпълнение" },
   "compare.traditionalLabel": { EN: "Traditional L/C", DE: "Traditionelles Akkreditiv", BG: "Традиционен Акредитив" },
   "compare.days": { EN: "3-7 Days", DE: "3-7 Tage", BG: "3-7 Дни" },
   "compare.bankFees": { EN: "Bank Fees", DE: "Bankgebühren", BG: "Банкови Такси" },
   "compare.feePercent": { EN: "~2.5% - 6%", DE: "~2,5% - 6%", BG: "~2.5% - 6%" },
-  "compare.kontor21": { EN: "Kontor 21 (Smart Escrow)", DE: "Kontor 21 (Smart Escrow)", BG: "Kontor 21 (Smart Escrow)" },
+  "compare.kontor21": { EN: "Kontor21 Escrow", DE: "Kontor21 Treuhand", BG: "Kontor21 Ескроу" },
   "compare.instant": { EN: "Instant", DE: "Sofort", BG: "Моментално" },
-  "compare.feeLow": { EN: "< 0.1% fee", DE: "< 0,1% Gebühr", BG: "< 0.1% такса" },
+  "compare.feeLow": { EN: "0.25% Platform Fee + Variable Gas", DE: "0,25% Plattformgebühr + Variable Gasgebühr", BG: "0.25% Платформена Такса + Вариативна Мрежова Такса" },
 
+  // Landing Page - Transparency & Trust Center
+  "trust.title": { EN: "Transparency & Trust", DE: "Transparenz & Vertrauen", BG: "Прозрачност и Доверие" },
+  "trust.contract": { EN: "Smart Contract:", DE: "Smart Contract:", BG: "Смарт Договор:" },
+  "trust.network": { EN: "Network:", DE: "Netzwerk:", BG: "Мрежа:" },
+  "trust.networkValue": { EN: "Polygon Amoy Testnet", DE: "Polygon Amoy Testnet", BG: "Polygon Amoy Testnet" },
+  "trust.status": { EN: "Status:", DE: "Status:", BG: "Статус:" },
+  "trust.statusValue": { EN: "Deployment in progress (Will be published before production)", DE: "Bereitstellung in Arbeit (Wird vor Produktion veröffentlicht)", BG: "Деплоймънт в прогрес (Ще бъде публикуван преди продукция)" },
+  "trust.audit": { EN: "Audit:", DE: "Audit:", BG: "Одит:" },
+  "trust.auditValue": { EN: "Pending Final Security Audit", DE: "Ausstehendes finales Sicherheitsaudit", BG: "Очаква финален секюрити одит" },
+  "trust.nav": { EN: "Trust Center", DE: "Trust Center", BG: "Център за Доверие" },
+  
+  // Evidence Engine
+  "evidence.title": { EN: "Evidence Engine", DE: "Beweis-Engine", BG: "Двигател на Доказателствата" },
+  "evidence.subtitle": { EN: "Immutable audit trail combining physical, digital, and IoT evidence.", DE: "Unveränderlicher Prüfpfad, der physische, digitale und IoT-Beweise kombiniert.", BG: "Неизменим одиторски запис, съчетаващ физически, дигитални и IoT доказателства." },
+  
   // Trade View — hardcoded text
   "trade.pageDesc": {
     EN: "Review details and payment status for your order.",

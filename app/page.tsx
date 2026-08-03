@@ -23,6 +23,7 @@ export default function Home() {
           </Link>
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-zinc-400">
             <a href="#features" className="hover:text-white transition-colors">{t('hero.howItWorks')}</a>
+            <Link href="/trust" className="hover:text-white transition-colors">{t('trust.nav')}</Link>
           </div>
           <div className="flex items-center gap-4">
             <LanguageSwitcher />
@@ -75,13 +76,13 @@ export default function Home() {
             <p className="text-zinc-400">{t('features.subtitle')}</p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             <motion.div 
               whileHover={{ y: -5 }}
               className="p-8 rounded-2xl bg-zinc-900/40 border border-zinc-800/80 backdrop-blur-sm"
             >
               <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center mb-6">
-                <Wallet className="w-6 h-6 text-blue-400" />
+                <Activity className="w-6 h-6 text-blue-400" />
               </div>
               <h3 className="text-xl font-semibold text-white mb-3">{t('features.step1Title')}</h3>
               <p className="text-zinc-400 text-sm leading-relaxed">{t('features.step1Desc')}</p>
@@ -92,7 +93,7 @@ export default function Home() {
               className="p-8 rounded-2xl bg-zinc-900/40 border border-zinc-800/80 backdrop-blur-sm"
             >
               <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-6">
-                <Activity className="w-6 h-6 text-emerald-400" />
+                <ShieldCheck className="w-6 h-6 text-emerald-400" />
               </div>
               <h3 className="text-xl font-semibold text-white mb-3">{t('features.step2Title')}</h3>
               <p className="text-zinc-400 text-sm leading-relaxed">{t('features.step2Desc')}</p>
@@ -102,8 +103,19 @@ export default function Home() {
               whileHover={{ y: -5 }}
               className="p-8 rounded-2xl bg-zinc-900/40 border border-zinc-800/80 backdrop-blur-sm"
             >
+              <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center mb-6">
+                <Blocks className="w-6 h-6 text-amber-400" />
+              </div>
+              <h3 className="text-xl font-semibold text-white mb-3">{t('evidence.title')}</h3>
+              <p className="text-zinc-400 text-sm leading-relaxed">{t('evidence.subtitle')}</p>
+            </motion.div>
+
+            <motion.div 
+              whileHover={{ y: -5 }}
+              className="p-8 rounded-2xl bg-zinc-900/40 border border-zinc-800/80 backdrop-blur-sm"
+            >
               <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center mb-6">
-                <ShieldCheck className="w-6 h-6 text-purple-400" />
+                <Wallet className="w-6 h-6 text-purple-400" />
               </div>
               <h3 className="text-xl font-semibold text-white mb-3">{t('features.step3Title')}</h3>
               <p className="text-zinc-400 text-sm leading-relaxed">{t('features.step3Desc')}</p>
@@ -178,13 +190,13 @@ export default function Home() {
               </p>
             </div>
             <div>
-              <h3 className="text-white font-semibold mb-4">Нови AI Функции</h3>
+              <h3 className="text-white font-semibold mb-4">Modules</h3>
               <ul className="space-y-2 text-sm">
-                <li><Link href="/buyer/sourcing" className="text-zinc-400 hover:text-white transition-colors">1. AI Сорсинг (Търсачка)</Link></li>
-                <li><Link href="/oracle/dashboard" className="text-zinc-400 hover:text-white transition-colors">2. AI Верификация (Оракул)</Link></li>
-                <li><Link href="/trade/123" className="text-zinc-400 hover:text-white transition-colors">3. IoT Логистика (Влажност/Локация)</Link></li>
-                <li><Link href="/buyer/dashboard" className="text-zinc-400 hover:text-white transition-colors">4. AI Прогнозиране на цени</Link></li>
-                <li><Link href="/notifications" className="text-zinc-400 hover:text-white transition-colors">5. AI Автоматизирана комуникация (Mission Control)</Link></li>
+                <li><Link href="/buyer/sourcing" className="text-zinc-400 hover:text-white transition-colors">1. Kontor21 Intelligence</Link></li>
+                <li><Link href="/oracle/dashboard" className="text-zinc-400 hover:text-white transition-colors">2. Independent Inspection</Link></li>
+                <li><Link href="/trade/123" className="text-zinc-400 hover:text-white transition-colors">3. Evidence Engine & Telemetry</Link></li>
+                <li><Link href="/buyer/dashboard" className="text-zinc-400 hover:text-white transition-colors">4. Escrow Dashboard</Link></li>
+                <li><Link href="/trust" className="text-zinc-400 hover:text-white transition-colors">5. Trust Center</Link></li>
               </ul>
             </div>
             <div>

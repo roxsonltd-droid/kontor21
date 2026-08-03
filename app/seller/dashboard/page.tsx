@@ -63,19 +63,19 @@ export default function SellerDashboard() {
       testOracle,
       75000,
       CONTRACT_ADDRESSES.testUSDC,
-      "Сушени кайсии, 12 тона; Влажност < 20%"
+      "Dried apricots, 12 tons; Moisture < 20%"
     );
     setIsProcessing(false);
     if (tradeId !== null) {
       setIsModalOpen(false);
-      alert(`Сделката е създадена! ID: ${tradeId}`);
+      alert(`Trade created! ID: ${tradeId}`);
     } else {
-      alert("Грешка при създаване на договора.");
+      alert("Error creating contract.");
     }
   };
 
   const handleWithdraw = async () => {
-    alert("Функцията за теглене е достъпна автоматично след одобрение от оракул (SGS). Смарт договорът ще преведе USDC директно във вашия портфейл.");
+    alert("Withdrawal is available automatically after oracle (SGS) approval. The smart contract will transfer USDC directly to your wallet.");
   };
 
   const handleInvoiceUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -252,9 +252,45 @@ export default function SellerDashboard() {
               <tbody className="divide-y divide-zinc-800/50">
                 
                 {loadingTrades ? (
-                  <tr><td colSpan={6} className="text-center py-8 text-zinc-500">Зареждане на сделки...</td></tr>
+                  <tr><td colSpan={6} className="text-center py-8 text-zinc-500">Loading trades...</td></tr>
                 ) : trades.length === 0 ? (
-                  <tr><td colSpan={6} className="text-center py-8 text-zinc-500">Няма намерени сделки.</td></tr>
+                  <>
+                    <tr>
+                      <td colSpan={6} className="text-center py-8 text-zinc-400">
+                        <div className="flex flex-col items-center gap-3">
+                          <p className="text-sm">No live trades yet.</p>
+                        </div>
+                      </td>
+                    </tr>
+                    {/* Demo Trade */}
+                    <tr className="hover:bg-blue-900/10 transition-colors group bg-blue-500/5 relative">
+                      <td className="px-5 py-4 font-mono text-blue-400 text-xs">
+                        <div className="flex items-center gap-2">
+                          #K21-102
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-500/20 text-blue-400 uppercase">Demo</span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 text-zinc-200 font-medium">12 tons dried apricots</td>
+                      <td className="px-5 py-4 font-semibold text-white">14,400</td>
+                      <td className="px-5 py-4">
+                        <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-zinc-800 text-zinc-400 text-[11px] font-medium border border-zinc-700">
+                          <Wallet className="w-3 h-3" /> {t('seller.statusAwaiting')}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="flex gap-2">
+                          <div className="w-6 h-6 rounded bg-zinc-800 flex items-center justify-center text-zinc-500">
+                            <FileCheck className="w-3 h-3" />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 text-right">
+                        <Link href={`/trade/123`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition-colors">
+                          Explore demo workflow <ChevronRight className="w-3 h-3" />
+                        </Link>
+                      </td>
+                    </tr>
+                  </>
                 ) : (
                   trades.map(trade => {
                     const totalUsdc = parseFloat(trade.quantity) * parseFloat(trade.priceUsdc);
@@ -312,8 +348,8 @@ export default function SellerDashboard() {
             className="bg-blue-900/10 border border-blue-900/30 rounded-2xl p-6 md:p-8 relative overflow-hidden"
           >
             <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
-            <h3 className="text-lg font-semibold text-white mb-2">Действие: Средствата са осигурени!</h3>
-            <p className="text-sm text-zinc-400 mb-6">Купувачът заключи 75,000 USDC в смарт договора. Качете фактурата и въведете детайли за партидата, за да се подготви инспекцията от SGS.</p>
+            <h3 className="text-lg font-semibold text-white mb-2">Action: Funds secured!</h3>
+            <p className="text-sm text-zinc-400 mb-6">The buyer locked 75,000 USDC in the smart contract. Upload the invoice and enter batch details to prepare the SGS inspection.</p>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               
@@ -331,7 +367,7 @@ export default function SellerDashboard() {
                     <div className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed ${isUploading ? 'border-blue-500/50 bg-blue-500/5' : 'border-zinc-800 bg-zinc-900 hover:border-zinc-700'} rounded-lg p-6 transition-colors`}>
                       <UploadCloud className={`w-6 h-6 ${isUploading ? 'text-blue-400 animate-bounce' : 'text-zinc-500'}`} />
                       <span className="text-sm font-medium text-zinc-400">
-                        {isUploading ? 'Качване...' : 'Кликнете за качване на фактура'}
+                        {isUploading ? 'Uploading...' : 'Click to upload invoice'}
                       </span>
                     </div>
                   </div>
@@ -339,7 +375,7 @@ export default function SellerDashboard() {
                   <div className="flex items-center gap-3 bg-emerald-950/30 border border-emerald-900/50 rounded-lg p-4">
                     <FileCheck className="w-5 h-5 text-emerald-400" />
                     <div>
-                      <span className="block text-sm font-medium text-emerald-400/90">Фактура 2026-08.pdf</span>
+                      <span className="block text-sm font-medium text-emerald-400/90">Invoice 2026-08.pdf</span>
                       <span className="block text-xs text-emerald-500/50">{t('seller.uploadSuccess')}</span>
                     </div>
                   </div>
@@ -354,7 +390,7 @@ export default function SellerDashboard() {
                     <div>
                       <input 
                         type="text" 
-                        placeholder="Рег. номер на камион/контейнер" 
+                        placeholder="Truck/Container reg. number" 
                         className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors"
                         value={batchData.truck}
                         onChange={(e) => setBatchData({ ...batchData, truck: e.target.value })}
@@ -373,7 +409,7 @@ export default function SellerDashboard() {
                       disabled={!batchData.truck || !batchData.date}
                       className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-medium transition-all"
                     >
-                      Запази данни
+                      Save data
                     </button>
                   </div>
                 ) : (
@@ -418,12 +454,12 @@ export default function SellerDashboard() {
               
               <div className="p-6 space-y-5">
                 <div>
-                  <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">{t('seller.product')} и Описание</label>
-                  <input type="text" placeholder="напр. Сушени кайсии, 12 тона" className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors" />
+                  <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">{t('seller.product')} and Description</label>
+                  <input type="text" placeholder="e.g. Dried apricots, 12 tons" className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors" />
                 </div>
                 
                 <div>
-                  <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Ескроу Сума (USDC)</label>
+                  <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Escrow Amount (USDC)</label>
                   <div className="relative">
                     <div className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-400 font-medium text-sm">USDC</div>
                     <input type="number" placeholder="0.00" className="w-full bg-zinc-900 border border-zinc-800 rounded-lg pl-14 pr-3 py-2.5 text-sm font-mono text-white focus:outline-none focus:border-blue-500/50 transition-colors" />
@@ -431,24 +467,24 @@ export default function SellerDashboard() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-zinc-400 mb-2 uppercase tracking-wider">Условия за освобождаване ({t('seller.oracles')})</label>
+                  <label className="block text-xs font-medium text-zinc-400 mb-2 uppercase tracking-wider">Release conditions ({t('seller.oracles')})</label>
                   <div className="space-y-2">
                     <label className="flex items-center gap-3 p-3 rounded-lg border border-zinc-800 bg-zinc-900/50 cursor-pointer hover:bg-zinc-900 transition-colors">
                       <input type="checkbox" className="w-4 h-4 rounded border-zinc-700 text-blue-600 focus:ring-blue-500/50 bg-zinc-950" defaultChecked />
                       <div>
                         <div className="text-sm font-medium text-zinc-200 flex items-center gap-1.5">
-                          <FileCheck className="w-3.5 h-3.5 text-emerald-400" /> SGS Инспекция
+                          <FileCheck className="w-3.5 h-3.5 text-emerald-400" /> SGS Inspection
                         </div>
-                        <div className="text-[11px] text-zinc-500 mt-0.5">Изисква подписан сертификат за влажност.</div>
+                        <div className="text-[11px] text-zinc-500 mt-0.5">Requires signed moisture certificate.</div>
                       </div>
                     </label>
                     <label className="flex items-center gap-3 p-3 rounded-lg border border-zinc-800 bg-zinc-900/50 cursor-pointer hover:bg-zinc-900 transition-colors">
                       <input type="checkbox" className="w-4 h-4 rounded border-zinc-700 text-blue-600 focus:ring-blue-500/50 bg-zinc-950" defaultChecked />
                       <div>
                         <div className="text-sm font-medium text-zinc-200 flex items-center gap-1.5">
-                          <Activity className="w-3.5 h-3.5 text-blue-400" /> IoT Геолокация
+                          <Activity className="w-3.5 h-3.5 text-blue-400" /> IoT Geolocation
                         </div>
-                        <div className="text-[11px] text-zinc-500 mt-0.5">Освобождава при влизане в радиус на Порт Пирея.</div>
+                        <div className="text-[11px] text-zinc-500 mt-0.5">Releases upon entering Port of Piraeus radius.</div>
                       </div>
                     </label>
                   </div>
@@ -457,14 +493,14 @@ export default function SellerDashboard() {
               
               <div className="p-5 border-t border-zinc-800/80 bg-zinc-900/50 flex justify-end gap-3">
                 <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 rounded-lg text-sm font-medium text-zinc-400 hover:text-white transition-colors">
-                  Отказ
+                  Cancel
                 </button>
                 <button 
                   onClick={handleCreateContract}
                   disabled={isProcessing}
                   className="px-5 py-2 rounded-lg text-sm font-semibold bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white transition-colors shadow-lg"
                 >
-                  {isProcessing ? 'Подписване...' : 'Генерирай Договор'}
+                  {isProcessing ? 'Signing...' : 'Generate Contract'}
                 </button>
               </div>
             </motion.div>

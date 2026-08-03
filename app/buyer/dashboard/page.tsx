@@ -45,9 +45,9 @@ export default function BuyerDashboard() {
     const success = await fundTrade(tradeId);
     setIsProcessing(false);
     if (success) {
-      alert(`Сделка #${tradeId} — средствата са заключени в ескроу!`);
+      alert(`Trade #${tradeId} - funds locked in escrow!`);
     } else {
-      alert("Грешка при финансиране на сделката.");
+      alert("Error funding trade.");
     }
   };
 
@@ -195,7 +195,7 @@ export default function BuyerDashboard() {
               <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
                 <ShoppingCart className="w-4 h-4" />
               </div>
-              <span className="text-[10px] font-medium px-2 py-1 bg-zinc-800/80 text-zinc-400 rounded uppercase tracking-wider">Активни</span>
+              <span className="text-[10px] font-medium px-2 py-1 bg-zinc-800/80 text-zinc-400 rounded uppercase tracking-wider">Active</span>
             </div>
             <p className="text-xs text-zinc-500 mb-1 uppercase tracking-widest">{t('buyer.active')}</p>
             <div className="flex items-baseline gap-1.5">
@@ -211,7 +211,7 @@ export default function BuyerDashboard() {
               <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400">
                 <ShieldCheck className="w-4 h-4" />
               </div>
-              <span className="text-[10px] font-medium px-2 py-1 bg-zinc-800/80 text-zinc-400 rounded uppercase tracking-wider">В Ескроу</span>
+              <span className="text-[10px] font-medium px-2 py-1 bg-zinc-800/80 text-zinc-400 rounded uppercase tracking-wider">In Escrow</span>
             </div>
             <p className="text-xs text-zinc-500 mb-1 uppercase tracking-widest">{t('buyer.inEscrow')}</p>
             <div className="flex items-baseline gap-1.5">
@@ -234,7 +234,7 @@ export default function BuyerDashboard() {
               <h2 className="text-2xl font-semibold text-white tracking-tight">{completedCount}</h2>
             </div>
             <p className="text-[11px] text-emerald-400/80 mt-2 flex items-center gap-1">
-              +3 този месец
+              +3 this month
             </p>
           </motion.div>
         </div>
@@ -247,7 +247,7 @@ export default function BuyerDashboard() {
               <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Търси по ID..."
+                placeholder="Search by ID..."
                 className="bg-zinc-950 border border-zinc-800 rounded-lg text-xs py-1.5 pl-9 pr-3 text-zinc-300 focus:outline-none focus:border-zinc-700 w-48 transition-colors"
               />
             </div>
@@ -257,20 +257,52 @@ export default function BuyerDashboard() {
             <table className="w-full text-left text-sm">
               <thead className="text-[10px] text-zinc-500 uppercase tracking-widest bg-zinc-950/50">
                 <tr>
-                  <th className="px-5 py-3 font-medium">Сделка ID</th>
-                  <th className="px-5 py-3 font-medium">Стока</th>
-                  <th className="px-5 py-3 font-medium">Сума (USDC)</th>
-                  <th className="px-5 py-3 font-medium">Статус</th>
-                  <th className="px-5 py-3 font-medium">Продавач</th>
-                  <th className="px-5 py-3 text-right font-medium">Действие</th>
+                  <th className="px-5 py-3 font-medium">Trade ID</th>
+                  <th className="px-5 py-3 font-medium">Product</th>
+                  <th className="px-5 py-3 font-medium">Amount (USDC)</th>
+                  <th className="px-5 py-3 font-medium">Status</th>
+                  <th className="px-5 py-3 font-medium">Seller</th>
+                  <th className="px-5 py-3 text-right font-medium">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-800/50">
 
                 {loadingTrades ? (
-                  <tr><td colSpan={6} className="text-center py-8 text-zinc-500">Зареждане на сделки...</td></tr>
+                  <tr><td colSpan={6} className="text-center py-8 text-zinc-500">Loading trades...</td></tr>
                 ) : trades.length === 0 ? (
-                  <tr><td colSpan={6} className="text-center py-8 text-zinc-500">Няма намерени сделки.</td></tr>
+                  <>
+                    <tr>
+                      <td colSpan={6} className="text-center py-8 text-zinc-400">
+                        <div className="flex flex-col items-center gap-3">
+                          <p className="text-sm">No live trades yet.</p>
+                        </div>
+                      </td>
+                    </tr>
+                    {/* Demo Trade */}
+                    <tr className="hover:bg-blue-900/10 transition-colors group bg-blue-500/5 relative">
+                      <td className="px-5 py-4 font-mono text-blue-400 text-xs">
+                        <div className="flex items-center gap-2">
+                          #K21-102
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-500/20 text-blue-400 uppercase">Demo</span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 text-zinc-200 font-medium">12 tons dried apricots</td>
+                      <td className="px-5 py-4 font-semibold text-white">14,400</td>
+                      <td className="px-5 py-4">
+                        <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 text-[11px] font-medium border border-emerald-500/20">
+                          <CheckCircle2 className="w-3 h-3" /> Inspection Completed
+                        </span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className="text-xs font-mono text-zinc-400">Verified BG Producer</span>
+                      </td>
+                      <td className="px-5 py-4 text-right">
+                        <Link href={`/trade/123`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition-colors">
+                          Explore demo workflow <ChevronRight className="w-3 h-3" />
+                        </Link>
+                      </td>
+                    </tr>
+                  </>
                 ) : (
                   trades.map(trade => {
                     const totalUsdc = parseFloat(trade.quantity) * parseFloat(trade.priceUsdc);
@@ -287,19 +319,19 @@ export default function BuyerDashboard() {
                         <td className="px-5 py-4">
                           {isDisputed ? (
                             <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-red-500/10 text-red-400 text-[11px] font-medium border border-red-500/20">
-                              <AlertCircle className="w-3 h-3" /> Спор
+                              <AlertCircle className="w-3 h-3" /> Disputed
                             </span>
                           ) : isCompleted ? (
                             <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-emerald-500/10 text-emerald-400/80 text-[11px] font-medium border border-emerald-500/20">
-                              <CheckCircle2 className="w-3 h-3" /> Завършена
+                              <CheckCircle2 className="w-3 h-3" /> Completed
                             </span>
                           ) : needsFunding ? (
                             <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-amber-500/10 text-amber-400 text-[11px] font-medium border border-amber-500/20">
-                              <Wallet className="w-3 h-3" /> Чака Депозит
+                              <Wallet className="w-3 h-3" /> Awaiting Deposit
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-blue-500/10 text-blue-400 text-[11px] font-medium border border-blue-500/20">
-                              <ShieldCheck className="w-3 h-3" /> В Ескроу
+                              <ShieldCheck className="w-3 h-3" /> In Escrow
                             </span>
                           )}
                         </td>
@@ -314,11 +346,11 @@ export default function BuyerDashboard() {
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               <Wallet className="w-3 h-3" />
-                              {isProcessing ? 'Заключване...' : 'Депозирай'}
+                              {isProcessing ? 'Locking...' : 'Deposit'}
                             </button>
                           ) : (
                             <Link href={`/trade/${trade.id}`} className="inline-flex items-center gap-1 text-xs font-medium text-zinc-400 hover:text-white transition-colors">
-                              Преглед <ChevronRight className="w-3 h-3" />
+                              View <ChevronRight className="w-3 h-3" />
                             </Link>
                           )}
                         </td>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Blocks, CheckCircle2, ShoppingCart, Clock, AlertCircle, LinkIcon, ShieldCheck, Search, Wallet, ChevronRight, TrendingUp, Cpu, Lock, Factory } from 'lucide-react';

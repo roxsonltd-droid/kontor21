@@ -19,6 +19,20 @@ services:
         value: https://kontor21.onrender.com
       - key: AMOY_RPC_URL
         value: https://rpc-amoy.polygon.technology/
+      - key: ESCROW_RPC_URL
+        value: https://rpc-amoy.polygon.technology/
+      - key: ESCROW_NETWORK
+        value: polygon-amoy
+      - key: API_CHAIN_ID
+        value: "80002"
+      - key: INDEXER_CONFIRMATIONS
+        value: "12"
+      - key: KONTOR_ESCROW_ADDRESS
+        sync: false
+      - key: ESCROW_START_BLOCK
+        sync: false
+      - key: CRON_SECRET
+        sync: false
       - key: PINATA_JWT
         sync: false
       - key: DEPLOYER_PRIVATE_KEY

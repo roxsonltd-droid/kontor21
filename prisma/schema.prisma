@@ -93,6 +93,18 @@ enum MilestoneSettlementStatus {
   FAILED
 }
 
+enum ChainEventProcessingStatus {
+  PENDING
+  PROCESSED
+  FAILED
+}
+
+enum ReconciliationIssueStatus {
+  OPEN
+  RESOLVED
+  IGNORED
+}
+
 model User {
   id            String   @id @default(uuid())
   walletAddress String   @unique
@@ -281,4 +293,80 @@ model AuthNonce {
   createdAt     DateTime  @default(now())
 
   @@index([walletAddress, expiresAt])
+}
+
+model ChainCursor {
+  id                 String   @id @default(uuid())
+  network            String
+  contractAddress    String
+  lastProcessedBlock BigInt
+  confirmations      Int
+  updatedAt          DateTime @updatedAt
+
+  @@unique([network, contractAddress])
+}
+
+model ChainEvent {
+  id              String                     @id @default(uuid())
+  network         String
+  contractAddress String
+  blockNumber     BigInt
+  transactionHash String
+  logIndex        Int
+  eventName       String
+  payload         Json
+  status          ChainEventProcessingStatus @default(PENDING)
+  processedAt     DateTime?
+  errorMessage    String?
+  createdAt       DateTime                   @default(now())
+
+  deadLetter DeadLetterEvent?
+
+  @@unique([network, contractAddress, transactionHash, logIndex])
+  @@index([network, contractAddress, blockNumber])
+  @@index([status, createdAt])
+}
+
+model DeadLetterEvent {
+  id           String   @id @default(uuid())
+  chainEventId String   @unique
+  retryCount   Int      @default(0)
+  lastError    String
+  nextRetryAt  DateTime?
+  resolvedAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  chainEvent ChainEvent @relation(fields: [chainEventId], references: [id], onDelete: Cascade)
+
+  @@index([resolvedAt, nextRetryAt])
+}
+
+model ReconciliationIssue {
+  id              String                    @id @default(uuid())
+  network         String
+  contractAddress String
+  tradeId         String?
+  blockchainTradeId Int
+  field           String
+  databaseValue   String?
+  chainValue      String
+  status          ReconciliationIssueStatus @default(OPEN)
+  detectedAt      DateTime                  @default(now())
+  resolvedAt      DateTime?
+  details         Json?
+
+  @@index([status, detectedAt])
+  @@index([blockchainTradeId, status])
+}
+
+model RateLimitBucket {
+  id          String   @id @default(uuid())
+  key         String
+  windowStart DateTime
+  count       Int      @default(0)
+  expiresAt   DateTime
+
+  @@unique([key, windowStart])
+  @@index([expiresAt])
 }

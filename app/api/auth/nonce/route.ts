@@ -2,6 +2,7 @@ import { randomBytes } from "crypto";
 import { getAddress, isAddress } from "ethers";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { consumeRateLimit, requestClientIdentity } from "@/lib/rate-limit";
 
 const NONCE_TTL_MS = 5 * 60 * 1000;
 
@@ -12,6 +13,20 @@ export async function POST(req: NextRequest) {
   }
 
   const walletAddress = getAddress(body.address);
+  const rateLimit = await consumeRateLimit(
+    `nonce:${requestClientIdentity(req.headers)}:${walletAddress}`,
+    10,
+    60_000
+  );
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many authentication challenges" },
+      {
+        status: 429,
+        headers: { "retry-after": rateLimit.retryAfterSeconds.toString() },
+      }
+    );
+  }
   const nonce = randomBytes(24).toString("hex");
   const expiresAt = new Date(Date.now() + NONCE_TTL_MS);
 

@@ -20,6 +20,8 @@ flowchart LR
     UI --> API[Signed API routes]
     API --> DB[(PostgreSQL)]
     API --> IPFS[Pinata / IPFS]
+    SC --> IDX[Confirmed event indexer]
+    IDX --> DB
     UI --> SC[KontorEscrow V3<br/>Polygon Amoy]
     A1[Trade arbitrator 1] --> SC
     A2[Trade arbitrator 2] --> SC
@@ -101,6 +103,9 @@ Implemented:
 - PostgreSQL trade, condition, evidence, and audit records;
 - organization memberships with owner, admin, trader, accountant, signer, and viewer roles;
 - trade milestones, milestone evidence links, and settlement proposal records;
+- confirmed escrow-event indexing with durable cursors and idempotent event keys;
+- automatic trade-state reconciliation, dead-letter retries, and internal metrics;
+- database-backed authentication-challenge rate limiting;
 - Pinata/IPFS file upload;
 - token allowlist and zero-address validation;
 - buyer-approved partial settlement;
@@ -115,7 +120,6 @@ Prototype or presentation-only:
 - market intelligence and AI sourcing content;
 - OCR and automated document extraction;
 - provider accreditation and certificate revocation;
-- blockchain event indexer and automated database reconciliation;
 - email and push notification delivery;
 - legal, KYC/KYB, accounting, and tax integrations.
 
@@ -157,6 +161,10 @@ Required environment variables:
 - `API_CHAIN_ID` — signed API chain binding, `80002` for Amoy.
 - `ESCROW_RPC_URL` — server-side RPC used to verify API status changes against the contract.
 - `KONTOR_ESCROW_ADDRESS` — deployed escrow address used for server-side verification.
+- `ESCROW_NETWORK` — stable indexer network identifier such as `polygon-amoy`.
+- `ESCROW_START_BLOCK` — verified contract deployment block.
+- `INDEXER_CONFIRMATIONS` — confirmation depth before events are processed.
+- `CRON_SECRET` — random bearer token for internal sync and metrics routes.
 - `NEXT_PUBLIC_APP_URL` — public application origin.
 - `NEXT_PUBLIC_IPFS_GATEWAY` — public IPFS gateway prefix.
 
@@ -186,6 +194,25 @@ All routes below require the same one-time wallet signature described above.
 Milestone allocations cannot exceed the trade total and become immutable after
 funding. Settlement proposals are accepted only from the designated oracle and
 must match the contract's current pending amount and evidence root.
+
+## Chain indexing and reconciliation
+
+Run a synchronization cycle with:
+
+```bash
+npm run chain:sync
+```
+
+On Render, schedule `POST /api/internal/chain-sync` with
+`Authorization: Bearer $CRON_SECRET`. Each cycle waits for the configured
+confirmation depth, resumes from a durable cursor, stores logs under a unique
+transaction-hash/log-index key, updates trade and milestone settlement state,
+retries dead letters, and reconciles linked database trades against the
+contract.
+
+`GET /api/internal/metrics` returns failed-event, dead-letter, reconciliation,
+and cursor metrics with the same bearer token. Operational logs are emitted as
+single-line JSON for ingestion by Render or another log platform.
 
 ## Deployment environments
 
@@ -231,7 +258,10 @@ and add the Polygonscan links above only after verifying the deployment.
 - Organization roles are implemented, but invitation acceptance, KYB, and
   fine-grained custom permission policies are not.
 - Milestone entities are implemented, but versioned rules policies are not.
-- No event-indexing worker or automatic chain/database reconciliation.
+- The indexer is scheduled/polling and must be invoked by Render Cron or an
+  equivalent scheduler; it is not a continuously running dedicated worker.
+- Reconciliation currently covers trade settlement state. Production-grade
+  historical token accounting still requires an external archival data source.
 - No independent security audit, formal verification, bug bounty, or SLA.
 
 ## Security reporting

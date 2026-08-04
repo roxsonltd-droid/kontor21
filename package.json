@@ -17,7 +17,8 @@
     "node": "npx hardhat node",
     "deploy": "npx hardhat run scripts/deploy.ts --network localhost",
     "deploy:amoy": "npx hardhat run scripts/deploy.ts --network amoy",
-    "deploy:verify": "npx hardhat verify --network amoy"
+    "deploy:verify": "npx hardhat verify --network amoy",
+    "chain:sync": "npx hardhat run scripts/sync-chain.ts --network amoy"
   },
   "dependencies": {
     "@prisma/client": "5.22.0",

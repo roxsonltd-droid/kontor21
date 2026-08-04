@@ -57,6 +57,42 @@ enum EvidenceValidationStatus {
   MANUAL_REVIEW
 }
 
+enum OrganizationRole {
+  OWNER
+  ADMIN
+  TRADER
+  ACCOUNTANT
+  SIGNER
+  VIEWER
+}
+
+enum MembershipStatus {
+  INVITED
+  ACTIVE
+  SUSPENDED
+  REVOKED
+}
+
+enum MilestoneStatus {
+  DRAFT
+  ACTIVE
+  EVIDENCE_PENDING
+  READY_FOR_RELEASE
+  PARTIALLY_RELEASED
+  RELEASED
+  DISPUTED
+  CANCELLED
+}
+
+enum MilestoneSettlementStatus {
+  PENDING
+  PROPOSED
+  APPROVED
+  EXECUTED
+  REFUNDED
+  FAILED
+}
+
 model User {
   id            String   @id @default(uuid())
   walletAddress String   @unique
@@ -70,8 +106,39 @@ model User {
   tradesAsBuyer  TradeMetadata[] @relation("BuyerTrades")
   tradesAsSeller TradeMetadata[] @relation("SellerTrades")
   tradesAsOracle TradeMetadata[] @relation("OracleTrades")
+  memberships    OrganizationMembership[]
 
   @@index([role])
+}
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  vatNumber String?  @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships    OrganizationMembership[]
+  tradesAsBuyer  TradeMetadata[] @relation("BuyerOrganizationTrades")
+  tradesAsSeller TradeMetadata[] @relation("SellerOrganizationTrades")
+}
+
+model OrganizationMembership {
+  id             String           @id @default(uuid())
+  organizationId String
+  userId         String
+  role           OrganizationRole
+  status         MembershipStatus @default(ACTIVE)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([userId, status])
+  @@index([organizationId, role, status])
 }
 
 model TradeMetadata {
@@ -90,6 +157,11 @@ model TradeMetadata {
   oracleId String?
   oracle   User? @relation("OracleTrades", fields: [oracleId], references: [id])
 
+  buyerOrganizationId  String?
+  sellerOrganizationId String?
+  buyerOrganization    Organization? @relation("BuyerOrganizationTrades", fields: [buyerOrganizationId], references: [id])
+  sellerOrganization   Organization? @relation("SellerOrganizationTrades", fields: [sellerOrganizationId], references: [id])
+
   // Nexus Core: Separation of physical state and financial state
   operationalStatus OperationalStatus @default(PENDING)
   settlementStatus  SettlementStatus  @default(AWAITING_FUNDS)
@@ -100,10 +172,50 @@ model TradeMetadata {
   conditions  TradeCondition[]
   evidence    Evidence[]
   auditLogs   AuditLog[]
+  milestones  TradeMilestone[]
 
   @@index([buyerId])
   @@index([sellerId])
   @@index([oracleId])
+  @@index([buyerOrganizationId])
+  @@index([sellerOrganizationId])
+}
+
+model TradeMilestone {
+  id              String          @id @default(uuid())
+  tradeId         String
+  sequence        Int
+  title           String
+  description     String?
+  amountUsdc      Decimal         @db.Decimal(20, 6)
+  status          MilestoneStatus @default(DRAFT)
+  evidenceDueAt   DateTime?
+  acceptanceDueAt DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  trade       TradeMetadata        @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+  conditions  TradeCondition[]
+  evidence    Evidence[]
+  settlements MilestoneSettlement[]
+
+  @@unique([tradeId, sequence])
+  @@index([tradeId, status])
+}
+
+model MilestoneSettlement {
+  id              String                    @id @default(uuid())
+  milestoneId     String
+  amountUsdc      Decimal                   @db.Decimal(20, 6)
+  status          MilestoneSettlementStatus @default(PENDING)
+  evidenceRoot    String?
+  transactionHash String?                   @unique
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
+
+  milestone TradeMilestone @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+
+  @@index([milestoneId, status])
 }
 
 // Nexus Core: Structured Rules Engine Inputs
@@ -116,11 +228,14 @@ model TradeCondition {
   unit         String?  // e.g. "%", "tons"
   providerRole ProviderRole
   isRequired   Boolean  @default(true)
+  milestoneId  String?
   
   trade        TradeMetadata @relation(fields: [tradeId], references: [id])
   evidence     Evidence[]
+  milestone    TradeMilestone? @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
 
   @@index([tradeId])
+  @@index([milestoneId])
 }
 
 // Nexus Core: Verifiable Credentials / Lab Results
@@ -132,13 +247,16 @@ model Evidence {
   providerWallet String   // Who uploaded it (e.g. SGS Oracle)
   verifiedValue  String?  // The extracted value (e.g. "4.8" for moisture)
   validationStatus EvidenceValidationStatus @default(PENDING)
+  milestoneId     String?
   createdAt      DateTime @default(now())
 
   trade     TradeMetadata   @relation(fields: [tradeId], references: [id])
   condition TradeCondition? @relation(fields: [conditionId], references: [id])
+  milestone TradeMilestone? @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
 
   @@index([tradeId])
   @@index([conditionId])
+  @@index([milestoneId])
 }
 
 model AuditLog {

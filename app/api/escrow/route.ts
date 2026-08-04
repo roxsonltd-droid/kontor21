@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { authenticateWalletRequest, isConfiguredArbitrator } from "@/lib/api-auth";
 import { getAddress, isAddress } from "ethers";
 import { ConditionOperator, ProviderRole } from "@prisma/client";
+import { canManageTrades } from "@/lib/organization";
 
 const CONDITION_OPERATORS: Record<string, ConditionOperator> = {
   "<=": ConditionOperator.LTE,
@@ -58,6 +59,35 @@ export async function POST(req: NextRequest) {
       create: { walletAddress: actorWallet, companyName: body.sellerName || null, role: "TRADER" },
     });
 
+    let buyerOrganizationId: string | null = null;
+    let sellerOrganizationId: string | null = null;
+    if (body.sellerOrganizationId) {
+      const membership = await prisma.organizationMembership.findFirst({
+        where: {
+          organizationId: body.sellerOrganizationId,
+          userId: seller.id,
+          status: "ACTIVE",
+        },
+      });
+      if (!membership || !canManageTrades(membership.role)) {
+        return NextResponse.json({ error: "Seller organization trading permission required" }, { status: 403 });
+      }
+      sellerOrganizationId = body.sellerOrganizationId;
+    }
+    if (body.buyerOrganizationId) {
+      const membership = await prisma.organizationMembership.findFirst({
+        where: {
+          organizationId: body.buyerOrganizationId,
+          userId: buyer.id,
+          status: "ACTIVE",
+        },
+      });
+      if (!membership) {
+        return NextResponse.json({ error: "Buyer is not an active member of the selected organization" }, { status: 400 });
+      }
+      buyerOrganizationId = body.buyerOrganizationId;
+    }
+
     let oracle = null;
     if (body.oracleWallet && isAddress(body.oracleWallet)) {
       const oracleAddress = getAddress(body.oracleWallet);
@@ -100,6 +130,8 @@ export async function POST(req: NextRequest) {
         buyerId: buyer.id,
         sellerId: seller.id,
         oracleId: oracle?.id || null,
+        buyerOrganizationId,
+        sellerOrganizationId,
         operationalStatus: "PENDING",
         settlementStatus: "AWAITING_FUNDS",
         conditions: conditionsCreate

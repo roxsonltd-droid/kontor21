@@ -45,7 +45,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
     }
     const body = JSON.parse(rawBody);
 
-    const { documentHash, providerWallet, verifiedValue, conditionId } = body;
+    const { documentHash, providerWallet, verifiedValue, conditionId, milestoneId } = body;
     if (!documentHash || !providerWallet) {
       return NextResponse.json({ error: "Missing documentHash or providerWallet" }, { status: 400 });
     }
@@ -83,6 +83,16 @@ export async function POST(req: NextRequest, context: RouteContext) {
     if (!targetCondition || (!isDesignatedOracle && !hasRequiredProviderRole)) {
       return NextResponse.json({ error: "Provider is not authorized for this condition" }, { status: 403 });
     }
+    const resolvedMilestoneId = milestoneId || targetCondition.milestoneId || null;
+    if (resolvedMilestoneId) {
+      const milestone = await prisma.tradeMilestone.findFirst({
+        where: { id: resolvedMilestoneId, tradeId: id },
+        select: { id: true },
+      });
+      if (!milestone || (targetCondition.milestoneId && targetCondition.milestoneId !== resolvedMilestoneId)) {
+        return NextResponse.json({ error: "Evidence milestone does not match the condition" }, { status: 400 });
+      }
+    }
 
     // Basic Rules Engine Evaluation
     if (targetCondition && verifiedValue) {
@@ -111,7 +121,8 @@ export async function POST(req: NextRequest, context: RouteContext) {
         documentHash,
         providerWallet: actorWallet,
         verifiedValue: verifiedValue || null,
-        validationStatus: isValid === true ? "VALID" : isValid === false ? "INVALID" : "PENDING"
+        validationStatus: isValid === true ? "VALID" : isValid === false ? "INVALID" : "PENDING",
+        milestoneId: resolvedMilestoneId,
       }
     });
 

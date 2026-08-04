@@ -99,6 +99,8 @@ Implemented:
 
 - wallet-signed API mutations with one-time nonces;
 - PostgreSQL trade, condition, evidence, and audit records;
+- organization memberships with owner, admin, trader, accountant, signer, and viewer roles;
+- trade milestones, milestone evidence links, and settlement proposal records;
 - Pinata/IPFS file upload;
 - token allowlist and zero-address validation;
 - buyer-approved partial settlement;
@@ -113,7 +115,6 @@ Prototype or presentation-only:
 - market intelligence and AI sourcing content;
 - OCR and automated document extraction;
 - provider accreditation and certificate revocation;
-- organization membership and granular permissions;
 - blockchain event indexer and automated database reconciliation;
 - email and push notification delivery;
 - legal, KYC/KYB, accounting, and tax integrations.
@@ -171,6 +172,21 @@ npm run build
 `npm test` currently covers the smart contract and wallet-auth message binding.
 Database route integration tests and browser end-to-end tests remain planned.
 
+## Organization and milestone APIs
+
+All routes below require the same one-time wallet signature described above.
+
+| Method | Route | Purpose |
+|---|---|---|
+| `GET`, `POST` | `/api/organizations` | List memberships or create an organization |
+| `GET`, `POST` | `/api/organizations/:id/members` | List or appoint organization members |
+| `GET`, `POST` | `/api/escrow/:id/milestones` | List or allocate pre-funding milestones |
+| `GET`, `POST` | `/api/escrow/:id/milestones/:milestoneId/settlements` | List or record an on-chain-matched oracle proposal |
+
+Milestone allocations cannot exceed the trade total and become immutable after
+funding. Settlement proposals are accepted only from the designated oracle and
+must match the contract's current pending amount and evidence root.
+
 ## Deployment environments
 
 - **Local:** Hardhat, local PostgreSQL, mock TestUSDC.
@@ -198,8 +214,9 @@ and add the Polygonscan links above only after verifying the deployment.
 - **Lost oracle key:** existing funded trades cannot replace their oracle.
   Buyers can use timeout refund or open a dispute. Create future trades with the
   replacement oracle.
-- **Lost arbitrator key:** one unavailable arbitrator is tolerated. Two lost
-  keys prevent a 2-of-3 resolution; the current V3 has no panel recovery.
+- **Lost arbitrator key:** one unavailable arbitrator is tolerated. If the panel
+  does not resolve a dispute within 30 days, the buyer can recover the remaining
+  balance through the dispute-timeout path.
 - **Pinata outage:** retrieve by CID from another gateway and repin the content.
 - **Database failure:** restore the managed PostgreSQL backup, rerun migrations,
   then reconcile records against on-chain events before reopening writes.
@@ -211,8 +228,9 @@ and add the Polygonscan links above only after verifying the deployment.
 - Owner is not yet enforced as a multisig or timelock on-chain.
 - Arbitration resolves the remaining balance entirely to buyer or seller.
 - No on-chain verification of each evidence provider signature.
-- No organization/membership/permission domain model yet.
-- No versioned rules-policy registry or milestone database entities yet.
+- Organization roles are implemented, but invitation acceptance, KYB, and
+  fine-grained custom permission policies are not.
+- Milestone entities are implemented, but versioned rules policies are not.
 - No event-indexing worker or automatic chain/database reconciliation.
 - No independent security audit, formal verification, bug bounty, or SLA.
 

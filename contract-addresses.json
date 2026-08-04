@@ -1,7 +1,7 @@
 {
-  "testUSDC": "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9",
-  "kontorEscrow": "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
-  "arbitrator": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-  "polygonAmoyTestUSDC": "0xYourDeployedAmoyUSDCAddress",
-  "polygonAmoyKontorEscrow": "0xYourDeployedAmoyEscrowAddress"
+  "testUSDC": "0x7427bD06Ac0f6E557E049492622B4cf0E6070468",
+  "kontorEscrow": "0xDaa763977374478317270bd97184B2C366893339",
+  "arbitrator1": "0x5468E5a38D75FbF905E23A49B18bbfb024f1b47d",
+  "arbitrator2": "0x57143cB41c089b78b61E072E24340Aa53aA99ADc",
+  "arbitrator3": "0x26B0dF3c0a73ca473883bc579c741E5C4947B545"
 }

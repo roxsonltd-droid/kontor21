@@ -5,6 +5,7 @@ import { KONTOR_ESCROW_ABI } from "./abis";
 import { operationalLog } from "./logger";
 
 const escrowInterface = new Interface(KONTOR_ESCROW_ABI);
+type DatabaseClient = Prisma.TransactionClient | typeof prisma;
 
 type IndexerOptions = {
   provider: Provider;
@@ -36,8 +37,11 @@ function parsedPayload(log: Log) {
   return { eventName: parsed.name, payload };
 }
 
-async function updateMilestoneAfterExecution(milestoneId: string) {
-  const milestone = await prisma.tradeMilestone.findUnique({
+async function updateMilestoneAfterExecution(
+  db: DatabaseClient,
+  milestoneId: string
+) {
+  const milestone = await db.tradeMilestone.findUnique({
     where: { id: milestoneId },
     include: { settlements: { where: { status: "EXECUTED" } } },
   });
@@ -46,7 +50,7 @@ async function updateMilestoneAfterExecution(milestoneId: string) {
     (sum, settlement) => sum.add(settlement.amountUsdc),
     milestone.amountUsdc.mul(0)
   );
-  await prisma.tradeMilestone.update({
+  await db.tradeMilestone.update({
     where: { id: milestoneId },
     data: {
       status: executed.gte(milestone.amountUsdc) ? "RELEASED" : "PARTIALLY_RELEASED",
@@ -55,42 +59,43 @@ async function updateMilestoneAfterExecution(milestoneId: string) {
 }
 
 async function applyEscrowEvent(
+  db: DatabaseClient,
   eventName: string,
   payload: Record<string, Prisma.InputJsonValue>,
   transactionHash: string
 ) {
   const blockchainTradeId = Number(payload.tradeId);
   if (!Number.isSafeInteger(blockchainTradeId) || blockchainTradeId <= 0) return;
-  const trade = await prisma.tradeMetadata.findUnique({ where: { blockchainTradeId } });
+  const trade = await db.tradeMetadata.findUnique({ where: { blockchainTradeId } });
   if (!trade) return;
 
   if (eventName === "TradeFunded") {
-    await prisma.tradeMetadata.update({
+    await db.tradeMetadata.update({
       where: { id: trade.id },
       data: { settlementStatus: "FUNDED" },
     });
   } else if (eventName === "TradePartialReleased") {
-    await prisma.tradeMetadata.update({
+    await db.tradeMetadata.update({
       where: { id: trade.id },
       data: { settlementStatus: "PARTIAL_SETTLEMENT" },
     });
   } else if (eventName === "TradeCompleted") {
-    await prisma.tradeMetadata.update({
+    await db.tradeMetadata.update({
       where: { id: trade.id },
       data: { settlementStatus: "RELEASED", operationalStatus: "CONDITIONS_SATISFIED" },
     });
   } else if (eventName === "TradeTimedOut" || eventName === "DisputeTimedOut") {
-    await prisma.tradeMetadata.update({
+    await db.tradeMetadata.update({
       where: { id: trade.id },
       data: { settlementStatus: "REFUNDED" },
     });
   } else if (eventName === "DisputeRaised") {
-    await prisma.tradeMetadata.update({
+    await db.tradeMetadata.update({
       where: { id: trade.id },
       data: { settlementStatus: "DISPUTED", operationalStatus: "DISPUTED" },
     });
   } else if (eventName === "DisputeResolved") {
-    await prisma.tradeMetadata.update({
+    await db.tradeMetadata.update({
       where: { id: trade.id },
       data: {
         settlementStatus: payload.refundBuyer === true ? "REFUNDED" : "RELEASED",
@@ -100,7 +105,7 @@ async function applyEscrowEvent(
   } else if (eventName === "ReleaseApproved") {
     const amount = String(payload.amount);
     const evidenceRoot = String(payload.evidenceRoot).toLowerCase();
-    const settlement = await prisma.milestoneSettlement.findFirst({
+    const settlement = await db.milestoneSettlement.findFirst({
       where: {
         milestone: { tradeId: trade.id },
         amountUsdc: { equals: formatUnits(BigInt(amount), 6) },
@@ -110,11 +115,11 @@ async function applyEscrowEvent(
       orderBy: { createdAt: "asc" },
     });
     if (settlement) {
-      await prisma.milestoneSettlement.update({
+      await db.milestoneSettlement.update({
         where: { id: settlement.id },
         data: { status: "EXECUTED", transactionHash },
       });
-      await updateMilestoneAfterExecution(settlement.milestoneId);
+      await updateMilestoneAfterExecution(db, settlement.milestoneId);
     }
   }
 }
@@ -149,29 +154,38 @@ async function processLog(
   });
 
   try {
-    await applyEscrowEvent(parsed.eventName, parsed.payload, log.transactionHash);
-    await prisma.chainEvent.update({
-      where: { id: chainEvent.id },
-      data: { status: "PROCESSED", processedAt: new Date(), errorMessage: null },
-    });
-    await prisma.deadLetterEvent.updateMany({
-      where: { chainEventId: chainEvent.id, resolvedAt: null },
-      data: { resolvedAt: new Date() },
+    await prisma.$transaction(async (tx) => {
+      await applyEscrowEvent(
+        tx,
+        parsed.eventName,
+        parsed.payload,
+        log.transactionHash
+      );
+      await tx.chainEvent.update({
+        where: { id: chainEvent.id },
+        data: { status: "PROCESSED", processedAt: new Date(), errorMessage: null },
+      });
+      await tx.deadLetterEvent.updateMany({
+        where: { chainEventId: chainEvent.id, resolvedAt: null },
+        data: { resolvedAt: new Date(), nextRetryAt: null },
+      });
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    await prisma.chainEvent.update({
-      where: { id: chainEvent.id },
-      data: { status: "FAILED", errorMessage: message.slice(0, 2000) },
-    });
-    await prisma.deadLetterEvent.upsert({
-      where: { chainEventId: chainEvent.id },
-      create: { chainEventId: chainEvent.id, lastError: message.slice(0, 2000) },
-      update: {
-        retryCount: { increment: 1 },
-        lastError: message.slice(0, 2000),
-        nextRetryAt: new Date(Date.now() + 5 * 60 * 1000),
-      },
+    await prisma.$transaction(async (tx) => {
+      await tx.chainEvent.update({
+        where: { id: chainEvent.id },
+        data: { status: "FAILED", errorMessage: message.slice(0, 2000) },
+      });
+      await tx.deadLetterEvent.upsert({
+        where: { chainEventId: chainEvent.id },
+        create: { chainEventId: chainEvent.id, lastError: message.slice(0, 2000) },
+        update: {
+          retryCount: { increment: 1 },
+          lastError: message.slice(0, 2000),
+          nextRetryAt: new Date(Date.now() + 5 * 60 * 1000),
+        },
+      });
     });
     operationalLog("error", "chain_event_failed", {
       eventName: parsed.eventName,
@@ -195,21 +209,22 @@ async function retryDeadLetters(network: string, contractAddress: string) {
   let recovered = 0;
   for (const deadLetter of deadLetters) {
     try {
-      await applyEscrowEvent(
-        deadLetter.chainEvent.eventName,
-        deadLetter.chainEvent.payload as Record<string, Prisma.InputJsonValue>,
-        deadLetter.chainEvent.transactionHash
-      );
-      await prisma.$transaction([
-        prisma.chainEvent.update({
+      await prisma.$transaction(async (tx) => {
+        await applyEscrowEvent(
+          tx,
+          deadLetter.chainEvent.eventName,
+          deadLetter.chainEvent.payload as Record<string, Prisma.InputJsonValue>,
+          deadLetter.chainEvent.transactionHash
+        );
+        await tx.chainEvent.update({
           where: { id: deadLetter.chainEventId },
           data: { status: "PROCESSED", processedAt: new Date(), errorMessage: null },
-        }),
-        prisma.deadLetterEvent.update({
+        });
+        await tx.deadLetterEvent.update({
           where: { id: deadLetter.id },
           data: { resolvedAt: new Date(), nextRetryAt: null },
-        }),
-      ]);
+        });
+      });
       recovered++;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

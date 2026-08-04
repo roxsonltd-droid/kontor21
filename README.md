@@ -134,7 +134,7 @@ by the deployment script.
 | Environment | Escrow | Token | Explorer |
 |---|---|---|---|
 | Local Hardhat | Generated per run | TestUSDC | Not applicable |
-| Polygon Amoy staging | Pending deployment | TestUSDC — no value | Pending Polygonscan link |
+| Polygon Amoy staging | [`0xDaa7...3339`](https://amoy.polygonscan.com/address/0xDaa763977374478317270bd97184B2C366893339) | [`TestUSDC`](https://amoy.polygonscan.com/address/0x7427bD06Ac0f6E557E049492622B4cf0E6070468) — no value | [Deployment transaction](https://amoy.polygonscan.com/tx/0xdf258506a885bf7999785ef0b1235a00c6df93900bb2c02ca2ac6ba845721779) |
 | Polygon mainnet | Not approved | Not approved | Not applicable |
 
 Never copy local Hardhat addresses into staging documentation.
@@ -173,12 +173,18 @@ Required environment variables:
 ```bash
 npm run lint
 npm run typecheck
+npm run test:contracts
+npm run test:unit
 npm test
+npx prisma validate
 npm run build
 ```
 
-`npm test` currently covers the smart contract and wallet-auth message binding.
-Database route integration tests and browser end-to-end tests remain planned.
+`npm test` runs the contract suite and the application unit tests for wallet
+authentication, internal authorization, organization permissions, and trade
+transition authorization. `npm run test:e2e:local` exercises the complete
+contract workflow against a separately running local Hardhat node. Database
+route integration tests and browser end-to-end tests remain planned.
 
 ## Organization and milestone APIs
 
@@ -209,6 +215,10 @@ confirmation depth, resumes from a durable cursor, stores logs under a unique
 transaction-hash/log-index key, updates trade and milestone settlement state,
 retries dead letters, and reconciles linked database trades against the
 contract.
+
+Each domain update, processed-event marker, and dead-letter resolution is
+committed in one database transaction. A crash cannot persist the domain change
+without also marking the corresponding chain event as processed.
 
 `GET /api/internal/metrics` returns failed-event, dead-letter, reconciliation,
 and cursor metrics with the same bearer token. Operational logs are emitted as

@@ -39,6 +39,13 @@ enum ProviderRole {
   CARRIER
 }
 
+enum EvidenceProviderStatus {
+  PENDING
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
+
 enum ConditionOperator {
   LTE @map("<=")
   GTE @map(">=")
@@ -134,6 +141,46 @@ model Organization {
   memberships    OrganizationMembership[]
   tradesAsBuyer  TradeMetadata[] @relation("BuyerOrganizationTrades")
   tradesAsSeller TradeMetadata[] @relation("SellerOrganizationTrades")
+  evidenceProviders EvidenceProvider[]
+}
+
+// Nexus Core: Accredited evidence provider registry. A provider can be an
+// organization or a standalone accredited entity, own multiple wallets, and
+// have a bounded accreditation window.
+model EvidenceProvider {
+  id            String                  @id @default(uuid())
+  name          String
+  slug          String                  @unique
+  providerRole  ProviderRole? // Which condition role this provider can satisfy
+  organizationId String? // Optional legal entity backing this provider
+  accreditationNo String? // Issuer-assigned accreditation identifier
+  issuer        String? // Accreditation body, e.g. "SGS", "EU-LAB"
+  validFrom     DateTime?
+  validUntil    DateTime?
+  jurisdiction  String? // Country or regulatory region
+  status        EvidenceProviderStatus  @default(PENDING)
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  wallets      EvidenceProviderWallet[]
+  evidence     Evidence[]
+
+  @@index([organizationId])
+  @@index([status])
+  @@index([issuer])
+}
+
+// Nexus Core: Multiple authorized wallets per evidence provider.
+model EvidenceProviderWallet {
+  id        String   @id @default(uuid())
+  providerId String
+  walletAddress String @unique
+  createdAt DateTime @default(now())
+
+  provider EvidenceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@index([providerId])
 }
 
 model OrganizationMembership {
@@ -221,7 +268,7 @@ model MilestoneSettlement {
   amountUsdc      Decimal                   @db.Decimal(20, 6)
   status          MilestoneSettlementStatus @default(PENDING)
   evidenceRoot    String?
-  proposalId      Int?    // Global on-chain proposal id (V4)
+  proposalId      BigInt?  // Global on-chain proposal id (V4, uint256)
   milestoneHash   String? // keccak256(abi.encodePacked(milestoneId)) on-chain binding
   transactionHash String? @unique
   createdAt       DateTime                  @default(now())
@@ -261,6 +308,7 @@ model Evidence {
   conditionId    String?  // Which condition this evidence satisfies
   documentHash   String   // IPFS hash of the actual PDF/Cert
   providerWallet String   // Who uploaded it (e.g. SGS Oracle)
+  providerId     String?  // Registered evidence provider (nullable for legacy rows)
   verifiedValue  String?  // The extracted value (e.g. "4.8" for moisture)
   validationStatus EvidenceValidationStatus @default(PENDING)
   milestoneId     String?
@@ -269,10 +317,12 @@ model Evidence {
   trade     TradeMetadata   @relation(fields: [tradeId], references: [id])
   condition TradeCondition? @relation(fields: [conditionId], references: [id])
   milestone TradeMilestone? @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  provider  EvidenceProvider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
 
   @@index([tradeId])
   @@index([conditionId])
   @@index([milestoneId])
+  @@index([providerId])
 }
 
 model AuditLog {

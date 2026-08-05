@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { authenticateWalletRequest, isConfiguredArbitrator } from "@/lib/api-auth";
+import { findActiveEvidenceProvider } from "@/lib/evidence-provider";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -62,7 +63,10 @@ export async function POST(req: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Trade not found" }, { status: 404 });
     }
     const provider = await prisma.user.findUnique({ where: { walletAddress: actorWallet } });
-    if (!provider || !["LAB", "INSPECTOR", "ORACLE"].includes(provider.role)) {
+    const registeredProvider = await findActiveEvidenceProvider(actorWallet);
+    const approvedRole =
+      provider && ["LAB", "INSPECTOR", "ORACLE"].includes(provider.role);
+    if (!registeredProvider && !approvedRole) {
       return NextResponse.json({ error: "Wallet is not an approved evidence provider" }, { status: 403 });
     }
 
@@ -76,10 +80,11 @@ export async function POST(req: NextRequest, context: RouteContext) {
       targetCondition = trade.conditions.find(c => c.providerRole === "LAB" || c.providerRole === "INSPECTOR");
     }
     const isDesignatedOracle =
-      provider.role === "ORACLE" &&
+      (registeredProvider?.providerRole === "ORACLE" || provider?.role === "ORACLE") &&
       trade.oracle?.walletAddress.toLowerCase() === actorWallet.toLowerCase();
+    const providerRole = registeredProvider?.providerRole || provider?.role || null;
     const hasRequiredProviderRole =
-      provider.role !== "ORACLE" && targetCondition?.providerRole === provider.role;
+      providerRole && providerRole !== "ORACLE" && targetCondition?.providerRole === providerRole;
     if (!targetCondition || (!isDesignatedOracle && !hasRequiredProviderRole)) {
       return NextResponse.json({ error: "Provider is not authorized for this condition" }, { status: 403 });
     }
@@ -120,6 +125,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
         conditionId: targetCondition?.id || null,
         documentHash,
         providerWallet: actorWallet,
+        providerId: registeredProvider?.id || null,
         verifiedValue: verifiedValue || null,
         validationStatus: isValid === true ? "VALID" : isValid === false ? "INVALID" : "PENDING",
         milestoneId: resolvedMilestoneId,

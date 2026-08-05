@@ -105,6 +105,8 @@ Implemented:
 - organization memberships with owner, admin, trader, accountant, signer, and viewer roles;
 - trade milestones, milestone evidence links, and settlement proposal records
   bound to on-chain proposal IDs and milestone hashes;
+- an accredited evidence provider registry with issuer, validity window,
+  jurisdiction, status, and multiple authorized wallets;
 - confirmed escrow-event indexing with durable cursors and idempotent event keys;
 - automatic trade-state reconciliation, dead-letter retries, and internal metrics;
 - database-backed authentication-challenge rate limiting;
@@ -198,6 +200,11 @@ All routes below require the same one-time wallet signature described above.
 | `GET`, `POST` | `/api/organizations/:id/members` | List or appoint organization members |
 | `GET`, `POST` | `/api/escrow/:id/milestones` | List or allocate pre-funding milestones |
 | `GET`, `POST` | `/api/escrow/:id/milestones/:milestoneId/settlements` | List or record an on-chain-matched oracle proposal |
+| `GET`, `POST` | `/api/evidence-providers` | List providers or register a new accredited provider |
+| `PATCH` | `/api/evidence-providers/:id` | Update provider status, accreditation, role, or add a wallet |
+
+Financial amounts are accepted as decimal strings and validated before reaching
+the database, avoiding IEEE-754 `Number` precision loss.
 
 Milestone allocations cannot exceed the trade total and become immutable after
 funding. Settlement proposals are accepted only from the designated oracle and

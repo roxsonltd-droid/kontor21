@@ -80,7 +80,7 @@ export async function applyEscrowEvent(
       },
     });
   } else if (eventName === "ReleaseProposed") {
-    const proposalId = Number(payload.proposalId);
+    const proposalId = BigInt(String(payload.proposalId));
     const milestoneHash = String(payload.milestoneHash).toLowerCase();
     const settlement = await db.milestoneSettlement.findUnique({
       where: { proposalId },
@@ -106,13 +106,13 @@ export async function applyEscrowEvent(
       }
     }
   } else if (eventName === "ReleaseCancelled") {
-    const proposalId = Number(payload.proposalId);
+    const proposalId = BigInt(String(payload.proposalId));
     await db.milestoneSettlement.updateMany({
       where: { proposalId, status: { in: ["PROPOSED", "APPROVED"] } },
       data: { status: "PENDING" },
     });
   } else if (eventName === "ReleaseApproved") {
-    const proposalId = Number(payload.proposalId);
+    const proposalId = BigInt(String(payload.proposalId));
     const amount = String(payload.amount);
     const evidenceRoot = String(payload.evidenceRoot).toLowerCase();
     const milestoneHash = String(payload.milestoneHash).toLowerCase();

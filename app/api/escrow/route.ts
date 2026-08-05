@@ -4,6 +4,8 @@ import { authenticateWalletRequest, isConfiguredArbitrator } from "@/lib/api-aut
 import { getAddress, isAddress } from "ethers";
 import { ConditionOperator, ProviderRole } from "@prisma/client";
 import { canManageTrades } from "@/lib/organization";
+import { ensureOwnedOrganizationForUser } from "@/lib/organization-backfill";
+import { parsePositiveDecimalString } from "@/lib/money";
 
 const CONDITION_OPERATORS: Record<string, ConditionOperator> = {
   "<=": ConditionOperator.LTE,
@@ -38,10 +40,14 @@ export async function POST(req: NextRequest) {
     if (!isAddress(body.buyerWallet) || !isAddress(body.sellerWallet)) {
       return NextResponse.json({ error: "Invalid buyer or seller wallet" }, { status: 400 });
     }
-    const quantity = Number(body.quantity);
-    const priceUsdc = Number(body.priceUsdc);
-    if (!Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(priceUsdc) || priceUsdc <= 0) {
-      return NextResponse.json({ error: "Quantity and price must be positive numbers" }, { status: 400 });
+    let quantity: string;
+    let priceUsdc: string;
+    try {
+      quantity = parsePositiveDecimalString(body.quantity, "quantity");
+      priceUsdc = parsePositiveDecimalString(body.priceUsdc, "priceUsdc");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Invalid quantity or price";
+      return NextResponse.json({ error: message }, { status: 400 });
     }
     if (getAddress(body.sellerWallet) !== actorWallet) {
       return NextResponse.json({ error: "Seller wallet must sign the request" }, { status: 403 });
@@ -52,12 +58,14 @@ export async function POST(req: NextRequest) {
       update: {},
       create: { walletAddress: getAddress(body.buyerWallet), companyName: body.buyerName || null, role: "TRADER" },
     });
+    await ensureOwnedOrganizationForUser(buyer.id, body.buyerName, body.buyerVatNumber);
 
     const seller = await prisma.user.upsert({
       where: { walletAddress: actorWallet },
       update: {},
       create: { walletAddress: actorWallet, companyName: body.sellerName || null, role: "TRADER" },
     });
+    await ensureOwnedOrganizationForUser(seller.id, body.sellerName, body.sellerVatNumber);
 
     let buyerOrganizationId: string | null = null;
     let sellerOrganizationId: string | null = null;
@@ -96,6 +104,7 @@ export async function POST(req: NextRequest) {
         update: {},
         create: { walletAddress: oracleAddress, companyName: body.oracleName || null, role: "ORACLE" },
       });
+      await ensureOwnedOrganizationForUser(oracle.id, body.oracleName, body.oracleVatNumber);
     }
 
     // Prepare nested conditions creation if provided

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { authenticateWalletRequest } from "@/lib/api-auth";
 import { milestoneHashFor, verifyOnchainPendingRelease } from "@/lib/onchain-escrow";
+import { parsePositiveDecimalString } from "@/lib/money";
 
 type RouteContext = { params: Promise<{ id: string; milestoneId: string }> };
 
@@ -60,7 +61,13 @@ export async function POST(req: NextRequest, context: RouteContext) {
     }
 
     const body = JSON.parse(rawBody) as { amountUsdc?: string | number; evidenceRoot?: string };
-    const amount = String(body.amountUsdc ?? "");
+    let amount: string;
+    try {
+      amount = parsePositiveDecimalString(body.amountUsdc, "amountUsdc");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Invalid amountUsdc";
+      return NextResponse.json({ error: message }, { status: 400 });
+    }
     const amountWei = parseUnits(amount, 6);
     const evidenceRoot = body.evidenceRoot || "";
     if (amountWei <= BigInt(0) || !/^0x[0-9a-fA-F]{64}$/.test(evidenceRoot)) {

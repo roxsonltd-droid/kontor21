@@ -11,7 +11,7 @@ type Settlement = {
   amountUsdc: string;
   status: string;
   evidenceRoot: string | null;
-  proposalId: number | null;
+  proposalId: bigint | null;
   milestoneHash: string | null;
   transactionHash: string | null;
 };
@@ -41,13 +41,13 @@ const AMOUNT_USDC = formatUnits(AMOUNT_WEI, 6);
 type JsonRecord = Record<string, unknown>;
 
 type UpdateInput = { where: { id: string }; data: JsonRecord };
-type WhereUnique = { proposalId?: number };
+type WhereUnique = { proposalId?: bigint };
 type FindFirstInput = { where: JsonRecord };
 type UpdateManyInput = { where: JsonRecord; data: JsonRecord };
 
 function makeDb(initial: { trades: Trade[] }) {
   const state = {
-    trades: JSON.parse(JSON.stringify(initial.trades)),
+    trades: structuredClone(initial.trades),
     chainEvents: [] as { eventName: string; transactionHash: string }[],
   };
 
@@ -174,7 +174,7 @@ describe("chain indexer settlement matching (V4 proposals)", function () {
                   amountUsdc: AMOUNT_USDC,
                   status: "PENDING",
                   evidenceRoot: HASH_A,
-                  proposalId: 7,
+                  proposalId: BigInt(7),
                   milestoneHash: null,
                   transactionHash: null,
                 },
@@ -187,7 +187,7 @@ describe("chain indexer settlement matching (V4 proposals)", function () {
 
     await applyEscrowEvent(db as unknown as EscrowDb, "ReleaseProposed", {
       tradeId: 1,
-      proposalId: 7,
+      proposalId: BigInt(7),
       milestoneHash: HASH_A,
       amount: AMOUNT_WEI,
       evidenceRoot: HASH_A,
@@ -195,7 +195,7 @@ describe("chain indexer settlement matching (V4 proposals)", function () {
 
     const settlement = db.state.trades[0].milestones[0].settlements[0];
     expect(settlement.status).to.equal("PROPOSED");
-    expect(settlement.proposalId).to.equal(7);
+    expect(settlement.proposalId).to.equal(BigInt(7));
     expect(settlement.milestoneHash).to.equal(HASH_A);
   });
 
@@ -219,7 +219,7 @@ describe("chain indexer settlement matching (V4 proposals)", function () {
                   amountUsdc: AMOUNT_USDC,
                   status: "PROPOSED",
                   evidenceRoot: HASH_A,
-                  proposalId: 7,
+                  proposalId: BigInt(7),
                   milestoneHash: HASH_A,
                   transactionHash: null,
                 },
@@ -229,7 +229,7 @@ describe("chain indexer settlement matching (V4 proposals)", function () {
                   amountUsdc: AMOUNT_USDC,
                   status: "PROPOSED",
                   evidenceRoot: HASH_B,
-                  proposalId: 8,
+                  proposalId: BigInt(8),
                   milestoneHash: HASH_B,
                   transactionHash: null,
                 },
@@ -242,7 +242,7 @@ describe("chain indexer settlement matching (V4 proposals)", function () {
 
     await applyEscrowEvent(db as unknown as EscrowDb, "ReleaseApproved", {
       tradeId: 1,
-      proposalId: 8,
+      proposalId: BigInt(8),
       buyer: "0xb",
       milestoneHash: HASH_B,
       amount: AMOUNT_WEI,
@@ -275,7 +275,7 @@ describe("chain indexer settlement matching (V4 proposals)", function () {
                   amountUsdc: AMOUNT_USDC,
                   status: "PROPOSED",
                   evidenceRoot: HASH_A,
-                  proposalId: 7,
+                  proposalId: BigInt(7),
                   milestoneHash: HASH_A,
                   transactionHash: null,
                 },
@@ -288,7 +288,7 @@ describe("chain indexer settlement matching (V4 proposals)", function () {
 
     await applyEscrowEvent(db as unknown as EscrowDb, "ReleaseCancelled", {
       tradeId: 1,
-      proposalId: 7,
+      proposalId: BigInt(7),
       milestoneHash: HASH_A,
     } as Record<string, Prisma.InputJsonValue>, "0xtx3");
 

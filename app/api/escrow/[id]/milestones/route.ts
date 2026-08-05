@@ -3,6 +3,7 @@ import { ConditionOperator, Prisma, ProviderRole } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { authenticateWalletRequest, isConfiguredArbitrator } from "@/lib/api-auth";
 import { canManageTrades } from "@/lib/organization";
+import { parsePositiveDecimalString } from "@/lib/money";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -112,7 +113,13 @@ export async function POST(req: NextRequest, context: RouteContext) {
     };
     const sequence = Number(body.sequence);
     const title = body.title?.trim();
-    const amount = new Prisma.Decimal(body.amountUsdc ?? 0);
+    let amount: Prisma.Decimal;
+    try {
+      amount = new Prisma.Decimal(parsePositiveDecimalString(body.amountUsdc, "amountUsdc"));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Invalid amountUsdc";
+      return NextResponse.json({ error: message }, { status: 400 });
+    }
     if (!Number.isSafeInteger(sequence) || sequence <= 0 || !title || title.length > 160 || amount.lte(0)) {
       return NextResponse.json({ error: "Valid sequence, title, and positive amount required" }, { status: 400 });
     }

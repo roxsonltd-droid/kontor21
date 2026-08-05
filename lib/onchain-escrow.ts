@@ -45,7 +45,7 @@ export async function verifyOnchainTradeStatus(tradeId: number, expectedStatus: 
 }
 
 export type PendingRelease = {
-  proposalId: number;
+  proposalId: bigint;
   milestoneHash: string;
   amount: bigint;
   evidenceRoot: string;
@@ -59,8 +59,8 @@ export async function getOnchainPendingRelease(
   tradeId: number
 ): Promise<PendingRelease | null> {
   const contract = escrowContract();
-  const proposalId = Number(await contract.pendingProposalOf(tradeId));
-  if (proposalId <= 0) return null;
+  const proposalId = BigInt(await contract.pendingProposalOf(tradeId));
+  if (proposalId <= BigInt(0)) return null;
   const proposal = await contract.proposals(proposalId);
   return {
     proposalId,
@@ -75,7 +75,7 @@ export async function verifyOnchainPendingRelease(
   milestoneHash: string,
   amount: bigint,
   evidenceRoot: string
-): Promise<number | null> {
+): Promise<bigint | null> {
   const pending = await getOnchainPendingRelease(tradeId);
   if (!pending) return null;
   const matches =

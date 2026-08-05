@@ -6,6 +6,7 @@ import { ConditionOperator, ProviderRole } from "@prisma/client";
 import { hasCapability } from "@/lib/organization";
 import { ensureOwnedOrganizationForUser } from "@/lib/organization-backfill";
 import { parsePositiveDecimalString } from "@/lib/money";
+import { dispatchNotifications, recipientsFromParticipants } from "@/lib/notifications";
 
 const CONDITION_OPERATORS: Record<string, ConditionOperator> = {
   "<=": ConditionOperator.LTE,
@@ -158,6 +159,14 @@ export async function POST(req: NextRequest) {
         documentIpfsHash: null,
       },
     });
+
+    await dispatchNotifications({
+      db: prisma,
+      event: "escrow.created",
+      tradeId: trade.id,
+      recipients: recipientsFromParticipants({ buyer, seller, oracle }),
+      ctx: { productName: body.productName },
+    }).catch(() => undefined);
 
     return NextResponse.json({
       status: "draft_created",

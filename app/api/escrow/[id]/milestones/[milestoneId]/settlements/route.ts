@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { authenticateWalletRequest } from "@/lib/api-auth";
 import { milestoneHashFor, verifyOnchainPendingRelease } from "@/lib/onchain-escrow";
 import { parsePositiveDecimalString } from "@/lib/money";
+import { dispatchNotifications, recipientsFromParticipants } from "@/lib/notifications";
 
 type RouteContext = { params: Promise<{ id: string; milestoneId: string }> };
 
@@ -46,7 +47,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
     const milestone = await prisma.tradeMilestone.findFirst({
       where: { id: milestoneId, tradeId: id },
       include: {
-        trade: { include: { oracle: true } },
+        trade: { include: { buyer: true, seller: true, oracle: true } },
         settlements: { where: { status: { in: ["PROPOSED", "APPROVED", "EXECUTED"] } } },
       },
     });
@@ -107,6 +108,17 @@ export async function POST(req: NextRequest, context: RouteContext) {
     await prisma.auditLog.create({
       data: { tradeId: id, action: "MILESTONE_RELEASE_PROPOSED", actorWallet },
     });
+    await dispatchNotifications({
+      db: prisma,
+      event: "milestone.release_proposed",
+      tradeId: id,
+      recipients: recipientsFromParticipants({
+        buyer: milestone.trade.buyer,
+        seller: milestone.trade.seller,
+        oracle: milestone.trade.oracle,
+      }),
+      ctx: { productName: milestone.trade.productName },
+    }).catch(() => undefined);
     return NextResponse.json(settlement, { status: 201 });
   } catch (error) {
     console.error("[milestone-settlement-propose]", error);

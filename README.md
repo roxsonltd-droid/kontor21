@@ -109,6 +109,8 @@ Implemented:
   milestone.manage, settlement.approve, evidence.submit, member.manage);
 - organization invitation flow: members are invited with a pending status and
   the invited wallet accepts, rejects, or has the manager cancel it;
+- in-app trade notifications generated from escrow and milestone events, with
+  opt-in email/webhook delivery when a delivery endpoint is configured;
 - trade milestones, milestone evidence links, and settlement proposal records
   bound to on-chain proposal IDs and milestone hashes;
 - versioned milestone rules policies: every policy revision appends an immutable
@@ -137,7 +139,8 @@ Prototype or presentation-only:
 - market intelligence and AI sourcing content;
 - OCR and automated document extraction;
 - provider accreditation and certificate revocation;
-- email and push notification delivery;
+- outbound email and push notification providers (in-app delivery is
+  implemented; email/webhook require a configured endpoint);
 - legal, KYC/KYB, accounting, and tax integrations.
 
 Do not describe the current system as fully decentralized or mathematically
@@ -184,6 +187,8 @@ Required environment variables:
 - `CRON_SECRET` — random bearer token for internal sync and metrics routes.
 - `NEXT_PUBLIC_APP_URL` — public application origin.
 - `NEXT_PUBLIC_IPFS_GATEWAY` — public IPFS gateway prefix.
+- `NOTIFICATION_WEBHOOK_URL` — optional outbound webhook endpoint for pushed
+  notification delivery; in-app notifications work without it.
 
 ## Quality checks
 
@@ -214,6 +219,7 @@ All routes below require the same one-time wallet signature described above.
 | `GET`, `POST` | `/api/organizations` | List memberships or create an organization |
 | `GET`, `POST` | `/api/organizations/:id/members` | List members or invite a new member (pending) |
 | `PATCH` | `/api/organizations/:id/members/:membershipId` | Resolve an invitation: accept/reject (invitee) or cancel (manager) |
+| `GET`, `PATCH` | `/api/notifications` | List in-app trade notifications or mark them read |
 | `GET`, `POST` | `/api/escrow/:id/milestones` | List or allocate pre-funding milestones |
 | `PATCH` | `/api/escrow/:id/milestones/:milestoneId` | Update a milestone rules policy (new immutable version) |
 | `GET`, `POST` | `/api/escrow/:id/milestones/:milestoneId/settlements` | List or record an on-chain-matched oracle proposal |

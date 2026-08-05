@@ -44,26 +44,26 @@ export default function Notifications() {
       }
       try {
         setLoading(true);
-        const res = await signedFetch(`/api/logs?address=${encodeURIComponent(address)}`);
+        const res = await signedFetch(`/api/notifications`);
         if (res.ok) {
           const data = await res.json();
-          const transformed = data.map((log: { id: string; action: string; tradeId?: string; createdAt: string; details?: string; trade?: { blockchainTradeId: number | null } }, i: number) => {
+          const transformed = data.map((log: { id: string; event: string; title: string; body: string; createdAt: string; readAt?: string | null }, i: number) => {
+            const eventName = log.event || "";
             let type = 'created';
             let system = 'System';
-            if (log.action.includes('CREATED')) { type = 'created'; system = 'Blockchain'; }
-            if (log.action.includes('FUNDED')) { type = 'funded'; system = 'Blockchain'; }
-            if (log.action.includes('EVIDENCE')) { type = 'approved'; system = 'Rules Engine'; }
-            if (log.action.includes('DISPUTE')) { type = 'disputed'; system = 'Rules Engine'; }
-            if (log.action.includes('RESOLVED')) { type = 'resolved'; system = 'Oracle'; }
+            if (eventName.includes('funded')) { type = 'funded'; system = 'Blockchain'; }
+            if (eventName.includes('release')) { type = 'approved'; system = 'Rules Engine'; }
+            if (eventName.includes('dispute')) { type = 'disputed'; system = 'Rules Engine'; }
+            if (eventName.includes('resolved') || eventName.includes('refunded')) { type = 'resolved'; system = 'Oracle'; }
 
             return {
               id: log.id,
               type,
-              tradeId: log.trade?.blockchainTradeId || log.tradeId,
-              read: i > 2, 
+              tradeId: null,
+              read: Boolean(log.readAt) || i > 2,
               time: new Date(log.createdAt).toLocaleString(),
               system,
-              details: log.details
+              details: log.body || log.title
             };
           });
           setNotifications(transformed);

@@ -64,6 +64,19 @@ enum EvidenceValidationStatus {
   MANUAL_REVIEW
 }
 
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  WEBHOOK
+}
+
+enum NotificationStatus {
+  QUEUED
+  SENT
+  SKIPPED
+  FAILED
+}
+
 enum OrganizationRole {
   OWNER
   ADMIN
@@ -126,6 +139,8 @@ model User {
   tradesAsSeller TradeMetadata[] @relation("SellerTrades")
   tradesAsOracle TradeMetadata[] @relation("OracleTrades")
   memberships    OrganizationMembership[]
+  notifications  Notification[]
+  preferences    NotificationPreference?
 
   @@index([role])
 }
@@ -250,6 +265,7 @@ model TradeMetadata {
   evidence    Evidence[]
   auditLogs   AuditLog[]
   milestones  TradeMilestone[]
+  notifications Notification[]
 
   @@index([buyerId])
   @@index([sellerId])
@@ -464,4 +480,44 @@ model RateLimitBucket {
 
   @@unique([key, windowStart])
   @@index([expiresAt])
+}
+
+// Nexus Core: Per-user delivery preferences for notification channels.
+// Absent a preference, IN_APP is the default; EMAIL and WEBHOOK are only used
+// when explicitly enabled and a delivery endpoint is configured.
+model NotificationPreference {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  emailEnabled  Boolean  @default(false)
+  emailAddress  String?
+  webhookEnabled Boolean @default(false)
+  webhookUrl    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Nexus Core: Outbound notification records (in-app + email/webhook delivery
+// attempts) for trade workflow events.
+model Notification {
+  id            String              @id @default(uuid())
+  userId        String
+  tradeId       String?
+  event         String // machine-readable event name, e.g. "escrow.created"
+  channel       NotificationChannel @default(IN_APP)
+  status        NotificationStatus  @default(QUEUED)
+  title         String
+  body          String
+  readAt        DateTime?
+  sentAt        DateTime?
+  failureReason String?
+  createdAt     DateTime            @default(now())
+
+  user  User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trade TradeMetadata? @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([tradeId])
+  @@index([status, channel])
 }

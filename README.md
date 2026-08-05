@@ -102,7 +102,9 @@ Implemented:
 
 - wallet-signed API mutations with one-time nonces;
 - PostgreSQL trade, condition, evidence, and audit records;
-- organization memberships with owner, admin, trader, accountant, signer, and viewer roles;
+- organization memberships with owner, admin, trader, accountant, signer, and
+  viewer roles mapped to granular capabilities (trade.create, trade.sign,
+  milestone.manage, settlement.approve, evidence.submit, member.manage);
 - trade milestones, milestone evidence links, and settlement proposal records
   bound to on-chain proposal IDs and milestone hashes;
 - an accredited evidence provider registry with a canonical accreditation issuer

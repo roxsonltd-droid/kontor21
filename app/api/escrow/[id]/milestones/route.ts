@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ConditionOperator, Prisma, ProviderRole } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { authenticateWalletRequest, isConfiguredArbitrator } from "@/lib/api-auth";
-import { canManageTrades } from "@/lib/organization";
+import { hasCapability } from "@/lib/organization";
 import { parsePositiveDecimalString } from "@/lib/money";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -55,8 +55,8 @@ async function milestoneAccess(tradeId: string, actorWallet: string) {
     canWrite: Boolean(
       directBuyer ||
       directSeller ||
-      (buyerMembership && canManageTrades(buyerMembership.role)) ||
-      (sellerMembership && canManageTrades(sellerMembership.role))
+      (buyerMembership && hasCapability(buyerMembership.role, "milestone.manage")) ||
+      (sellerMembership && hasCapability(sellerMembership.role, "milestone.manage"))
     ),
   };
 }

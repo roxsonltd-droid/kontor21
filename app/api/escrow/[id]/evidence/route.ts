@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { authenticateWalletRequest, isConfiguredArbitrator } from "@/lib/api-auth";
 import { findActiveEvidenceProvider } from "@/lib/evidence-provider-db";
+import { extractFieldValue, extractionMetaFor, type ExtractionMeta } from "@/lib/document-extraction";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -46,7 +47,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
     }
     const body = JSON.parse(rawBody);
 
-    const { documentHash, providerWallet, verifiedValue, conditionId, milestoneId } = body;
+    const { documentHash, providerWallet, verifiedValue, conditionId, milestoneId, documentText } = body;
     if (!documentHash || !providerWallet) {
       return NextResponse.json({ error: "Missing documentHash or providerWallet" }, { status: 400 });
     }
@@ -99,9 +100,26 @@ export async function POST(req: NextRequest, context: RouteContext) {
       }
     }
 
+    // OCR/document-text extraction: when the provider did not hand-type a
+    // verified value but supplied documentText (OCR output or metadata dump),
+    // parse the parameter for the target condition and auto-fill the value.
+    let resolvedVerifiedValue = verifiedValue as string | undefined;
+    let extractionMeta: ExtractionMeta | null = null;
+    if (targetCondition && !resolvedVerifiedValue && documentText) {
+      const extracted = extractFieldValue(String(documentText), targetCondition.parameter);
+      if (extracted) {
+        resolvedVerifiedValue = extracted.value;
+        extractionMeta = extractionMetaFor(
+          targetCondition.parameter,
+          resolvedVerifiedValue,
+          `${targetCondition.parameter}: ${extracted.value}${extracted.unit ? ` ${extracted.unit}` : ""}`,
+        );
+      }
+    }
+
     // Basic Rules Engine Evaluation
-    if (targetCondition && verifiedValue) {
-      const numValue = parseFloat(verifiedValue);
+    if (targetCondition && resolvedVerifiedValue) {
+      const numValue = parseFloat(resolvedVerifiedValue);
       const conditionNum = parseFloat(targetCondition.value);
       
       if (!isNaN(numValue) && !isNaN(conditionNum)) {
@@ -111,10 +129,10 @@ export async function POST(req: NextRequest, context: RouteContext) {
           case "LT": isValid = numValue < conditionNum; break;
           case "GT": isValid = numValue > conditionNum; break;
           case "EQ": isValid = numValue === conditionNum; break;
-          default: isValid = verifiedValue === targetCondition.value;
+          default: isValid = resolvedVerifiedValue === targetCondition.value;
         }
       } else {
-        isValid = verifiedValue.toLowerCase() === targetCondition.value.toLowerCase();
+        isValid = resolvedVerifiedValue.toLowerCase() === targetCondition.value.toLowerCase();
       }
     }
 
@@ -126,7 +144,8 @@ export async function POST(req: NextRequest, context: RouteContext) {
         documentHash,
         providerWallet: actorWallet,
         providerId: registeredProvider?.id || null,
-        verifiedValue: verifiedValue || null,
+        verifiedValue: resolvedVerifiedValue || null,
+        ...(extractionMeta ? { extractionMeta: extractionMeta as unknown as object } : {}),
         validationStatus: isValid === true ? "VALID" : isValid === false ? "INVALID" : "PENDING",
         milestoneId: resolvedMilestoneId,
       }

@@ -370,6 +370,7 @@ model Evidence {
   providerWallet String   // Who uploaded it (e.g. SGS Oracle)
   providerId     String?  // Registered evidence provider (nullable for legacy rows)
   verifiedValue  String?  // The extracted value (e.g. "4.8" for moisture)
+  extractionMeta Json? // How verifiedValue was derived (OCR_AUTO vs MANUAL), for audit
   validationStatus EvidenceValidationStatus @default(PENDING)
   milestoneId     String?
   createdAt      DateTime @default(now())

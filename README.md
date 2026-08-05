@@ -124,6 +124,9 @@ Implemented:
   ACTIVE / EXPIRED / REVOKED) that honors an elapsed validity window; revocation
   records the actor by wallet, a reason, and a timestamp and cascades the
   terminal status onto every evidence the provider has uploaded;
+- text-based document extraction: the evidence upload accepts OCR output or
+  document metadata and auto-fills the verified value by parameter, recording
+  whether the value was handed in manually or derived automatically;
 - confirmed escrow-event indexing with durable cursors and idempotent event keys;
 - automatic trade-state reconciliation, dead-letter retries (with an operational
   dead-letter alert), and internal metrics;
@@ -142,7 +145,9 @@ Implemented:
 Prototype or presentation-only:
 
 - market intelligence and AI sourcing content;
-- OCR and automated document extraction;
+- pixel-level OCR engines (text-based document extraction is implemented: a
+  provider can supply OCR output or document metadata and the server parses
+  the parameter values automatically, recording how the value was derived);
 - outbound email and push notification providers (in-app delivery is
   implemented; email/webhook require a configured endpoint);
 - legal, KYC/KYB, accounting, and tax integrations.

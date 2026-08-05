@@ -15,7 +15,7 @@
     "typecheck": "tsc --noEmit",
     "test": "npm run test:contracts && npm run test:unit",
     "test:contracts": "hardhat test test/kontor-escrow.test.ts test/kontor-governance.test.ts",
-    "test:unit": "hardhat test test/api-auth-message.test.ts test/internal-auth.test.ts test/organization.test.ts test/trade-transition-auth.test.ts test/chain-indexer.test.ts test/money.test.ts",
+    "test:unit": "hardhat test test/api-auth-message.test.ts test/internal-auth.test.ts test/organization.test.ts test/trade-transition-auth.test.ts test/chain-indexer.test.ts test/money.test.ts test/milestone-rules.test.ts",
     "test:e2e:local": "hardhat run scripts/e2e-test.ts --network localhost",
     "test:e2e": "playwright test",
     "node": "npx hardhat node",

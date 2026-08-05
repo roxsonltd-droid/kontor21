@@ -268,6 +268,9 @@ model TradeMilestone {
   status          MilestoneStatus @default(DRAFT)
   evidenceDueAt   DateTime?
   acceptanceDueAt DateTime?
+  // Nexus Core: rules policy versioning. Each rules update appends an immutable
+  // snapshot; rulesVersion is the current policy version.
+  rulesVersion    Int             @default(1)
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
@@ -275,9 +278,29 @@ model TradeMilestone {
   conditions  TradeCondition[]
   evidence    Evidence[]
   settlements MilestoneSettlement[]
+  rules       MilestoneRules[]
 
   @@unique([tradeId, sequence])
   @@index([tradeId, status])
+}
+
+// Nexus Core: Immutable versioned snapshot of a milestone's rules policy.
+// The active policy is represented by TradeCondition rows on the milestone;
+// each revision is frozen here for audit and reconstruction.
+model MilestoneRules {
+  id           String   @id @default(uuid())
+  milestoneId  String
+  version      Int
+  createdBy    String // wallet address that authored this policy version
+  changeNote   String? // human-readable reason for the revision
+  conditions   Json // frozen copy of the rule set: [{ parameter, operator, value, unit, providerRole, isRequired }]
+  supersededAt DateTime? // set when a newer version replaces this one
+  createdAt    DateTime @default(now())
+
+  milestone TradeMilestone @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+
+  @@unique([milestoneId, version])
+  @@index([milestoneId, supersededAt])
 }
 
 model MilestoneSettlement {

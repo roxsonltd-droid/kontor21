@@ -1,65 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ConditionOperator, Prisma, ProviderRole } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
-import { authenticateWalletRequest, isConfiguredArbitrator } from "@/lib/api-auth";
-import { hasCapability } from "@/lib/organization";
+import { authenticateWalletRequest } from "@/lib/api-auth";
 import { parsePositiveDecimalString } from "@/lib/money";
+import { normalizeRuleSet, type RuleInput } from "@/lib/milestone-rules";
+import { milestoneAccess, snapshotRules } from "@/lib/milestone-route";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-const CONDITION_OPERATORS: Record<string, ConditionOperator> = {
-  "<=": ConditionOperator.LTE,
-  ">=": ConditionOperator.GTE,
-  "<": ConditionOperator.LT,
-  ">": ConditionOperator.GT,
-  "==": ConditionOperator.EQ,
-};
-const PROVIDER_ROLES = new Set<ProviderRole>(Object.values(ProviderRole));
-
-async function milestoneAccess(tradeId: string, actorWallet: string) {
-  const trade = await prisma.tradeMetadata.findUnique({
-    where: { id: tradeId },
-    include: {
-      buyer: true,
-      seller: true,
-      oracle: true,
-      buyerOrganization: {
-        include: { memberships: { where: { status: "ACTIVE" }, include: { user: true } } },
-      },
-      sellerOrganization: {
-        include: { memberships: { where: { status: "ACTIVE" }, include: { user: true } } },
-      },
-    },
-  });
-  if (!trade) return null;
-  const actor = actorWallet.toLowerCase();
-  const directBuyer = trade.buyer.walletAddress.toLowerCase() === actor;
-  const directSeller = trade.seller.walletAddress.toLowerCase() === actor;
-  const oracle = trade.oracle?.walletAddress.toLowerCase() === actor;
-  const buyerMembership = trade.buyerOrganization?.memberships.find(
-    (membership) => membership.user.walletAddress.toLowerCase() === actor
-  );
-  const sellerMembership = trade.sellerOrganization?.memberships.find(
-    (membership) => membership.user.walletAddress.toLowerCase() === actor
-  );
-  return {
-    trade,
-    canRead: Boolean(
-      directBuyer ||
-      directSeller ||
-      oracle ||
-      buyerMembership ||
-      sellerMembership ||
-      isConfiguredArbitrator(actorWallet)
-    ),
-    canWrite: Boolean(
-      directBuyer ||
-      directSeller ||
-      (buyerMembership && hasCapability(buyerMembership.role, "milestone.manage")) ||
-      (sellerMembership && hasCapability(sellerMembership.role, "milestone.manage"))
-    ),
-  };
-}
+export type { RuleInput };
 
 export async function GET(req: NextRequest, context: RouteContext) {
   const actorWallet = await authenticateWalletRequest(req, "");
@@ -73,7 +22,12 @@ export async function GET(req: NextRequest, context: RouteContext) {
   }
   const milestones = await prisma.tradeMilestone.findMany({
     where: { tradeId: id },
-    include: { conditions: true, evidence: true, settlements: true },
+    include: {
+      conditions: true,
+      evidence: true,
+      settlements: true,
+      rules: { orderBy: { version: "asc" } },
+    },
     orderBy: { sequence: "asc" },
   });
   return NextResponse.json(milestones);
@@ -102,14 +56,8 @@ export async function POST(req: NextRequest, context: RouteContext) {
       amountUsdc?: string | number;
       evidenceDueAt?: string;
       acceptanceDueAt?: string;
-      conditions?: Array<{
-        parameter?: string;
-        operator?: string;
-        value?: string;
-        unit?: string;
-        providerRole?: ProviderRole;
-        isRequired?: boolean;
-      }>;
+      conditions?: RuleInput[];
+      changeNote?: string;
     };
     const sequence = Number(body.sequence);
     const title = body.title?.trim();
@@ -132,15 +80,8 @@ export async function POST(req: NextRequest, context: RouteContext) {
     ) {
       return NextResponse.json({ error: "Invalid milestone deadlines" }, { status: 400 });
     }
-    const conditions = body.conditions || [];
-    const validConditions = conditions.every(
-      (condition) =>
-        Boolean(condition.parameter?.trim()) &&
-        Boolean(condition.value?.trim()) &&
-        Boolean(condition.operator && CONDITION_OPERATORS[condition.operator]) &&
-        Boolean(condition.providerRole && PROVIDER_ROLES.has(condition.providerRole))
-    );
-    if (!validConditions) {
+    const normalizedRules = normalizeRuleSet(body.conditions || []);
+    if (!normalizedRules) {
       return NextResponse.json({ error: "Invalid milestone condition" }, { status: 400 });
     }
 
@@ -154,29 +95,42 @@ export async function POST(req: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Milestone allocation exceeds trade total" }, { status: 409 });
     }
 
-    const milestone = await prisma.tradeMilestone.create({
-      data: {
-        tradeId: id,
-        sequence,
-        title,
-        description: body.description?.trim() || null,
-        amountUsdc: amount,
-        evidenceDueAt,
-        acceptanceDueAt,
-        status: "DRAFT",
-        conditions: {
-          create: conditions.map((condition) => ({
-            tradeId: id,
-            parameter: condition.parameter!.trim(),
-            operator: CONDITION_OPERATORS[condition.operator!],
-            value: condition.value!.trim(),
-            unit: condition.unit?.trim() || null,
-            providerRole: condition.providerRole!,
-            isRequired: condition.isRequired ?? true,
-          })),
+    const milestone = await prisma.$transaction(async (tx) => {
+      const created = await tx.tradeMilestone.create({
+        data: {
+          tradeId: id,
+          sequence,
+          title,
+          description: body.description?.trim() || null,
+          amountUsdc: amount,
+          evidenceDueAt,
+          acceptanceDueAt,
+          status: "DRAFT",
+          rulesVersion: 1,
+          conditions: {
+            create: normalizedRules.map((condition) => ({
+              tradeId: id,
+              parameter: condition.parameter,
+              operator: condition.operator,
+              value: condition.value,
+              unit: condition.unit,
+              providerRole: condition.providerRole,
+              isRequired: condition.isRequired,
+            })),
+          },
         },
-      },
-      include: { conditions: true, settlements: true },
+        include: { conditions: true, settlements: true },
+      });
+      await tx.milestoneRules.create({
+        data: snapshotRules(
+          created.id,
+          1,
+          actorWallet,
+          body.changeNote?.trim() || null,
+          normalizedRules
+        ),
+      });
+      return created;
     });
     await prisma.auditLog.create({
       data: { tradeId: id, action: "MILESTONE_CREATED", actorWallet },

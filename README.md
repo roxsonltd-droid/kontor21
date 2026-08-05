@@ -22,7 +22,7 @@ flowchart LR
     API --> IPFS[Pinata / IPFS]
     SC --> IDX[Confirmed event indexer]
     IDX --> DB
-    UI --> SC[KontorEscrow V3<br/>Polygon Amoy]
+    UI --> SC[KontorEscrow V4<br/>Polygon Amoy]
     A1[Trade arbitrator 1] --> SC
     A2[Trade arbitrator 2] --> SC
     A3[Trade arbitrator 3] --> SC
@@ -40,8 +40,9 @@ requires separate oracle and buyer actions before a milestone can be paid.
 2. The buyer funds it before the seven-day funding deadline.
 3. Approved evidence providers upload documents to IPFS and submit measured
    values to the rules API.
-4. The designated oracle proposes an on-chain release amount and evidence root.
-5. The buyer must separately approve that exact pending proposal.
+4. The designated oracle proposes an on-chain release for a specific milestone,
+   bound by a `proposalId` and a milestone hash, with an amount and evidence root.
+5. The buyer must separately approve that exact proposal by its `proposalId`.
 6. If no release completes within 30 days of funding, the buyer can recover the
    remaining escrow balance.
 7. Either trading party can raise a dispute. Two of the three arbitrators
@@ -102,7 +103,8 @@ Implemented:
 - wallet-signed API mutations with one-time nonces;
 - PostgreSQL trade, condition, evidence, and audit records;
 - organization memberships with owner, admin, trader, accountant, signer, and viewer roles;
-- trade milestones, milestone evidence links, and settlement proposal records;
+- trade milestones, milestone evidence links, and settlement proposal records
+  bound to on-chain proposal IDs and milestone hashes;
 - confirmed escrow-event indexing with durable cursors and idempotent event keys;
 - automatic trade-state reconciliation, dead-letter retries, and internal metrics;
 - database-backed authentication-challenge rate limiting;
@@ -199,7 +201,9 @@ All routes below require the same one-time wallet signature described above.
 
 Milestone allocations cannot exceed the trade total and become immutable after
 funding. Settlement proposals are accepted only from the designated oracle and
-must match the contract's current pending amount and evidence root.
+must match the contract's current pending proposal for that milestone: the API
+records the on-chain `proposalId` and milestone hash, and rejects proposals whose
+amount or evidence root differs from the verified on-chain state.
 
 ## Chain indexing and reconciliation
 
@@ -215,6 +219,13 @@ confirmation depth, resumes from a durable cursor, stores logs under a unique
 transaction-hash/log-index key, updates trade and milestone settlement state,
 retries dead letters, and reconciles linked database trades against the
 contract.
+
+Settlement events are matched to database records by the on-chain `proposalId`
+(milestone hash and evidence root fall back for pre-V4 records). `ReleaseProposed`
+marks the bound settlement `PROPOSED`; `ReleaseCancelled` returns `PROPOSED` or
+`APPROVED` settlements to `PENDING`; `ReleaseApproved` marks the bound
+settlement `EXECUTED` and rolls the milestone status up to `RELEASED` or
+`PARTIALLY_RELEASED`.
 
 Each domain update, processed-event marker, and dead-letter resolution is
 committed in one database transaction. A crash cannot persist the domain change
@@ -270,8 +281,10 @@ and add the Polygonscan links above only after verifying the deployment.
 - Milestone entities are implemented, but versioned rules policies are not.
 - The indexer is scheduled/polling and must be invoked by Render Cron or an
   equivalent scheduler; it is not a continuously running dedicated worker.
-- Reconciliation currently covers trade settlement state. Production-grade
-  historical token accounting still requires an external archival data source.
+- Reconciliation compares trade settlement state, pending release proposals
+  (`proposalId`, milestone hash, amount, evidence root, proposal status), and
+  flags stale database proposals missing on-chain. Production-grade historical
+  token accounting still requires an external archival data source.
 - No independent security audit, formal verification, bug bounty, or SLA.
 
 ## Security reporting

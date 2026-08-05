@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   const memberships = await prisma.organizationMembership.findMany({
     where: {
       user: { walletAddress: actorWallet },
-      status: "ACTIVE",
+      status: { in: ["ACTIVE", "INVITED"] },
     },
     include: {
       organization: {

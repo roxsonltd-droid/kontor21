@@ -63,8 +63,8 @@ export async function POST(req: NextRequest, context: RouteContext) {
     });
     return tx.organizationMembership.upsert({
       where: { organizationId_userId: { organizationId: id, userId: user.id } },
-      update: { role: body.role!, status: "ACTIVE" },
-      create: { organizationId: id, userId: user.id, role: body.role!, status: "ACTIVE" },
+      update: { role: body.role!, status: "INVITED" },
+      create: { organizationId: id, userId: user.id, role: body.role!, status: "INVITED" },
       include: { user: true, organization: true },
     });
   });

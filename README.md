@@ -107,6 +107,8 @@ Implemented:
 - organization memberships with owner, admin, trader, accountant, signer, and
   viewer roles mapped to granular capabilities (trade.create, trade.sign,
   milestone.manage, settlement.approve, evidence.submit, member.manage);
+- organization invitation flow: members are invited with a pending status and
+  the invited wallet accepts, rejects, or has the manager cancel it;
 - trade milestones, milestone evidence links, and settlement proposal records
   bound to on-chain proposal IDs and milestone hashes;
 - versioned milestone rules policies: every policy revision appends an immutable
@@ -210,7 +212,8 @@ All routes below require the same one-time wallet signature described above.
 | Method | Route | Purpose |
 |---|---|---|
 | `GET`, `POST` | `/api/organizations` | List memberships or create an organization |
-| `GET`, `POST` | `/api/organizations/:id/members` | List or appoint organization members |
+| `GET`, `POST` | `/api/organizations/:id/members` | List members or invite a new member (pending) |
+| `PATCH` | `/api/organizations/:id/members/:membershipId` | Resolve an invitation: accept/reject (invitee) or cancel (manager) |
 | `GET`, `POST` | `/api/escrow/:id/milestones` | List or allocate pre-funding milestones |
 | `PATCH` | `/api/escrow/:id/milestones/:milestoneId` | Update a milestone rules policy (new immutable version) |
 | `GET`, `POST` | `/api/escrow/:id/milestones/:milestoneId/settlements` | List or record an on-chain-matched oracle proposal |
@@ -230,6 +233,14 @@ oracle and must match the contract's current pending proposal for that
 milestone: the API records the on-chain `proposalId` and milestone hash, and
 rejects proposals whose amount or evidence root differs from the verified
 on-chain state.
+
+Organization member invitations follow a pending flow. `POST
+/organizations/:id/members` creates a pending (`INVITED`) membership that has no
+trading or administrative access until it is resolved. `GET /organizations`
+lists both active memberships and pending invitations the wallet must resolve.
+The invited wallet accepts (becomes `ACTIVE`) or rejects (becomes `REVOKED`)
+its own invitation; an active owner or admin can cancel a pending invitation
+(`REVOKED`). Resolving anything but a pending invitation is rejected.
 
 ## Chain indexing and reconciliation
 
@@ -313,7 +324,7 @@ above only after verifying the deployment.
   the timelock is still recommended for any non-demo deployment.
 - Arbitration resolves the remaining balance entirely to buyer or seller.
 - No on-chain verification of each evidence provider signature.
-- Organization roles are implemented, but invitation acceptance, KYB, and
+- Organization roles and invitation acceptance are implemented, but KYB and
   fine-grained custom permission policies are not.
 - Milestone rules policies are versioned and immutable after funding, but the
   rules engine that evaluates evidence against a policy version is not

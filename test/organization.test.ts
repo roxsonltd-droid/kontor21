@@ -4,6 +4,7 @@ import {
   canManageTrades,
   hasCapability,
   normalizeOrganizationSlug,
+  resolveInvitationAction,
 } from "../lib/organization.ts";
 
 describe("organization domain helpers", function () {
@@ -64,6 +65,57 @@ describe("organization domain helpers", function () {
       "member.manage",
     ] as const) {
       expect(hasCapability("VIEWER", capability)).to.equal(false);
+    }
+  });
+});
+
+describe("organization invitation resolution", function () {
+  const invited = { membershipStatus: "INVITED", actorIsInvitee: true, actorIsManager: false } as const;
+
+  it("allows an invitee to accept a pending invitation", function () {
+    const result = resolveInvitationAction({ ...invited, action: "accept" });
+    expect(result).to.deep.equal({ ok: true, nextStatus: "ACTIVE" });
+  });
+
+  it("allows an invitee to reject a pending invitation", function () {
+    const result = resolveInvitationAction({ ...invited, action: "reject" });
+    expect(result).to.deep.equal({ ok: true, nextStatus: "REVOKED" });
+  });
+
+  it("does not let a non-invitee accept or reject", function () {
+    const result = resolveInvitationAction({ ...invited, actorIsInvitee: false, action: "accept" });
+    expect(result).to.deep.equal({ ok: false, status: 403, error: "Only the invited wallet can accept or reject" });
+  });
+
+  it("lets an active member manager cancel a pending invitation", function () {
+    const result = resolveInvitationAction({
+      membershipStatus: "INVITED",
+      action: "cancel",
+      actorIsInvitee: false,
+      actorIsManager: true,
+    });
+    expect(result).to.deep.equal({ ok: true, nextStatus: "REVOKED" });
+  });
+
+  it("rejects cancellation from a wallet without member.manage", function () {
+    const result = resolveInvitationAction({
+      membershipStatus: "INVITED",
+      action: "cancel",
+      actorIsInvitee: false,
+      actorIsManager: false,
+    });
+    expect(result).to.deep.equal({ ok: false, status: 403, error: "Organization owner or admin required" });
+  });
+
+  it("refuses to resolve a non-pending membership", function () {
+    for (const action of ["accept", "reject", "cancel"] as const) {
+      const result = resolveInvitationAction({
+        membershipStatus: "ACTIVE",
+        action,
+        actorIsInvitee: true,
+        actorIsManager: true,
+      });
+      expect(result, action).to.deep.equal({ ok: false, status: 409, error: "Only pending invitations can be resolved" });
     }
   });
 });

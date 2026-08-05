@@ -175,6 +175,9 @@ model EvidenceProvider {
   validUntil    DateTime?
   jurisdiction  String? // Country or regulatory region
   status        EvidenceProviderStatus  @default(PENDING)
+  revokedAt     DateTime? // Set when the accreditation is revoked
+  revokedReason String? // Free-text reason supplied at revocation time
+  revokedBy     String? // Wallet that performed the revocation
   createdAt     DateTime                @default(now())
   updatedAt     DateTime                @updatedAt
 

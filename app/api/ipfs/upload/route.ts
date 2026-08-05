@@ -1,7 +1,7 @@
 import { createHash } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateWalletRequest } from "@/lib/api-auth";
-import { findActiveEvidenceProvider } from "@/lib/evidence-provider";
+import { findActiveEvidenceProvider } from "@/lib/evidence-provider-db";
 import prisma from "@/lib/prisma";
 
 export const runtime = "nodejs";

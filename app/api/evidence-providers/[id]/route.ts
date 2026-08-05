@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { authenticateWalletRequest } from "@/lib/api-auth";
 import { EvidenceProviderStatus, ProviderRole } from "@prisma/client";
+import { cascadeEvidenceStatus, revocationUpdate } from "@/lib/evidence-provider";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -57,15 +58,37 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       validUntil?: string;
       jurisdiction?: string;
       addWallet?: string;
+      revokedReason?: string;
     };
 
     const data: Record<string, unknown> = {};
+
+    const current = await prisma.evidenceProvider.findUnique({
+      where: { id },
+      select: { id: true, status: true, validFrom: true, validUntil: true, revokedAt: true },
+    });
+    if (!current) {
+      return NextResponse.json({ error: "Evidence provider not found" }, { status: 404 });
+    }
+
+    // A REVOKE is a terminal, reason-required transition that cascades to every
+    // piece of evidence this provider has uploaded.
+    const revokePayload =
+      body.status === "REVOKED" ? revocationUpdate(current, actorWallet, body.revokedReason) : null;
+    if (body.status === "REVOKED" && !revokePayload) {
+      return NextResponse.json(
+        { error: "Revocation requires a non-empty revokedReason and an eligible provider" },
+        { status: 400 },
+      );
+    }
+
     if (body.status !== undefined) {
       if (!STATUS_VALUES.has(body.status)) {
         return NextResponse.json({ error: "Invalid provider status" }, { status: 400 });
       }
       data.status = body.status;
     }
+    if (revokePayload) Object.assign(data, revokePayload);
     if (body.providerRole !== undefined) {
       if (!PROVIDER_ROLES.has(body.providerRole)) {
         return NextResponse.json({ error: "Invalid provider role" }, { status: 400 });
@@ -125,6 +148,16 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
         const walletAddress = getAddress(body.addWallet);
         await tx.evidenceProviderWallet.create({
           data: { providerId: id, walletAddress },
+        });
+      }
+      // Cascade a terminal status to evidence already uploaded by this provider.
+      // Only a transition that actually lands on REVOKED/EXPIRED cascades; a
+      // reactivation to ACTIVE does not silently resurrect revoked evidence.
+      const cascade = body.status ? cascadeEvidenceStatus(provider.status as EvidenceProviderStatus) : null;
+      if (cascade) {
+        await tx.evidence.updateMany({
+          where: { providerId: id, validationStatus: { not: cascade } },
+          data: { validationStatus: cascade },
         });
       }
       return provider;

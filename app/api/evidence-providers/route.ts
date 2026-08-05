@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { authenticateWalletRequest } from "@/lib/api-auth";
 import { normalizeOrganizationSlug } from "@/lib/organization";
+import { effectiveStatusFor } from "@/lib/evidence-provider";
 import { ProviderRole } from "@prisma/client";
 
 const ACCREDITATION_NO = /^[A-Za-z0-9._-]+$/;
@@ -21,7 +22,12 @@ export async function GET(req: NextRequest) {
     },
     orderBy: { createdAt: "desc" },
   });
-  return NextResponse.json({ providers });
+  const now = new Date();
+  const withEffective = providers.map((provider) => ({
+    ...provider,
+    effectiveStatus: effectiveStatusFor(provider, now),
+  }));
+  return NextResponse.json({ providers: withEffective });
 }
 
 export async function POST(req: NextRequest) {

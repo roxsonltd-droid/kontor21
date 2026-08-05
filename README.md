@@ -95,8 +95,9 @@ arbitrator authorization separately.
 - Public IPFS documents must not contain secrets or regulated personal data.
 - Availability requires pinning redundancy; the current MVP uses one configured
   Pinata account.
-- Certificate revocation, issuer signatures, schema versions, and accreditation
-  expiry are known future requirements.
+- Certificate revocation cascades to evidence uploaded by the provider; issuer
+  signatures, schema versions, and accreditation expiry are known future
+  requirements.
 
 ## Demo versus implemented functionality
 
@@ -119,6 +120,10 @@ Implemented:
 - an accredited evidence provider registry with a canonical accreditation issuer
   reference (SGS, Bureau Veritas, ...), validity window, jurisdiction, status,
   and multiple authorized wallets;
+- provider accreditation lifecycle: a derived effective status (PENDING /
+  ACTIVE / EXPIRED / REVOKED) that honors an elapsed validity window; revocation
+  records the actor by wallet, a reason, and a timestamp and cascades the
+  terminal status onto every evidence the provider has uploaded;
 - confirmed escrow-event indexing with durable cursors and idempotent event keys;
 - automatic trade-state reconciliation, dead-letter retries (with an operational
   dead-letter alert), and internal metrics;
@@ -138,7 +143,6 @@ Prototype or presentation-only:
 
 - market intelligence and AI sourcing content;
 - OCR and automated document extraction;
-- provider accreditation and certificate revocation;
 - outbound email and push notification providers (in-app delivery is
   implemented; email/webhook require a configured endpoint);
 - legal, KYC/KYB, accounting, and tax integrations.

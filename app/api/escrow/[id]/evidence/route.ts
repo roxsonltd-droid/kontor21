@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { authenticateWalletRequest, isConfiguredArbitrator } from "@/lib/api-auth";
-import { findActiveEvidenceProvider } from "@/lib/evidence-provider";
+import { findActiveEvidenceProvider } from "@/lib/evidence-provider-db";
 
 type RouteContext = {
   params: Promise<{ id: string }>;

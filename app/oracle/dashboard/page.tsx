@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { CheckCircle2, Blocks, Fingerprint, UploadCloud, FileCheck, Wallet, ArrowRight } from 'lucide-react';
 import { useKontorEscrow } from '@/hooks/useKontorEscrow';
+import { milestoneHashFor } from '@/lib/onchain-escrow';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { signedFetch } from '@/lib/signedFetch';
@@ -115,7 +116,11 @@ export default function OracleDashboard() {
       const evidenceResult = await evidenceResponse.json();
       if (!evidenceResponse.ok) throw new Error(evidenceResult.error || "Evidence validation failed");
 
-      const success = await proposeFullRelease(activeTrade.blockchainTradeId, ipfsHash);
+      const success = await proposeFullRelease(
+        activeTrade.blockchainTradeId,
+        milestoneHashFor(activeTrade.id),
+        ipfsHash
+      );
       if (!success) throw new Error("On-chain release proposal failed");
 
       setIsApproved(true);

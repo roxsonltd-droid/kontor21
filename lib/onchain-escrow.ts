@@ -1,10 +1,10 @@
-import { Contract, JsonRpcProvider, getAddress } from "ethers";
+import { Contract, JsonRpcProvider, getAddress, keccak256, toUtf8Bytes } from "ethers";
 import { CONTRACT_ADDRESSES } from "@/lib/abis";
 
 const TRADE_ABI = [
   "function trades(uint256) view returns (address buyer,address seller,address oracle,uint256 totalAmount,uint256 releasedAmount,address token,uint8 status,uint8 votesForBuyer,uint8 votesForSeller)",
-  "function pendingReleaseAmounts(uint256) view returns (uint256)",
-  "function pendingEvidenceRoots(uint256) view returns (bytes32)",
+  "function pendingProposalOf(uint256) view returns (uint256)",
+  "function proposals(uint256) view returns (uint256 proposalId,uint256 tradeId,bytes32 milestoneHash,uint256 amount,bytes32 evidenceRoot,address proposedBy,uint64 createdAt,uint8 status)",
 ] as const;
 
 type ExpectedParticipants = {
@@ -21,6 +21,10 @@ function escrowContract() {
     throw new Error("On-chain verification is not configured");
   }
   return new Contract(contractAddress, TRADE_ABI, new JsonRpcProvider(rpcUrl));
+}
+
+export function milestoneHashFor(milestoneId: string): string {
+  return keccak256(toUtf8Bytes(`milestone:${milestoneId}`));
 }
 
 export async function verifyOnchainTradeParticipants(
@@ -40,15 +44,43 @@ export async function verifyOnchainTradeStatus(tradeId: number, expectedStatus: 
   return Number(trade.status) === expectedStatus;
 }
 
+export type PendingRelease = {
+  proposalId: number;
+  milestoneHash: string;
+  amount: bigint;
+  evidenceRoot: string;
+};
+
+/**
+ * Reads the current pending release proposal for a trade from the V4 contract.
+ * Returns null when no pending proposal exists.
+ */
+export async function getOnchainPendingRelease(
+  tradeId: number
+): Promise<PendingRelease | null> {
+  const contract = escrowContract();
+  const proposalId = Number(await contract.pendingProposalOf(tradeId));
+  if (proposalId <= 0) return null;
+  const proposal = await contract.proposals(proposalId);
+  return {
+    proposalId,
+    milestoneHash: proposal.milestoneHash,
+    amount: proposal.amount,
+    evidenceRoot: proposal.evidenceRoot,
+  };
+}
+
 export async function verifyOnchainPendingRelease(
   tradeId: number,
+  milestoneHash: string,
   amount: bigint,
   evidenceRoot: string
-) {
-  const contract = escrowContract();
-  const [pendingAmount, pendingRoot] = await Promise.all([
-    contract.pendingReleaseAmounts(tradeId),
-    contract.pendingEvidenceRoots(tradeId),
-  ]);
-  return pendingAmount === amount && pendingRoot.toLowerCase() === evidenceRoot.toLowerCase();
+): Promise<number | null> {
+  const pending = await getOnchainPendingRelease(tradeId);
+  if (!pending) return null;
+  const matches =
+    pending.milestoneHash.toLowerCase() === milestoneHash.toLowerCase() &&
+    pending.amount === amount &&
+    pending.evidenceRoot.toLowerCase() === evidenceRoot.toLowerCase();
+  return matches ? pending.proposalId : null;
 }

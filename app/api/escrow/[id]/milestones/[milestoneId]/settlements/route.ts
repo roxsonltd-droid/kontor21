@@ -2,7 +2,7 @@ import { parseUnits } from "ethers";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { authenticateWalletRequest } from "@/lib/api-auth";
-import { verifyOnchainPendingRelease } from "@/lib/onchain-escrow";
+import { milestoneHashFor, verifyOnchainPendingRelease } from "@/lib/onchain-escrow";
 
 type RouteContext = { params: Promise<{ id: string; milestoneId: string }> };
 
@@ -75,10 +75,11 @@ export async function POST(req: NextRequest, context: RouteContext) {
     }
     const matchesChain = await verifyOnchainPendingRelease(
       milestone.trade.blockchainTradeId,
+      milestoneHashFor(milestoneId),
       amountWei,
       evidenceRoot
     );
-    if (!matchesChain) {
+    if (matchesChain == null) {
       return NextResponse.json({ error: "Proposal does not match on-chain pending release" }, { status: 409 });
     }
 
@@ -87,6 +88,8 @@ export async function POST(req: NextRequest, context: RouteContext) {
         milestoneId,
         amountUsdc: amount,
         evidenceRoot: evidenceRoot.toLowerCase(),
+        proposalId: matchesChain,
+        milestoneHash: milestoneHashFor(milestoneId).toLowerCase(),
         status: "PROPOSED",
       },
     });

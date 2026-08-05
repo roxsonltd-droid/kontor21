@@ -64,10 +64,31 @@ async function main() {
   // 6. Partial Release (Rules Engine / Oracle)
   const partialAmount = ethers.parseUnits("25000", 6);
   const evidenceRoot = ethers.keccak256(ethers.toUtf8Bytes("ipfs://demo-evidence"));
+  const milestoneHash = ethers.keccak256(ethers.toUtf8Bytes("milestone:demo-1"));
   console.log(`\nOracle proposing partial amount: ${ethers.formatUnits(partialAmount, 6)} USDC...`);
-  await (await escrow.connect(oracle).proposeRelease(tradeId, partialAmount, evidenceRoot)).wait();
+  const proposeTx = await escrow.connect(oracle).proposeRelease(
+    tradeId,
+    milestoneHash,
+    partialAmount,
+    evidenceRoot
+  );
+  const proposeReceipt = await proposeTx.wait();
+  const proposalId = proposeReceipt?.logs
+    .map((log) => {
+      try {
+        const parsed = escrow.interface.parseLog({ topics: [...log.topics], data: log.data });
+        return parsed?.name === "ReleaseProposed" ? Number(parsed.args[1]) : null;
+      } catch {
+        return null;
+      }
+    })
+    .find((id) => id != null);
+  if (proposalId == null) {
+    throw new Error("ReleaseProposed event not found in receipt");
+  }
+  console.log(`Proposal #${proposalId} proposed (milestoneHash=${milestoneHash.slice(0, 10)}...).`);
   console.log("Buyer approving the proposed release...");
-  await (await escrow.connect(buyer).approveRelease(tradeId, partialAmount, evidenceRoot)).wait();
+  await (await escrow.connect(buyer).approveRelease(proposalId, partialAmount, evidenceRoot)).wait();
   console.log("Partial funds released to Seller.");
 
   // 7. Dispute & Resolution (Multisig)

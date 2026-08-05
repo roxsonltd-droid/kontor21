@@ -170,12 +170,17 @@ export function useKontorEscrow() {
   );
 
   const proposeRelease = useCallback(
-    async (tradeId: number, amount: number, evidenceCid: string) => {
+    async (tradeId: number, milestoneHash: string, amount: number, evidenceCid: string) => {
       if (!escrowContract) return false;
       try {
         const amountWei = parseUnits(amount.toString(), 6);
         const evidenceRoot = keccak256(toUtf8Bytes(`ipfs://${evidenceCid}`));
-        const tx = await escrowContract.proposeRelease(tradeId, amountWei, evidenceRoot);
+        const tx = await escrowContract.proposeRelease(
+          tradeId,
+          milestoneHash,
+          amountWei,
+          evidenceRoot
+        );
         await tx.wait();
         return true;
       } catch (error) {
@@ -187,14 +192,19 @@ export function useKontorEscrow() {
   );
 
   const proposeFullRelease = useCallback(
-    async (tradeId: number, evidenceCid: string) => {
+    async (tradeId: number, milestoneHash: string, evidenceCid: string) => {
       if (!escrowContract) return false;
       try {
         const trade = await escrowContract.trades(tradeId);
         const remaining = trade.totalAmount - trade.releasedAmount;
         if (remaining <= BigInt(0)) return false;
         const evidenceRoot = keccak256(toUtf8Bytes(`ipfs://${evidenceCid}`));
-        const tx = await escrowContract.proposeRelease(tradeId, remaining, evidenceRoot);
+        const tx = await escrowContract.proposeRelease(
+          tradeId,
+          milestoneHash,
+          remaining,
+          evidenceRoot
+        );
         await tx.wait();
         return true;
       } catch (error) {
@@ -209,11 +219,14 @@ export function useKontorEscrow() {
     async (tradeId: number) => {
       if (!escrowContract) return false;
       try {
-        const pendingAmount = await escrowContract.pendingReleaseAmounts(tradeId);
-        const pendingEvidenceRoot = await escrowContract.pendingEvidenceRoots(tradeId);
+        const proposalId = Number(await escrowContract.pendingProposalOf(tradeId));
+        if (proposalId <= 0) return false;
+        const proposal = await escrowContract.proposals(proposalId);
+        const pendingAmount = proposal.amount;
+        const pendingEvidenceRoot = proposal.evidenceRoot;
         if (pendingAmount <= BigInt(0) || pendingEvidenceRoot === `0x${"0".repeat(64)}`) return false;
         const tx = await escrowContract.approveRelease(
-          tradeId,
+          proposalId,
           pendingAmount,
           pendingEvidenceRoot
         );
@@ -221,6 +234,21 @@ export function useKontorEscrow() {
         return true;
       } catch (error) {
         console.error("approveRelease failed", error);
+        return false;
+      }
+    },
+    [escrowContract]
+  );
+
+  const cancelRelease = useCallback(
+    async (proposalId: number) => {
+      if (!escrowContract) return false;
+      try {
+        const tx = await escrowContract.cancelRelease(proposalId);
+        await tx.wait();
+        return true;
+      } catch (error) {
+        console.error("cancelRelease failed", error);
         return false;
       }
     },
@@ -339,6 +367,7 @@ export function useKontorEscrow() {
     proposeRelease,
     proposeFullRelease,
     approveRelease,
+    cancelRelease,
     claimTimeoutRefund,
     claimDisputeTimeoutRefund,
     raiseDispute,

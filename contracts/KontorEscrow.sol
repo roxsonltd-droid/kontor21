@@ -28,6 +28,12 @@ contract KontorEscrow is Ownable, Pausable, ReentrancyGuard {
         REFUNDED
     }
 
+    enum ProposalStatus {
+        PENDING,
+        APPROVED,
+        CANCELLED
+    }
+
     struct Trade {
         address buyer;
         address seller;
@@ -40,6 +46,17 @@ contract KontorEscrow is Ownable, Pausable, ReentrancyGuard {
         uint8 votesForSeller;
     }
 
+    struct ReleaseProposal {
+        uint256 proposalId;
+        uint256 tradeId;
+        bytes32 milestoneHash;
+        uint256 amount;
+        bytes32 evidenceRoot;
+        address proposedBy;
+        uint64 createdAt;
+        ProposalStatus status;
+    }
+
     mapping(uint256 => Trade) public trades;
     mapping(uint256 => address[3]) public tradeArbitrators;
     mapping(uint256 => mapping(address => bool)) public hasVoted;
@@ -47,10 +64,11 @@ contract KontorEscrow is Ownable, Pausable, ReentrancyGuard {
     mapping(uint256 => uint64) public fundingDeadlines;
     mapping(uint256 => uint64) public releaseDeadlines;
     mapping(uint256 => uint64) public disputeDeadlines;
-    mapping(uint256 => uint256) public pendingReleaseAmounts;
-    mapping(uint256 => bytes32) public pendingEvidenceRoots;
+    mapping(uint256 => ReleaseProposal) public proposals;
+    mapping(uint256 => uint256) public pendingProposalOf;
 
     uint256 public nextTradeId = 1;
+    uint256 public nextProposalId = 1;
     address[3] public arbitrators;
     address public feeTreasury;
     uint256 public feeBasisPoints;
@@ -63,8 +81,26 @@ contract KontorEscrow is Ownable, Pausable, ReentrancyGuard {
         uint256 fundingDeadline
     );
     event TradeFunded(uint256 indexed tradeId, uint256 releaseDeadline);
-    event ReleaseProposed(uint256 indexed tradeId, uint256 amount, bytes32 indexed evidenceRoot);
-    event ReleaseApproved(uint256 indexed tradeId, address indexed buyer, uint256 amount, bytes32 indexed evidenceRoot);
+    event ReleaseProposed(
+        uint256 indexed tradeId,
+        uint256 indexed proposalId,
+        bytes32 indexed milestoneHash,
+        uint256 amount,
+        bytes32 evidenceRoot
+    );
+    event ReleaseCancelled(
+        uint256 indexed tradeId,
+        uint256 indexed proposalId,
+        bytes32 indexed milestoneHash
+    );
+    event ReleaseApproved(
+        uint256 indexed tradeId,
+        uint256 indexed proposalId,
+        address indexed buyer,
+        bytes32 milestoneHash,
+        uint256 amount,
+        bytes32 evidenceRoot
+    );
     event TradePartialReleased(uint256 indexed tradeId, uint256 amount);
     event TradeCompleted(uint256 indexed tradeId);
     event TradeTimedOut(uint256 indexed tradeId, uint256 refundedAmount);
@@ -172,52 +208,107 @@ contract KontorEscrow is Ownable, Pausable, ReentrancyGuard {
 
     /**
      * @notice Oracle proposes a milestone release tied to an off-chain evidence root.
+     * Proposals are identified by a global proposalId and carry a milestoneHash so the
+     * indexer can bind the on-chain event to a specific off-chain milestone.
+     * A new proposal atomically replaces and cancels the previous pending one.
      * No funds move until the buyer separately approves the exact proposal.
      */
-    function proposeRelease(uint256 tradeId, uint256 amount, bytes32 evidenceRoot)
-        external
-        onlyOracle(tradeId)
-        whenNotPaused
-    {
+    function proposeRelease(
+        uint256 tradeId,
+        bytes32 milestoneHash,
+        uint256 amount,
+        bytes32 evidenceRoot
+    ) external onlyOracle(tradeId) whenNotPaused returns (uint256 proposalId) {
         Trade storage trade = trades[tradeId];
         require(trade.status == TradeStatus.FUNDED, "Trade is not funded or is disputed");
         require(block.timestamp <= releaseDeadlines[tradeId], "Release deadline passed");
         require(amount > 0, "Amount must be > 0");
         require(trade.releasedAmount + amount <= trade.totalAmount, "Exceeds total amount");
         require(evidenceRoot != bytes32(0), "Evidence root required");
+        require(milestoneHash != bytes32(0), "Milestone hash required");
 
-        pendingReleaseAmounts[tradeId] = amount;
-        pendingEvidenceRoots[tradeId] = evidenceRoot;
-        emit ReleaseProposed(tradeId, amount, evidenceRoot);
+        uint256 previousProposalId = pendingProposalOf[tradeId];
+        if (previousProposalId != 0) {
+            proposals[previousProposalId].status = ProposalStatus.CANCELLED;
+            emit ReleaseCancelled(
+                tradeId,
+                previousProposalId,
+                proposals[previousProposalId].milestoneHash
+            );
+        }
+
+        proposalId = nextProposalId++;
+        proposals[proposalId] = ReleaseProposal({
+            proposalId: proposalId,
+            tradeId: tradeId,
+            milestoneHash: milestoneHash,
+            amount: amount,
+            evidenceRoot: evidenceRoot,
+            proposedBy: msg.sender,
+            createdAt: uint64(block.timestamp),
+            status: ProposalStatus.PENDING
+        });
+        pendingProposalOf[tradeId] = proposalId;
+
+        emit ReleaseProposed(tradeId, proposalId, milestoneHash, amount, evidenceRoot);
     }
 
-    function approveRelease(uint256 tradeId, uint256 expectedAmount, bytes32 expectedEvidenceRoot)
+    /**
+     * @notice Oracle explicitly cancels a pending release proposal.
+     */
+    function cancelRelease(uint256 proposalId) external whenNotPaused {
+        ReleaseProposal storage proposal = proposals[proposalId];
+        require(proposal.status == ProposalStatus.PENDING, "Proposal is not pending");
+        require(
+            msg.sender == trades[proposal.tradeId].oracle,
+            "Not the designated oracle"
+        );
+
+        proposal.status = ProposalStatus.CANCELLED;
+        if (pendingProposalOf[proposal.tradeId] == proposalId) {
+            pendingProposalOf[proposal.tradeId] = 0;
+        }
+        emit ReleaseCancelled(proposal.tradeId, proposalId, proposal.milestoneHash);
+    }
+
+    function approveRelease(uint256 proposalId, uint256 expectedAmount, bytes32 expectedEvidenceRoot)
         external
-        onlyBuyer(tradeId)
         whenNotPaused
         nonReentrant
     {
-        Trade storage trade = trades[tradeId];
-        require(trade.status == TradeStatus.FUNDED, "Trade is not funded or is disputed");
-        require(block.timestamp <= releaseDeadlines[tradeId], "Release deadline passed");
+        ReleaseProposal storage proposal = proposals[proposalId];
+        require(proposal.status == ProposalStatus.PENDING, "No pending release");
 
-        uint256 amount = pendingReleaseAmounts[tradeId];
-        bytes32 evidenceRoot = pendingEvidenceRoots[tradeId];
-        require(amount > 0 && evidenceRoot != bytes32(0), "No pending release");
+        Trade storage trade = trades[proposal.tradeId];
+        require(msg.sender == trade.buyer, "Not the buyer");
+        require(trade.status == TradeStatus.FUNDED, "Trade is not funded or is disputed");
+        require(block.timestamp <= releaseDeadlines[proposal.tradeId], "Release deadline passed");
+
+        uint256 amount = proposal.amount;
+        bytes32 evidenceRoot = proposal.evidenceRoot;
         require(amount == expectedAmount, "Release amount changed");
         require(evidenceRoot == expectedEvidenceRoot, "Evidence root changed");
 
-        pendingReleaseAmounts[tradeId] = 0;
-        pendingEvidenceRoots[tradeId] = bytes32(0);
+        proposal.status = ProposalStatus.APPROVED;
+        if (pendingProposalOf[proposal.tradeId] == proposalId) {
+            pendingProposalOf[proposal.tradeId] = 0;
+        }
         trade.releasedAmount += amount;
         _paySeller(trade, amount);
 
-        emit ReleaseApproved(tradeId, msg.sender, amount, evidenceRoot);
+        emit ReleaseApproved(
+            proposal.tradeId,
+            proposalId,
+            msg.sender,
+            proposal.milestoneHash,
+            amount,
+            evidenceRoot
+        );
         if (trade.releasedAmount == trade.totalAmount) {
             trade.status = TradeStatus.COMPLETED;
-            emit TradeCompleted(tradeId);
+            emit TradeCompleted(proposal.tradeId);
         } else {
-            emit TradePartialReleased(tradeId, amount);
+            emit TradePartialReleased(proposal.tradeId, amount);
         }
     }
 
@@ -232,8 +323,7 @@ contract KontorEscrow is Ownable, Pausable, ReentrancyGuard {
 
         uint256 remainingAmount = trade.totalAmount - trade.releasedAmount;
         trade.status = TradeStatus.REFUNDED;
-        pendingReleaseAmounts[tradeId] = 0;
-        pendingEvidenceRoots[tradeId] = bytes32(0);
+        _clearPendingProposal(tradeId);
         trade.token.safeTransfer(trade.buyer, remainingAmount);
 
         emit TradeTimedOut(tradeId, remainingAmount);
@@ -246,8 +336,7 @@ contract KontorEscrow is Ownable, Pausable, ReentrancyGuard {
 
         trade.status = TradeStatus.DISPUTED;
         disputeDeadlines[tradeId] = uint64(block.timestamp + DISPUTE_WINDOW);
-        pendingReleaseAmounts[tradeId] = 0;
-        pendingEvidenceRoots[tradeId] = bytes32(0);
+        _clearPendingProposal(tradeId);
         emit DisputeRaised(tradeId, msg.sender);
     }
 
@@ -328,6 +417,20 @@ contract KontorEscrow is Ownable, Pausable, ReentrancyGuard {
         uint256 feeAmount = (amount * feeBasisPoints) / 10000;
         if (feeAmount > 0) trade.token.safeTransfer(feeTreasury, feeAmount);
         trade.token.safeTransfer(trade.seller, amount - feeAmount);
+    }
+
+    function _clearPendingProposal(uint256 tradeId) private {
+        uint256 proposalId = pendingProposalOf[tradeId];
+        if (proposalId == 0) return;
+        if (proposals[proposalId].status == ProposalStatus.PENDING) {
+            proposals[proposalId].status = ProposalStatus.CANCELLED;
+            emit ReleaseCancelled(
+                tradeId,
+                proposalId,
+                proposals[proposalId].milestoneHash
+            );
+        }
+        pendingProposalOf[tradeId] = 0;
     }
 
     function _validateArbitrators(address arb1, address arb2, address arb3) private pure {

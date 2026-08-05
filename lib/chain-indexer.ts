@@ -1,11 +1,11 @@
-import { formatUnits, Interface, type Log, type Provider } from "ethers";
+import { Interface, type Log, type Provider } from "ethers";
 import type { Prisma } from "@prisma/client";
 import prisma from "./prisma";
 import { KONTOR_ESCROW_ABI } from "./abis";
 import { operationalLog } from "./logger";
+import { applyEscrowEvent } from "./chain-events";
 
 const escrowInterface = new Interface(KONTOR_ESCROW_ABI);
-type DatabaseClient = Prisma.TransactionClient | typeof prisma;
 
 type IndexerOptions = {
   provider: Provider;
@@ -35,93 +35,6 @@ function parsedPayload(log: Log) {
     payload[input.name || String(index)] = jsonValue(parsed.args[index]);
   });
   return { eventName: parsed.name, payload };
-}
-
-async function updateMilestoneAfterExecution(
-  db: DatabaseClient,
-  milestoneId: string
-) {
-  const milestone = await db.tradeMilestone.findUnique({
-    where: { id: milestoneId },
-    include: { settlements: { where: { status: "EXECUTED" } } },
-  });
-  if (!milestone) return;
-  const executed = milestone.settlements.reduce(
-    (sum, settlement) => sum.add(settlement.amountUsdc),
-    milestone.amountUsdc.mul(0)
-  );
-  await db.tradeMilestone.update({
-    where: { id: milestoneId },
-    data: {
-      status: executed.gte(milestone.amountUsdc) ? "RELEASED" : "PARTIALLY_RELEASED",
-    },
-  });
-}
-
-async function applyEscrowEvent(
-  db: DatabaseClient,
-  eventName: string,
-  payload: Record<string, Prisma.InputJsonValue>,
-  transactionHash: string
-) {
-  const blockchainTradeId = Number(payload.tradeId);
-  if (!Number.isSafeInteger(blockchainTradeId) || blockchainTradeId <= 0) return;
-  const trade = await db.tradeMetadata.findUnique({ where: { blockchainTradeId } });
-  if (!trade) return;
-
-  if (eventName === "TradeFunded") {
-    await db.tradeMetadata.update({
-      where: { id: trade.id },
-      data: { settlementStatus: "FUNDED" },
-    });
-  } else if (eventName === "TradePartialReleased") {
-    await db.tradeMetadata.update({
-      where: { id: trade.id },
-      data: { settlementStatus: "PARTIAL_SETTLEMENT" },
-    });
-  } else if (eventName === "TradeCompleted") {
-    await db.tradeMetadata.update({
-      where: { id: trade.id },
-      data: { settlementStatus: "RELEASED", operationalStatus: "CONDITIONS_SATISFIED" },
-    });
-  } else if (eventName === "TradeTimedOut" || eventName === "DisputeTimedOut") {
-    await db.tradeMetadata.update({
-      where: { id: trade.id },
-      data: { settlementStatus: "REFUNDED" },
-    });
-  } else if (eventName === "DisputeRaised") {
-    await db.tradeMetadata.update({
-      where: { id: trade.id },
-      data: { settlementStatus: "DISPUTED", operationalStatus: "DISPUTED" },
-    });
-  } else if (eventName === "DisputeResolved") {
-    await db.tradeMetadata.update({
-      where: { id: trade.id },
-      data: {
-        settlementStatus: payload.refundBuyer === true ? "REFUNDED" : "RELEASED",
-        operationalStatus: "CONDITIONS_SATISFIED",
-      },
-    });
-  } else if (eventName === "ReleaseApproved") {
-    const amount = String(payload.amount);
-    const evidenceRoot = String(payload.evidenceRoot).toLowerCase();
-    const settlement = await db.milestoneSettlement.findFirst({
-      where: {
-        milestone: { tradeId: trade.id },
-        amountUsdc: { equals: formatUnits(BigInt(amount), 6) },
-        evidenceRoot,
-        status: { in: ["PROPOSED", "APPROVED"] },
-      },
-      orderBy: { createdAt: "asc" },
-    });
-    if (settlement) {
-      await db.milestoneSettlement.update({
-        where: { id: settlement.id },
-        data: { status: "EXECUTED", transactionHash },
-      });
-      await updateMilestoneAfterExecution(db, settlement.milestoneId);
-    }
-  }
 }
 
 async function processLog(

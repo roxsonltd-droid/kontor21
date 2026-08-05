@@ -221,13 +221,17 @@ model MilestoneSettlement {
   amountUsdc      Decimal                   @db.Decimal(20, 6)
   status          MilestoneSettlementStatus @default(PENDING)
   evidenceRoot    String?
-  transactionHash String?                   @unique
+  proposalId      Int?    // Global on-chain proposal id (V4)
+  milestoneHash   String? // keccak256(abi.encodePacked(milestoneId)) on-chain binding
+  transactionHash String? @unique
   createdAt       DateTime                  @default(now())
   updatedAt       DateTime                  @updatedAt
 
   milestone TradeMilestone @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
 
+  @@unique([proposalId])
   @@index([milestoneId, status])
+  @@index([milestoneHash])
 }
 
 // Nexus Core: Structured Rules Engine Inputs

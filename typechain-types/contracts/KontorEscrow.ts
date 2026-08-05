@@ -32,6 +32,7 @@ export interface KontorEscrowInterface extends Interface {
       | "allowedTokens"
       | "approveRelease"
       | "arbitrators"
+      | "cancelRelease"
       | "claimDisputeTimeoutRefund"
       | "claimTimeoutRefund"
       | "createTrade"
@@ -41,12 +42,13 @@ export interface KontorEscrowInterface extends Interface {
       | "fundTrade"
       | "fundingDeadlines"
       | "hasVoted"
+      | "nextProposalId"
       | "nextTradeId"
       | "owner"
       | "pause"
       | "paused"
-      | "pendingEvidenceRoots"
-      | "pendingReleaseAmounts"
+      | "pendingProposalOf"
+      | "proposals"
       | "proposeRelease"
       | "raiseDispute"
       | "releaseDeadlines"
@@ -70,6 +72,7 @@ export interface KontorEscrowInterface extends Interface {
       | "OwnershipTransferred"
       | "Paused"
       | "ReleaseApproved"
+      | "ReleaseCancelled"
       | "ReleaseProposed"
       | "TokenAllowlistUpdated"
       | "TradeCompleted"
@@ -102,6 +105,10 @@ export interface KontorEscrowInterface extends Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "arbitrators",
+    values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "cancelRelease",
     values: [BigNumberish]
   ): string;
   encodeFunctionData(
@@ -141,6 +148,10 @@ export interface KontorEscrowInterface extends Interface {
     values: [BigNumberish, AddressLike]
   ): string;
   encodeFunctionData(
+    functionFragment: "nextProposalId",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
     functionFragment: "nextTradeId",
     values?: undefined
   ): string;
@@ -148,16 +159,16 @@ export interface KontorEscrowInterface extends Interface {
   encodeFunctionData(functionFragment: "pause", values?: undefined): string;
   encodeFunctionData(functionFragment: "paused", values?: undefined): string;
   encodeFunctionData(
-    functionFragment: "pendingEvidenceRoots",
+    functionFragment: "pendingProposalOf",
     values: [BigNumberish]
   ): string;
   encodeFunctionData(
-    functionFragment: "pendingReleaseAmounts",
+    functionFragment: "proposals",
     values: [BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "proposeRelease",
-    values: [BigNumberish, BigNumberish, BytesLike]
+    values: [BigNumberish, BytesLike, BigNumberish, BytesLike]
   ): string;
   encodeFunctionData(
     functionFragment: "raiseDispute",
@@ -222,6 +233,10 @@ export interface KontorEscrowInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(
+    functionFragment: "cancelRelease",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
     functionFragment: "claimDisputeTimeoutRefund",
     data: BytesLike
   ): Result;
@@ -252,6 +267,10 @@ export interface KontorEscrowInterface extends Interface {
   ): Result;
   decodeFunctionResult(functionFragment: "hasVoted", data: BytesLike): Result;
   decodeFunctionResult(
+    functionFragment: "nextProposalId",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
     functionFragment: "nextTradeId",
     data: BytesLike
   ): Result;
@@ -259,13 +278,10 @@ export interface KontorEscrowInterface extends Interface {
   decodeFunctionResult(functionFragment: "pause", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "paused", data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: "pendingEvidenceRoots",
+    functionFragment: "pendingProposalOf",
     data: BytesLike
   ): Result;
-  decodeFunctionResult(
-    functionFragment: "pendingReleaseAmounts",
-    data: BytesLike
-  ): Result;
+  decodeFunctionResult(functionFragment: "proposals", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "proposeRelease",
     data: BytesLike
@@ -416,21 +432,49 @@ export namespace PausedEvent {
 export namespace ReleaseApprovedEvent {
   export type InputTuple = [
     tradeId: BigNumberish,
+    proposalId: BigNumberish,
     buyer: AddressLike,
+    milestoneHash: BytesLike,
     amount: BigNumberish,
     evidenceRoot: BytesLike
   ];
   export type OutputTuple = [
     tradeId: bigint,
+    proposalId: bigint,
     buyer: string,
+    milestoneHash: string,
     amount: bigint,
     evidenceRoot: string
   ];
   export interface OutputObject {
     tradeId: bigint;
+    proposalId: bigint;
     buyer: string;
+    milestoneHash: string;
     amount: bigint;
     evidenceRoot: string;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace ReleaseCancelledEvent {
+  export type InputTuple = [
+    tradeId: BigNumberish,
+    proposalId: BigNumberish,
+    milestoneHash: BytesLike
+  ];
+  export type OutputTuple = [
+    tradeId: bigint,
+    proposalId: bigint,
+    milestoneHash: string
+  ];
+  export interface OutputObject {
+    tradeId: bigint;
+    proposalId: bigint;
+    milestoneHash: string;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -441,16 +485,22 @@ export namespace ReleaseApprovedEvent {
 export namespace ReleaseProposedEvent {
   export type InputTuple = [
     tradeId: BigNumberish,
+    proposalId: BigNumberish,
+    milestoneHash: BytesLike,
     amount: BigNumberish,
     evidenceRoot: BytesLike
   ];
   export type OutputTuple = [
     tradeId: bigint,
+    proposalId: bigint,
+    milestoneHash: string,
     amount: bigint,
     evidenceRoot: string
   ];
   export interface OutputObject {
     tradeId: bigint;
+    proposalId: bigint;
+    milestoneHash: string;
     amount: bigint;
     evidenceRoot: string;
   }
@@ -623,7 +673,7 @@ export interface KontorEscrow extends BaseContract {
 
   approveRelease: TypedContractMethod<
     [
-      tradeId: BigNumberish,
+      proposalId: BigNumberish,
       expectedAmount: BigNumberish,
       expectedEvidenceRoot: BytesLike
     ],
@@ -632,6 +682,12 @@ export interface KontorEscrow extends BaseContract {
   >;
 
   arbitrators: TypedContractMethod<[arg0: BigNumberish], [string], "view">;
+
+  cancelRelease: TypedContractMethod<
+    [proposalId: BigNumberish],
+    [void],
+    "nonpayable"
+  >;
 
   claimDisputeTimeoutRefund: TypedContractMethod<
     [tradeId: BigNumberish],
@@ -672,6 +728,8 @@ export interface KontorEscrow extends BaseContract {
     "view"
   >;
 
+  nextProposalId: TypedContractMethod<[], [bigint], "view">;
+
   nextTradeId: TypedContractMethod<[], [bigint], "view">;
 
   owner: TypedContractMethod<[], [string], "view">;
@@ -680,21 +738,37 @@ export interface KontorEscrow extends BaseContract {
 
   paused: TypedContractMethod<[], [boolean], "view">;
 
-  pendingEvidenceRoots: TypedContractMethod<
-    [arg0: BigNumberish],
-    [string],
-    "view"
-  >;
-
-  pendingReleaseAmounts: TypedContractMethod<
+  pendingProposalOf: TypedContractMethod<
     [arg0: BigNumberish],
     [bigint],
     "view"
   >;
 
+  proposals: TypedContractMethod<
+    [arg0: BigNumberish],
+    [
+      [bigint, bigint, string, bigint, string, string, bigint, bigint] & {
+        proposalId: bigint;
+        tradeId: bigint;
+        milestoneHash: string;
+        amount: bigint;
+        evidenceRoot: string;
+        proposedBy: string;
+        createdAt: bigint;
+        status: bigint;
+      }
+    ],
+    "view"
+  >;
+
   proposeRelease: TypedContractMethod<
-    [tradeId: BigNumberish, amount: BigNumberish, evidenceRoot: BytesLike],
-    [void],
+    [
+      tradeId: BigNumberish,
+      milestoneHash: BytesLike,
+      amount: BigNumberish,
+      evidenceRoot: BytesLike
+    ],
+    [bigint],
     "nonpayable"
   >;
 
@@ -788,7 +862,7 @@ export interface KontorEscrow extends BaseContract {
     nameOrSignature: "approveRelease"
   ): TypedContractMethod<
     [
-      tradeId: BigNumberish,
+      proposalId: BigNumberish,
       expectedAmount: BigNumberish,
       expectedEvidenceRoot: BytesLike
     ],
@@ -798,6 +872,9 @@ export interface KontorEscrow extends BaseContract {
   getFunction(
     nameOrSignature: "arbitrators"
   ): TypedContractMethod<[arg0: BigNumberish], [string], "view">;
+  getFunction(
+    nameOrSignature: "cancelRelease"
+  ): TypedContractMethod<[proposalId: BigNumberish], [void], "nonpayable">;
   getFunction(
     nameOrSignature: "claimDisputeTimeoutRefund"
   ): TypedContractMethod<[tradeId: BigNumberish], [void], "nonpayable">;
@@ -839,6 +916,9 @@ export interface KontorEscrow extends BaseContract {
     "view"
   >;
   getFunction(
+    nameOrSignature: "nextProposalId"
+  ): TypedContractMethod<[], [bigint], "view">;
+  getFunction(
     nameOrSignature: "nextTradeId"
   ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
@@ -851,16 +931,36 @@ export interface KontorEscrow extends BaseContract {
     nameOrSignature: "paused"
   ): TypedContractMethod<[], [boolean], "view">;
   getFunction(
-    nameOrSignature: "pendingEvidenceRoots"
-  ): TypedContractMethod<[arg0: BigNumberish], [string], "view">;
-  getFunction(
-    nameOrSignature: "pendingReleaseAmounts"
+    nameOrSignature: "pendingProposalOf"
   ): TypedContractMethod<[arg0: BigNumberish], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "proposals"
+  ): TypedContractMethod<
+    [arg0: BigNumberish],
+    [
+      [bigint, bigint, string, bigint, string, string, bigint, bigint] & {
+        proposalId: bigint;
+        tradeId: bigint;
+        milestoneHash: string;
+        amount: bigint;
+        evidenceRoot: string;
+        proposedBy: string;
+        createdAt: bigint;
+        status: bigint;
+      }
+    ],
+    "view"
+  >;
   getFunction(
     nameOrSignature: "proposeRelease"
   ): TypedContractMethod<
-    [tradeId: BigNumberish, amount: BigNumberish, evidenceRoot: BytesLike],
-    [void],
+    [
+      tradeId: BigNumberish,
+      milestoneHash: BytesLike,
+      amount: BigNumberish,
+      evidenceRoot: BytesLike
+    ],
+    [bigint],
     "nonpayable"
   >;
   getFunction(
@@ -991,6 +1091,13 @@ export interface KontorEscrow extends BaseContract {
     ReleaseApprovedEvent.InputTuple,
     ReleaseApprovedEvent.OutputTuple,
     ReleaseApprovedEvent.OutputObject
+  >;
+  getEvent(
+    key: "ReleaseCancelled"
+  ): TypedContractEvent<
+    ReleaseCancelledEvent.InputTuple,
+    ReleaseCancelledEvent.OutputTuple,
+    ReleaseCancelledEvent.OutputObject
   >;
   getEvent(
     key: "ReleaseProposed"
@@ -1127,7 +1234,7 @@ export interface KontorEscrow extends BaseContract {
       PausedEvent.OutputObject
     >;
 
-    "ReleaseApproved(uint256,address,uint256,bytes32)": TypedContractEvent<
+    "ReleaseApproved(uint256,uint256,address,bytes32,uint256,bytes32)": TypedContractEvent<
       ReleaseApprovedEvent.InputTuple,
       ReleaseApprovedEvent.OutputTuple,
       ReleaseApprovedEvent.OutputObject
@@ -1138,7 +1245,18 @@ export interface KontorEscrow extends BaseContract {
       ReleaseApprovedEvent.OutputObject
     >;
 
-    "ReleaseProposed(uint256,uint256,bytes32)": TypedContractEvent<
+    "ReleaseCancelled(uint256,uint256,bytes32)": TypedContractEvent<
+      ReleaseCancelledEvent.InputTuple,
+      ReleaseCancelledEvent.OutputTuple,
+      ReleaseCancelledEvent.OutputObject
+    >;
+    ReleaseCancelled: TypedContractEvent<
+      ReleaseCancelledEvent.InputTuple,
+      ReleaseCancelledEvent.OutputTuple,
+      ReleaseCancelledEvent.OutputObject
+    >;
+
+    "ReleaseProposed(uint256,uint256,bytes32,uint256,bytes32)": TypedContractEvent<
       ReleaseProposedEvent.InputTuple,
       ReleaseProposedEvent.OutputTuple,
       ReleaseProposedEvent.OutputObject

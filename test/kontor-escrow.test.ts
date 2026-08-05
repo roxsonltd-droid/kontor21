@@ -123,38 +123,40 @@ describe("KontorEscrow V3", function () {
     });
   });
 
-  describe("two-party milestone settlement", function () {
+  describe("two-party milestone settlement (V4 proposals)", function () {
     const evidenceRoot = hre.ethers.keccak256(hre.ethers.toUtf8Bytes("ipfs://evidence-v1"));
+    const milestoneHash = hre.ethers.keccak256(hre.ethers.toUtf8Bytes("milestone:m1"));
 
     it("does not move funds when the oracle only proposes a release", async function () {
       const { escrow, usdc, seller, oracle, amount } = await fundedTradeFixture();
-      await expect(escrow.connect(oracle).proposeRelease(1, amount, evidenceRoot))
+      await expect(escrow.connect(oracle).proposeRelease(1, milestoneHash, amount, evidenceRoot))
         .to.emit(escrow, "ReleaseProposed")
-        .withArgs(1n, amount, evidenceRoot);
+        .withArgs(1n, 1n, milestoneHash, amount, evidenceRoot);
       expect(await usdc.balanceOf(seller.address)).to.equal(0);
     });
 
     it("requires the designated oracle to propose", async function () {
       const { escrow, other, amount } = await fundedTradeFixture();
       await expect(
-        escrow.connect(other).proposeRelease(1, amount, evidenceRoot)
+        escrow.connect(other).proposeRelease(1, milestoneHash, amount, evidenceRoot)
       ).to.be.revertedWith("Not the designated oracle");
     });
 
     it("requires a non-zero evidence root", async function () {
       const { escrow, oracle, amount } = await fundedTradeFixture();
       await expect(
-        escrow.connect(oracle).proposeRelease(1, amount, hre.ethers.ZeroHash)
+        escrow.connect(oracle).proposeRelease(1, milestoneHash, amount, hre.ethers.ZeroHash)
       ).to.be.revertedWith("Evidence root required");
     });
 
     it("releases only after the buyer approves the exact proposal", async function () {
       const { escrow, usdc, seller, buyer, oracle, amount } = await fundedTradeFixture();
-      await escrow.connect(oracle).proposeRelease(1, amount, evidenceRoot);
+      await escrow.connect(oracle).proposeRelease(1, milestoneHash, amount, evidenceRoot);
+      const proposalId = (await escrow.nextProposalId()) - 1n;
 
-      await expect(escrow.connect(buyer).approveRelease(1, amount, evidenceRoot))
+      await expect(escrow.connect(buyer).approveRelease(proposalId, amount, evidenceRoot))
         .to.emit(escrow, "ReleaseApproved")
-        .withArgs(1n, buyer.address, amount, evidenceRoot)
+        .withArgs(1n, proposalId, buyer.address, milestoneHash, amount, evidenceRoot)
         .and.to.emit(escrow, "TradeCompleted")
         .withArgs(1n);
 
@@ -165,23 +167,63 @@ describe("KontorEscrow V3", function () {
     it("supports separate buyer-approved partial releases", async function () {
       const { escrow, buyer, oracle, amount } = await fundedTradeFixture();
       const partial = amount / 3n;
-      await escrow.connect(oracle).proposeRelease(1, partial, evidenceRoot);
-      await escrow.connect(buyer).approveRelease(1, partial, evidenceRoot);
+      await escrow.connect(oracle).proposeRelease(1, milestoneHash, partial, evidenceRoot);
+      const proposalId = (await escrow.nextProposalId()) - 1n;
+      await escrow.connect(buyer).approveRelease(proposalId, partial, evidenceRoot);
       const trade = await escrow.trades(1);
       expect(trade.releasedAmount).to.equal(partial);
       expect(trade.status).to.equal(1);
     });
 
-    it("rejects approval after the oracle changes the pending proposal", async function () {
+    it("cancels the previous proposal when the oracle replaces it", async function () {
       const { escrow, buyer, oracle, amount } = await fundedTradeFixture();
       const originalAmount = amount / 2n;
       const changedRoot = hre.ethers.keccak256(hre.ethers.toUtf8Bytes("ipfs://changed"));
-      await escrow.connect(oracle).proposeRelease(1, originalAmount, evidenceRoot);
-      await escrow.connect(oracle).proposeRelease(1, amount, changedRoot);
+      await escrow.connect(oracle).proposeRelease(1, milestoneHash, originalAmount, evidenceRoot);
+      await expect(
+        escrow.connect(oracle).proposeRelease(1, milestoneHash, amount, changedRoot)
+      )
+        .to.emit(escrow, "ReleaseCancelled")
+        .withArgs(1n, 1n, milestoneHash)
+        .and.to.emit(escrow, "ReleaseProposed")
+        .withArgs(1n, 2n, milestoneHash, amount, changedRoot);
 
+      const newProposalId = (await escrow.nextProposalId()) - 1n;
       await expect(
         escrow.connect(buyer).approveRelease(1, originalAmount, evidenceRoot)
-      ).to.be.revertedWith("Release amount changed");
+      ).to.be.revertedWith("No pending release");
+      await expect(
+        escrow.connect(buyer).approveRelease(newProposalId, amount, changedRoot)
+      ).to.not.be.reverted;
+    });
+
+    it("lets the oracle explicitly cancel a pending proposal", async function () {
+      const { escrow, oracle, amount } = await fundedTradeFixture();
+      await escrow.connect(oracle).proposeRelease(1, milestoneHash, amount, evidenceRoot);
+      const proposalId = (await escrow.nextProposalId()) - 1n;
+      await expect(escrow.connect(oracle).cancelRelease(proposalId))
+        .to.emit(escrow, "ReleaseCancelled")
+        .withArgs(1n, proposalId, milestoneHash);
+      expect(await escrow.pendingProposalOf(1)).to.equal(0);
+    });
+
+    it("only the designated oracle can cancel a proposal", async function () {
+      const { escrow, other, oracle, amount } = await fundedTradeFixture();
+      await escrow.connect(oracle).proposeRelease(1, milestoneHash, amount, evidenceRoot);
+      const proposalId = (await escrow.nextProposalId()) - 1n;
+      await expect(escrow.connect(other).cancelRelease(proposalId)).to.be.revertedWith(
+        "Not the designated oracle"
+      );
+    });
+
+    it("rejects approval when the evidence root does not match the pending proposal", async function () {
+      const { escrow, buyer, oracle, amount } = await fundedTradeFixture();
+      const wrongRoot = hre.ethers.keccak256(hre.ethers.toUtf8Bytes("ipfs://wrong"));
+      await escrow.connect(oracle).proposeRelease(1, milestoneHash, amount, evidenceRoot);
+      const proposalId = (await escrow.nextProposalId()) - 1n;
+      await expect(
+        escrow.connect(buyer).approveRelease(proposalId, amount, wrongRoot)
+      ).to.be.revertedWith("Evidence root changed");
     });
   });
 

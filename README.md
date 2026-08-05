@@ -62,8 +62,10 @@ panels cannot be replaced by the owner.
 - The contract owner can pause new creation, funding, and releases; change the
   token allowlist; and change the default panel for future trades.
 - Timeout refunds and dispute resolution remain available during a pause.
-- The owner should be a multisig before any non-demo deployment. A timelock is
-  not implemented yet.
+- Ownership of the staging escrow is held by a two-day timelock whose proposers
+  are two controlled wallets and whose executor is the deployment wallet. A
+  multisig before the timelock remains recommended before any non-demo
+  deployment.
 - Pinata availability is not required to verify an existing CID, but document
   retrieval depends on at least one IPFS provider retaining the content.
 
@@ -121,7 +123,9 @@ Implemented:
 - timeout refunds;
 - per-trade 2-of-3 arbitration;
 - emergency pause;
-- interactive no-wallet product demo.
+- on-chain escrow ownership via a two-day timelock governance contract;
+- interactive no-wallet product demo;
+- browser end-to-end tests with a mock wallet.
 
 Prototype or presentation-only:
 
@@ -142,7 +146,7 @@ by the deployment script.
 | Environment | Escrow | Token | Explorer |
 |---|---|---|---|
 | Local Hardhat | Generated per run | TestUSDC | Not applicable |
-| Polygon Amoy staging | [`0xDaa7...3339`](https://amoy.polygonscan.com/address/0xDaa763977374478317270bd97184B2C366893339) | [`TestUSDC`](https://amoy.polygonscan.com/address/0x7427bD06Ac0f6E557E049492622B4cf0E6070468) — no value | [Deployment transaction](https://amoy.polygonscan.com/tx/0xdf258506a885bf7999785ef0b1235a00c6df93900bb2c02ca2ac6ba845721779) |
+| Polygon Amoy staging | [`0x5774...58eCB`](https://amoy.polygonscan.com/address/0x5774e6A53A18AD2A7eD2D62e82dF09f364C58eCB) | [`TestUSDC`](https://amoy.polygonscan.com/address/0x1d01314fD9cE3dd52233Bbf86e4f54D7E2221c1C) — no value | Timelock: [`0xf6d4...8a95`](https://amoy.polygonscan.com/address/0xf6d4bc36764A8d2AdB99117b6d04A80ad64e8a95) |
 | Polygon mainnet | Not approved | Not approved | Not applicable |
 
 Never copy local Hardhat addresses into staging documentation.
@@ -191,8 +195,10 @@ npm run build
 `npm test` runs the contract suite and the application unit tests for wallet
 authentication, internal authorization, organization permissions, and trade
 transition authorization. `npm run test:e2e:local` exercises the complete
-contract workflow against a separately running local Hardhat node. Database
-route integration tests and browser end-to-end tests remain planned.
+contract workflow against a separately running local Hardhat node, and
+`npm run test:e2e` runs browser end-to-end tests (landing, demo, trust, and the
+trade wizard with a mock wallet) against a local `next dev` server. Database
+route integration tests remain planned.
 
 ## Organization and milestone APIs
 
@@ -229,7 +235,12 @@ On Render, schedule `POST /api/internal/chain-sync` with
 confirmation depth, resumes from a durable cursor, stores logs under a unique
 transaction-hash/log-index key, updates trade and milestone settlement state,
 retries dead letters, and reconciles linked database trades against the
-contract.
+contract. Run the operational dead-letter alert with `npm run dlq:alert`: it
+emits a `dead_letter_alert_ok` log line and exits `0` when the queue is clean,
+or emits `dead_letter_alert` and exits non-zero when events are stale beyond
+`DLQ_ALERT_UNRESOLVED_MS` (default 30 min) or retries exceed
+`DLQ_ALERT_MAX_RETRIES` (default 5). On Render, schedule it as a cron job
+alongside chain-sync and let the exit code drive the job's failure alerting.
 
 Settlement events are matched to database records by the on-chain `proposalId`
 (milestone hash and evidence root fall back for pre-V4 records). `ReleaseProposed`
@@ -260,11 +271,16 @@ command, health check, and secret placeholders. The pre-deploy command runs
 Deploy the testnet contracts with:
 
 ```bash
-npm run deploy:amoy
+npm run deploy:amoy        # escrow + TestUSDC, owner = deployer
+npm run deploy:governance  # escrow + TestUSDC + two-day Timelock, owner = timelock
 ```
 
-The deployment script writes both address files. Commit the resulting addresses
-and add the Polygonscan links above only after verifying the deployment.
+`deploy:governance` creates a `TimelockController` with a two-day minimum delay
+(`GOVERNANCE_MIN_DELAY_SECONDS`), uses the controlled wallets from
+`ARBITRATOR_WALLETS` as proposers, makes the deployer the executor, and
+transfers escrow ownership to the timelock. The deployment script writes both
+address files. Commit the resulting addresses and add the Polygonscan links
+above only after verifying the deployment.
 
 ## Recovery procedures
 
@@ -284,7 +300,8 @@ and add the Polygonscan links above only after verifying the deployment.
 
 ## Known limitations
 
-- Owner is not yet enforced as a multisig or timelock on-chain.
+- Owner is enforced on-chain as a two-day timelock on staging; a multisig before
+  the timelock is still recommended for any non-demo deployment.
 - Arbitration resolves the remaining balance entirely to buyer or seller.
 - No on-chain verification of each evidence provider signature.
 - Organization roles are implemented, but invitation acceptance, KYB, and

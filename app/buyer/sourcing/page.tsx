@@ -183,7 +183,7 @@ export default function SourcingEngine() {
               <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 mb-8 flex flex-wrap items-center justify-between gap-4 text-sm font-mono">
                 <div className="flex items-center gap-2 text-blue-400">
                   <Info className="w-4 h-4" />
-                  <span className="font-semibold uppercase tracking-wider">Demo Data</span>
+                  <span className="font-semibold uppercase tracking-wider">Market Intelligence</span>
                 </div>
                 <div className="flex items-center gap-4 text-zinc-400">
                   <span>Generated: {todayDate}</span>

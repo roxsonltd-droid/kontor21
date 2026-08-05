@@ -2,8 +2,8 @@
   "_format": "hh-sol-cache-2",
   "files": {
     "C:\\Users\\expre\\.gemini\\antigravity\\scratch\\kontor21\\contracts\\KontorEscrow.sol": {
-      "lastModificationDate": 1785271638801,
-      "contentHash": "2601e0e0161606d8181dc19267972ee6",
+      "lastModificationDate": 1785916663658,
+      "contentHash": "a3261a8caf5b4d3e93962c6f0e6002f6",
       "sourceName": "contracts/KontorEscrow.sol",
       "solcConfig": {
         "version": "0.8.24",
@@ -33,10 +33,11 @@
         "@openzeppelin/contracts/token/ERC20/IERC20.sol",
         "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol",
         "@openzeppelin/contracts/access/Ownable.sol",
+        "@openzeppelin/contracts/utils/Pausable.sol",
         "@openzeppelin/contracts/utils/ReentrancyGuard.sol"
       ],
       "versionPragmas": [
-        "^0.8.20"
+        "^0.8.24"
       ],
       "artifacts": [
         "KontorEscrow"
@@ -530,8 +531,8 @@
       ]
     },
     "C:\\Users\\expre\\.gemini\\antigravity\\scratch\\kontor21\\contracts\\TestUSDC.sol": {
-      "lastModificationDate": 1785271627108,
-      "contentHash": "d080bac73a1cd041c3e417cc57c7c1a2",
+      "lastModificationDate": 1785916663658,
+      "contentHash": "6de39989442829855fe466286e3ea236",
       "sourceName": "contracts/TestUSDC.sol",
       "solcConfig": {
         "version": "0.8.24",
@@ -1133,6 +1134,44 @@
       ],
       "artifacts": [
         "TestUSDC"
+      ]
+    },
+    "C:\\Users\\expre\\.gemini\\antigravity\\scratch\\kontor21\\node_modules\\@openzeppelin\\contracts\\utils\\Pausable.sol": {
+      "lastModificationDate": 1785271654383,
+      "contentHash": "0d47b53e10b1985efbb396f937626279",
+      "sourceName": "@openzeppelin/contracts/utils/Pausable.sol",
+      "solcConfig": {
+        "version": "0.8.24",
+        "settings": {
+          "evmVersion": "paris",
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "../utils/Context.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "Pausable"
       ]
     }
   }

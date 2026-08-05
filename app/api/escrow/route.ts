@@ -90,8 +90,8 @@ export async function POST(req: NextRequest) {
           status: "ACTIVE",
         },
       });
-      if (!membership) {
-        return NextResponse.json({ error: "Buyer is not an active member of the selected organization" }, { status: 400 });
+      if (!membership || !canManageTrades(membership.role)) {
+        return NextResponse.json({ error: "Buyer trading permission required" }, { status: 403 });
       }
       buyerOrganizationId = body.buyerOrganizationId;
     }

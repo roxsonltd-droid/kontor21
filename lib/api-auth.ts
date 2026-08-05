@@ -23,8 +23,27 @@ export async function authenticateWalletRequest(req: NextRequest, body: string):
   try {
     const chainId = Number(chainIdHeader);
     const expectedChainId = Number(process.env.API_CHAIN_ID || 80002);
-    const requestHost = req.headers.get("x-forwarded-host") || req.headers.get("host");
-    if (!Number.isSafeInteger(chainId) || chainId !== expectedChainId || domain !== requestHost) {
+    const appUrl = (
+      process.env.NEXT_PUBLIC_KONTOR21_URL ||
+      process.env.NEXT_PUBLIC_APP_URL ||
+      process.env.APP_URL ||
+      ""
+    ).toLowerCase();
+    if (!appUrl) return null;
+    let allowedHost: string;
+    try {
+      allowedHost = new URL(appUrl).host.toLowerCase();
+    } catch {
+      return null;
+    }
+    const requestHost = (req.headers.get("x-forwarded-host") || req.headers.get("host") || "")
+      .toLowerCase();
+    if (
+      !Number.isSafeInteger(chainId) ||
+      chainId !== expectedChainId ||
+      domain.toLowerCase() !== allowedHost ||
+      requestHost !== allowedHost
+    ) {
       return null;
     }
     const message = buildAuthMessage(

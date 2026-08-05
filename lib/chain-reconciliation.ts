@@ -1,4 +1,4 @@
-import { Contract, type Provider } from "ethers";
+import { Contract, type Provider, formatUnits } from "ethers";
 import prisma from "./prisma";
 import { operationalLog } from "./logger";
 
@@ -129,7 +129,7 @@ export async function reconcileEscrowState(options: ReconciliationOptions) {
         } else {
           const matches =
             (dbPending.milestoneHash ?? "").toLowerCase() === chainMilestoneHash &&
-            dbPending.amountUsdc.toString() === String(Number(chainAmount) / 1e6) &&
+            dbPending.amountUsdc.toString() === formatUnits(chainAmount, 6) &&
             (dbPending.evidenceRoot ?? "").toLowerCase() === chainRoot;
           if (!matches) {
             await recordIssue(options, {

@@ -36,5 +36,12 @@ test.describe("wallet-connected trade creation", () => {
         .ethereum!.request({ method: "eth_accounts" })
     );
     expect(accounts).toEqual([TEST_ADDRESS]);
+
+    // With hydration working, the wizard advances to the deploy step and the
+    // connected seller address is rendered.
+    const nextStep = page.getByRole("button", { name: /Next Step/i });
+    await nextStep.click();
+    await nextStep.click();
+    await expect(page.getByText(TEST_ADDRESS)).toBeVisible({ timeout: 10_000 });
   });
 });

@@ -1,6 +1,7 @@
 import { createHash } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateWalletRequest } from "@/lib/api-auth";
+import { findActiveEvidenceProvider } from "@/lib/evidence-provider";
 import prisma from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -19,7 +20,11 @@ export async function POST(req: NextRequest) {
   }
 
   const provider = await prisma.user.findUnique({ where: { walletAddress: actorWallet } });
-  if (!provider || !["LAB", "INSPECTOR", "ORACLE"].includes(provider.role)) {
+  const registeredProvider = await findActiveEvidenceProvider(actorWallet);
+  if (
+    !registeredProvider &&
+    (!provider || !["LAB", "INSPECTOR", "ORACLE"].includes(provider.role))
+  ) {
     return NextResponse.json({ error: "Approved evidence provider required" }, { status: 403 });
   }
 

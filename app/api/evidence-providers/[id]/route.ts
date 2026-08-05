@@ -52,6 +52,7 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       providerRole?: string;
       accreditationNo?: string;
       issuer?: string;
+      issuerSlug?: string;
       validFrom?: string;
       validUntil?: string;
       jurisdiction?: string;
@@ -72,7 +73,32 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       data.providerRole = body.providerRole;
     }
     if (body.accreditationNo !== undefined) data.accreditationNo = body.accreditationNo?.trim() || null;
-    if (body.issuer !== undefined) data.issuer = body.issuer?.trim() || null;
+    if (body.issuerSlug !== undefined) {
+      const issuerSlug = body.issuerSlug.trim();
+      const issuerRef = issuerSlug
+        ? await prisma.accreditationIssuer.findUnique({ where: { slug: issuerSlug.toLowerCase() } })
+        : null;
+      if (issuerSlug && !issuerRef) {
+        return NextResponse.json({ error: "Unknown accreditation issuer slug" }, { status: 400 });
+      }
+      data.issuerId = issuerRef?.id ?? null;
+    } else if (body.issuer !== undefined) {
+      if (body.issuer?.trim()) {
+        const issuerName = body.issuer.trim();
+        const issuerSlug = issuerName
+          .normalize("NFKD").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 64);
+        const issuerRef = await prisma.accreditationIssuer.upsert({
+          where: { slug: issuerSlug },
+          update: {},
+          create: { name: issuerName, slug: issuerSlug },
+        });
+        data.issuerId = issuerRef.id;
+        data.issuer = issuerName;
+      } else {
+        data.issuer = null;
+        data.issuerId = null;
+      }
+    }
     if (body.jurisdiction !== undefined) data.jurisdiction = body.jurisdiction?.trim() || null;
     if (body.validFrom !== undefined) {
       const date = body.validFrom ? new Date(body.validFrom) : null;

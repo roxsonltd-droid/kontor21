@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
       organizationId?: string;
       accreditationNo?: string;
       issuer?: string;
+      issuerSlug?: string;
       validFrom?: string;
       validUntil?: string;
       jurisdiction?: string;
@@ -88,6 +89,25 @@ export async function POST(req: NextRequest) {
     }
 
     const provider = await prisma.$transaction(async (tx) => {
+      let issuerRefId: string | null = null;
+      if (body.issuerSlug) {
+        const issuerRef = await tx.accreditationIssuer.findUnique({
+          where: { slug: normalizeOrganizationSlug(body.issuerSlug) },
+        });
+        if (!issuerRef) {
+          return NextResponse.json({ error: "Unknown accreditation issuer slug" }, { status: 400 });
+        }
+        issuerRefId = issuerRef.id;
+      } else if (body.issuer?.trim()) {
+        const issuerName = body.issuer.trim();
+        const issuerSlug = normalizeOrganizationSlug(issuerName);
+        const issuerRef = await tx.accreditationIssuer.upsert({
+          where: { slug: issuerSlug },
+          update: {},
+          create: { name: issuerName, slug: issuerSlug },
+        });
+        issuerRefId = issuerRef.id;
+      }
       return tx.evidenceProvider.create({
         data: {
           name,
@@ -96,6 +116,7 @@ export async function POST(req: NextRequest) {
           organizationId: body.organizationId || null,
           accreditationNo: body.accreditationNo?.trim() || null,
           issuer: body.issuer?.trim() || null,
+          issuerId: issuerRefId,
           validFrom,
           validUntil,
           jurisdiction: body.jurisdiction?.trim() || null,
@@ -104,7 +125,7 @@ export async function POST(req: NextRequest) {
             ? { create: walletAddresses.map((walletAddress) => ({ walletAddress })) }
             : undefined,
         },
-        include: { wallets: true, organization: true },
+        include: { wallets: true, organization: true, issuerRef: true },
       });
     });
     return NextResponse.json(provider, { status: 201 });

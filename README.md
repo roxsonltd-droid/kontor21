@@ -105,10 +105,12 @@ Implemented:
 - organization memberships with owner, admin, trader, accountant, signer, and viewer roles;
 - trade milestones, milestone evidence links, and settlement proposal records
   bound to on-chain proposal IDs and milestone hashes;
-- an accredited evidence provider registry with issuer, validity window,
-  jurisdiction, status, and multiple authorized wallets;
+- an accredited evidence provider registry with a canonical accreditation issuer
+  reference (SGS, Bureau Veritas, ...), validity window, jurisdiction, status,
+  and multiple authorized wallets;
 - confirmed escrow-event indexing with durable cursors and idempotent event keys;
-- automatic trade-state reconciliation, dead-letter retries, and internal metrics;
+- automatic trade-state reconciliation, dead-letter retries (with an operational
+  dead-letter alert), and internal metrics;
 - database-backed authentication-challenge rate limiting;
 - Pinata/IPFS file upload;
 - token allowlist and zero-address validation;

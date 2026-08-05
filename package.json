@@ -21,7 +21,8 @@
     "deploy": "npx hardhat run scripts/deploy.ts --network localhost",
     "deploy:amoy": "npx hardhat run scripts/deploy.ts --network amoy",
     "deploy:verify": "npx hardhat verify --network amoy",
-    "chain:sync": "npx hardhat run scripts/sync-chain.ts --network amoy"
+    "chain:sync": "npx hardhat run scripts/sync-chain.ts --network amoy",
+    "dlq:alert": "npx ts-node --compiler-options \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/dead-letter-alert.ts"
   },
   "dependencies": {
     "@prisma/client": "5.22.0",

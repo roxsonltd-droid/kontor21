@@ -154,7 +154,8 @@ model EvidenceProvider {
   providerRole  ProviderRole? // Which condition role this provider can satisfy
   organizationId String? // Optional legal entity backing this provider
   accreditationNo String? // Issuer-assigned accreditation identifier
-  issuer        String? // Accreditation body, e.g. "SGS", "EU-LAB"
+  issuer        String? // Deprecated: legacy free-text accreditation body, kept for backfill
+  issuerId      String? // Canonical accreditation issuer (replaces free-text issuer)
   validFrom     DateTime?
   validUntil    DateTime?
   jurisdiction  String? // Country or regulatory region
@@ -163,12 +164,29 @@ model EvidenceProvider {
   updatedAt     DateTime                @updatedAt
 
   organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  issuerRef    AccreditationIssuer? @relation(fields: [issuerId], references: [id], onDelete: SetNull)
   wallets      EvidenceProviderWallet[]
   evidence     Evidence[]
 
   @@index([organizationId])
   @@index([status])
   @@index([issuer])
+  @@index([issuerId])
+}
+
+// Nexus Core: Canonical accreditation bodies (SGS, Bureau Veritas, EU-LAB, ...).
+// Normalizes issuer identity so "SGS", "SGS SA" and "S.G.S." resolve to one entity.
+model AccreditationIssuer {
+  id            String   @id @default(uuid())
+  name          String
+  slug          String   @unique // canonical identifier, e.g. "sgs"
+  aliases       String[] // recognized name variants, e.g. ["SGS SA", "S.G.S."]
+  country       String?  // primary jurisdiction
+  website       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  providers     EvidenceProvider[]
 }
 
 // Nexus Core: Multiple authorized wallets per evidence provider.

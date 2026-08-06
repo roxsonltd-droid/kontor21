@@ -3,7 +3,7 @@ import prisma from "@/lib/prisma";
 import { authenticateWalletRequest, isConfiguredArbitrator } from "@/lib/api-auth";
 import { findActiveEvidenceProvider } from "@/lib/evidence-provider-db";
 import { extractFieldValue, extractionMetaFor, type ExtractionMeta } from "@/lib/document-extraction";
-
+import { evaluateCondition } from "@/lib/rules-engine";
 type RouteContext = {
   params: Promise<{ id: string }>;
 };
@@ -117,23 +117,9 @@ export async function POST(req: NextRequest, context: RouteContext) {
       }
     }
 
-    // Basic Rules Engine Evaluation
+    // Rules Engine Evaluation
     if (targetCondition && resolvedVerifiedValue) {
-      const numValue = parseFloat(resolvedVerifiedValue);
-      const conditionNum = parseFloat(targetCondition.value);
-      
-      if (!isNaN(numValue) && !isNaN(conditionNum)) {
-        switch (targetCondition.operator) {
-          case "LTE": isValid = numValue <= conditionNum; break;
-          case "GTE": isValid = numValue >= conditionNum; break;
-          case "LT": isValid = numValue < conditionNum; break;
-          case "GT": isValid = numValue > conditionNum; break;
-          case "EQ": isValid = numValue === conditionNum; break;
-          default: isValid = resolvedVerifiedValue === targetCondition.value;
-        }
-      } else {
-        isValid = resolvedVerifiedValue.toLowerCase() === targetCondition.value.toLowerCase();
-      }
+      isValid = evaluateCondition(resolvedVerifiedValue, targetCondition.value, targetCondition.operator);
     }
 
     // Save Evidence
@@ -184,6 +170,21 @@ export async function POST(req: NextRequest, context: RouteContext) {
           actorWallet: "SYSTEM"
         }
       });
+    }
+
+    // Check if milestone conditions are met
+    if (resolvedMilestoneId) {
+      const milestoneConditions = trade.conditions.filter(c => c.milestoneId === resolvedMilestoneId && c.isRequired);
+      const metMilestoneConditions = milestoneConditions.filter(c => {
+        return allEvidence.some(e => e.conditionId === c.id && e.validationStatus === "VALID");
+      });
+      
+      if (milestoneConditions.length > 0 && metMilestoneConditions.length === milestoneConditions.length) {
+        await prisma.tradeMilestone.update({
+          where: { id: resolvedMilestoneId },
+          data: { status: "READY_FOR_RELEASE" }
+        });
+      }
     }
 
     return NextResponse.json({ success: true, evidence, conditionsMet: metConditions.length, required: requiredConditions.length });

@@ -1592,8 +1592,8 @@
       ]
     },
     "C:\\Users\\expre\\.gemini\\antigravity\\scratch\\kontor21\\contracts\\OZSupply.sol": {
-      "lastModificationDate": 1785945604312,
-      "contentHash": "9c261f254d8b4483be0400a474c9e095",
+      "lastModificationDate": 1785994040071,
+      "contentHash": "ca3fcbdb05c1faab6232b1373845631b",
       "sourceName": "contracts/OZSupply.sol",
       "solcConfig": {
         "version": "0.8.24",

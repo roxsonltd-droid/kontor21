@@ -7,48 +7,521 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserRole {
+  TRADER
+  ORACLE
+  ADMIN
+  LAB
+  INSPECTOR
+}
+
+enum OperationalStatus {
+  PENDING
+  SHIPPED
+  INSPECTED
+  CONDITIONS_SATISFIED
+  DISPUTED
+}
+
+enum SettlementStatus {
+  AWAITING_FUNDS
+  FUNDED
+  RELEASED
+  REFUNDED
+  PARTIAL_SETTLEMENT
+  DISPUTED
+}
+
+enum ProviderRole {
+  ORACLE
+  LAB
+  INSPECTOR
+  CARRIER
+}
+
+enum EvidenceProviderStatus {
+  PENDING
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
+
+enum ConditionOperator {
+  LTE @map("<=")
+  GTE @map(">=")
+  LT  @map("<")
+  GT  @map(">")
+  EQ  @map("==")
+}
+
+enum EvidenceValidationStatus {
+  PENDING
+  VALID
+  INVALID
+  CONFLICTING
+  EXPIRED
+  REVOKED
+  MANUAL_REVIEW
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  WEBHOOK
+}
+
+enum NotificationStatus {
+  QUEUED
+  SENT
+  SKIPPED
+  FAILED
+}
+
+enum OrganizationRole {
+  OWNER
+  ADMIN
+  TRADER
+  ACCOUNTANT
+  SIGNER
+  VIEWER
+}
+
+enum MembershipStatus {
+  INVITED
+  ACTIVE
+  SUSPENDED
+  REVOKED
+}
+
+enum MilestoneStatus {
+  DRAFT
+  ACTIVE
+  EVIDENCE_PENDING
+  READY_FOR_RELEASE
+  PARTIALLY_RELEASED
+  RELEASED
+  DISPUTED
+  CANCELLED
+}
+
+enum MilestoneSettlementStatus {
+  PENDING
+  PROPOSED
+  APPROVED
+  EXECUTED
+  REFUNDED
+  FAILED
+}
+
+enum ChainEventProcessingStatus {
+  PENDING
+  PROCESSED
+  FAILED
+}
+
+enum ReconciliationIssueStatus {
+  OPEN
+  RESOLVED
+  IGNORED
+}
+
 model User {
   id            String   @id @default(uuid())
   walletAddress String   @unique
   companyName   String?
   vatNumber     String?  // ЕИК/VAT
-  role          String   @default("TRADER") // TRADER, ORACLE, ADMIN
+  role          UserRole @default(TRADER)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   
   // Relations
   tradesAsBuyer  TradeMetadata[] @relation("BuyerTrades")
   tradesAsSeller TradeMetadata[] @relation("SellerTrades")
+  tradesAsOracle TradeMetadata[] @relation("OracleTrades")
+  memberships    OrganizationMembership[]
+  notifications  Notification[]
+  preferences    NotificationPreference?
+
+  @@index([role])
+}
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  vatNumber String?  @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships    OrganizationMembership[]
+  tradesAsBuyer  TradeMetadata[] @relation("BuyerOrganizationTrades")
+  tradesAsSeller TradeMetadata[] @relation("SellerOrganizationTrades")
+  evidenceProviders EvidenceProvider[]
+}
+
+// Nexus Core: Accredited evidence provider registry. A provider can be an
+// organization or a standalone accredited entity, own multiple wallets, and
+// have a bounded accreditation window.
+model EvidenceProvider {
+  id            String                  @id @default(uuid())
+  name          String
+  slug          String                  @unique
+  providerRole  ProviderRole? // Which condition role this provider can satisfy
+  organizationId String? // Optional legal entity backing this provider
+  accreditationNo String? // Issuer-assigned accreditation identifier
+  issuer        String? // Deprecated: legacy free-text accreditation body, kept for backfill
+  issuerId      String? // Canonical accreditation issuer (replaces free-text issuer)
+  validFrom     DateTime?
+  validUntil    DateTime?
+  jurisdiction  String? // Country or regulatory region
+  status        EvidenceProviderStatus  @default(PENDING)
+  revokedAt     DateTime? // Set when the accreditation is revoked
+  revokedReason String? // Free-text reason supplied at revocation time
+  revokedBy     String? // Wallet that performed the revocation
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  issuerRef    AccreditationIssuer? @relation(fields: [issuerId], references: [id], onDelete: SetNull)
+  wallets      EvidenceProviderWallet[]
+  evidence     Evidence[]
+
+  @@index([organizationId])
+  @@index([status])
+  @@index([issuer])
+  @@index([issuerId])
+}
+
+// Nexus Core: Canonical accreditation bodies (SGS, Bureau Veritas, EU-LAB, ...).
+// Normalizes issuer identity so "SGS", "SGS SA" and "S.G.S." resolve to one entity.
+model AccreditationIssuer {
+  id            String   @id @default(uuid())
+  name          String
+  slug          String   @unique // canonical identifier, e.g. "sgs"
+  aliases       String[] // recognized name variants, e.g. ["SGS SA", "S.G.S."]
+  country       String?  // primary jurisdiction
+  website       String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  providers     EvidenceProvider[]
+}
+
+// Nexus Core: Multiple authorized wallets per evidence provider.
+model EvidenceProviderWallet {
+  id        String   @id @default(uuid())
+  providerId String
+  walletAddress String @unique
+  createdAt DateTime @default(now())
+
+  provider EvidenceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@index([providerId])
+}
+
+model OrganizationMembership {
+  id             String           @id @default(uuid())
+  organizationId String
+  userId         String
+  role           OrganizationRole
+  status         MembershipStatus @default(ACTIVE)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([userId, status])
+  @@index([organizationId, role, status])
 }
 
 model TradeMetadata {
   id                   String   @id @default(uuid())
   blockchainTradeId    Int?     @unique // ID from the smart contract
   productName          String
-  quantity             Float
+  quantity             Decimal  @db.Decimal(20, 6) // Nexus Core: High precision for commodities
   unit                 String   // e.g. "tons", "kg"
-  priceUsdc            Float
-  conditionDescription String?
+  priceUsdc            Decimal  @db.Decimal(20, 6) // Nexus Core: High precision for crypto-dollars
   
   buyerId  String
   sellerId String
   buyer    User @relation("BuyerTrades", fields: [buyerId], references: [id])
   seller   User @relation("SellerTrades", fields: [sellerId], references: [id])
 
-  status      String   @default("PENDING") // PENDING, IN_TRANSIT, COMPLETED, DISPUTED
+  oracleId String?
+  oracle   User? @relation("OracleTrades", fields: [oracleId], references: [id])
+
+  buyerOrganizationId  String?
+  sellerOrganizationId String?
+  buyerOrganization    Organization? @relation("BuyerOrganizationTrades", fields: [buyerOrganizationId], references: [id])
+  sellerOrganization   Organization? @relation("SellerOrganizationTrades", fields: [sellerOrganizationId], references: [id])
+
+  // Nexus Core: Separation of physical state and financial state
+  operationalStatus OperationalStatus @default(PENDING)
+  settlementStatus  SettlementStatus  @default(AWAITING_FUNDS)
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  conditions  TradeCondition[]
+  evidence    Evidence[]
   auditLogs   AuditLog[]
+  milestones  TradeMilestone[]
+  notifications Notification[]
+
+  @@index([buyerId])
+  @@index([sellerId])
+  @@index([oracleId])
+  @@index([buyerOrganizationId])
+  @@index([sellerOrganizationId])
+}
+
+model TradeMilestone {
+  id              String          @id @default(uuid())
+  tradeId         String
+  sequence        Int
+  title           String
+  description     String?
+  amountUsdc      Decimal         @db.Decimal(20, 6)
+  status          MilestoneStatus @default(DRAFT)
+  evidenceDueAt   DateTime?
+  acceptanceDueAt DateTime?
+  // Nexus Core: rules policy versioning. Each rules update appends an immutable
+  // snapshot; rulesVersion is the current policy version.
+  rulesVersion    Int             @default(1)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  trade       TradeMetadata        @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+  conditions  TradeCondition[]
+  evidence    Evidence[]
+  settlements MilestoneSettlement[]
+  rules       MilestoneRules[]
+
+  @@unique([tradeId, sequence])
+  @@index([tradeId, status])
+}
+
+// Nexus Core: Immutable versioned snapshot of a milestone's rules policy.
+// The active policy is represented by TradeCondition rows on the milestone;
+// each revision is frozen here for audit and reconstruction.
+model MilestoneRules {
+  id           String   @id @default(uuid())
+  milestoneId  String
+  version      Int
+  createdBy    String // wallet address that authored this policy version
+  changeNote   String? // human-readable reason for the revision
+  conditions   Json // frozen copy of the rule set: [{ parameter, operator, value, unit, providerRole, isRequired }]
+  supersededAt DateTime? // set when a newer version replaces this one
+  createdAt    DateTime @default(now())
+
+  milestone TradeMilestone @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+
+  @@unique([milestoneId, version])
+  @@index([milestoneId, supersededAt])
+}
+
+model MilestoneSettlement {
+  id              String                    @id @default(uuid())
+  milestoneId     String
+  amountUsdc      Decimal                   @db.Decimal(20, 6)
+  status          MilestoneSettlementStatus @default(PENDING)
+  evidenceRoot    String?
+  proposalId      BigInt?  // Global on-chain proposal id (V4, uint256)
+  milestoneHash   String? // keccak256(abi.encodePacked(milestoneId)) on-chain binding
+  transactionHash String? @unique
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
+
+  milestone TradeMilestone @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+
+  @@unique([proposalId])
+  @@index([milestoneId, status])
+  @@index([milestoneHash])
+}
+
+// Nexus Core: Structured Rules Engine Inputs
+model TradeCondition {
+  id           String   @id @default(uuid())
+  tradeId      String
+  parameter    String   // e.g. "moisture", "location", "weight"
+  operator     ConditionOperator
+  value        String   // e.g. "8.0", "Hamad Port"
+  unit         String?  // e.g. "%", "tons"
+  providerRole ProviderRole
+  isRequired   Boolean  @default(true)
+  milestoneId  String?
+  
+  trade        TradeMetadata @relation(fields: [tradeId], references: [id])
+  evidence     Evidence[]
+  milestone    TradeMilestone? @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+
+  @@index([tradeId])
+  @@index([milestoneId])
+}
+
+// Nexus Core: Verifiable Credentials / Lab Results
+model Evidence {
+  id             String   @id @default(uuid())
+  tradeId        String
+  conditionId    String?  // Which condition this evidence satisfies
+  documentHash   String   // IPFS hash of the actual PDF/Cert
+  providerWallet String   // Who uploaded it (e.g. SGS Oracle)
+  providerId     String?  // Registered evidence provider (nullable for legacy rows)
+  verifiedValue  String?  // The extracted value (e.g. "4.8" for moisture)
+  extractionMeta Json? // How verifiedValue was derived (OCR_AUTO vs MANUAL), for audit
+  validationStatus EvidenceValidationStatus @default(PENDING)
+  milestoneId     String?
+  createdAt      DateTime @default(now())
+
+  trade     TradeMetadata   @relation(fields: [tradeId], references: [id])
+  condition TradeCondition? @relation(fields: [conditionId], references: [id])
+  milestone TradeMilestone? @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  provider  EvidenceProvider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
+
+  @@index([tradeId])
+  @@index([conditionId])
+  @@index([milestoneId])
+  @@index([providerId])
 }
 
 model AuditLog {
   id              String   @id @default(uuid())
   tradeId         String
-  action          String   // e.g., "CERTIFICATE_UPLOADED", "FUNDS_LOCKED", "DISPUTE_RAISED"
-  actorWallet     String   // The wallet that performed the action
-  documentIpfsHash String? // If a document was uploaded
+  action          String   // e.g., "CERTIFICATE_UPLOADED", "CONDITIONS_SATISFIED"
+  actorWallet     String   
+  documentIpfsHash String? 
   createdAt       DateTime @default(now())
 
   trade TradeMetadata @relation(fields: [tradeId], references: [id])
+
+  @@index([tradeId])
+}
+
+model AuthNonce {
+  id            String    @id @default(uuid())
+  walletAddress String
+  nonce         String    @unique
+  expiresAt     DateTime
+  usedAt        DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([walletAddress, expiresAt])
+}
+
+model ChainCursor {
+  id                 String   @id @default(uuid())
+  network            String
+  contractAddress    String
+  lastProcessedBlock BigInt
+  confirmations      Int
+  updatedAt          DateTime @updatedAt
+
+  @@unique([network, contractAddress])
+}
+
+model ChainEvent {
+  id              String                     @id @default(uuid())
+  network         String
+  contractAddress String
+  blockNumber     BigInt
+  transactionHash String
+  logIndex        Int
+  eventName       String
+  payload         Json
+  status          ChainEventProcessingStatus @default(PENDING)
+  processedAt     DateTime?
+  errorMessage    String?
+  createdAt       DateTime                   @default(now())
+
+  deadLetter DeadLetterEvent?
+
+  @@unique([network, contractAddress, transactionHash, logIndex])
+  @@index([network, contractAddress, blockNumber])
+  @@index([status, createdAt])
+}
+
+model DeadLetterEvent {
+  id           String   @id @default(uuid())
+  chainEventId String   @unique
+  retryCount   Int      @default(0)
+  lastError    String
+  nextRetryAt  DateTime?
+  resolvedAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  chainEvent ChainEvent @relation(fields: [chainEventId], references: [id], onDelete: Cascade)
+
+  @@index([resolvedAt, nextRetryAt])
+}
+
+model ReconciliationIssue {
+  id              String                    @id @default(uuid())
+  network         String
+  contractAddress String
+  tradeId         String?
+  blockchainTradeId Int
+  field           String
+  databaseValue   String?
+  chainValue      String
+  status          ReconciliationIssueStatus @default(OPEN)
+  detectedAt      DateTime                  @default(now())
+  resolvedAt      DateTime?
+  details         Json?
+
+  @@index([status, detectedAt])
+  @@index([blockchainTradeId, status])
+}
+
+model RateLimitBucket {
+  id          String   @id @default(uuid())
+  key         String
+  windowStart DateTime
+  count       Int      @default(0)
+  expiresAt   DateTime
+
+  @@unique([key, windowStart])
+  @@index([expiresAt])
+}
+
+// Nexus Core: Per-user delivery preferences for notification channels.
+// Absent a preference, IN_APP is the default; EMAIL and WEBHOOK are only used
+// when explicitly enabled and a delivery endpoint is configured.
+model NotificationPreference {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  emailEnabled  Boolean  @default(false)
+  emailAddress  String?
+  webhookEnabled Boolean @default(false)
+  webhookUrl    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Nexus Core: Outbound notification records (in-app + email/webhook delivery
+// attempts) for trade workflow events.
+model Notification {
+  id            String              @id @default(uuid())
+  userId        String
+  tradeId       String?
+  event         String // machine-readable event name, e.g. "escrow.created"
+  channel       NotificationChannel @default(IN_APP)
+  status        NotificationStatus  @default(QUEUED)
+  title         String
+  body          String
+  readAt        DateTime?
+  sentAt        DateTime?
+  failureReason String?
+  createdAt     DateTime            @default(now())
+
+  user  User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trade TradeMetadata? @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([tradeId])
+  @@index([status, channel])
 }

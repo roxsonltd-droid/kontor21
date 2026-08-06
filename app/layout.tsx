@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Kontor 21 — Web3 B2B Escrow Platform",
-  description: "The first B2B escrow platform integrating Smart Contracts, physical SGS inspections, and GoBD compliant accounting.",
+  title: "Kontor 21 — AI Trade Assurance Platform",
+  description: "One trusted workflow from supplier verification to delivery and settlement for secure cross-border agri-trade.",
 };
 
 export default function RootLayout({
@@ -25,9 +25,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
     >
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-full flex flex-col bg-zinc-950 text-white">
         <LanguageProvider>
           {children}
         </LanguageProvider>

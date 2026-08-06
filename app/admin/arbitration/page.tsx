@@ -1,67 +1,149 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
-import { ShieldAlert, Gavel, FileWarning, Blocks, Undo2, LogOut, ArrowRight, MessageSquareWarning, CheckCircle2 } from 'lucide-react';
-import { useKontorEscrow } from '@/hooks/useKontorEscrow';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ShieldAlert, Gavel, Blocks, ArrowRight, MessageSquareWarning, CheckCircle2, Loader2, Wallet } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
+import { useKontorEscrow } from '@/hooks/useKontorEscrow';
+import { signedFetch } from '@/lib/signedFetch';
+
+type DisputeTrade = {
+  id: string;
+  blockchainTradeId: number | null;
+  productName: string;
+  quantity: string;
+  unit: string;
+  priceUsdc: string;
+  operationalStatus: string;
+  settlementStatus: string;
+  createdAt: string;
+  buyer: { walletAddress: string; companyName: string | null };
+  seller: { walletAddress: string; companyName: string | null };
+};
 
 export default function ArbitrationDashboard() {
-  const { t } = useLanguage();
+  const { language } = useLanguage();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [resolvedTrade, setResolvedTrade] = useState<string | null>(null);
-  const [selectedDispute, setSelectedDispute] = useState<boolean>(false);
-  const { address, formattedAddress, isConnecting, connect, resolveDispute } = useKontorEscrow();
-  const tradeId = 1;
+  const [resolvedId, setResolvedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [processingAction, setProcessingAction] = useState<'refund' | 'release' | null>(null);
+  const [trades, setTrades] = useState<DisputeTrade[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { address, formattedAddress, isConnecting, connect, voteDispute } = useKontorEscrow();
 
-  const handleResolve = async (action: 'refund_buyer' | 'release_seller') => {
-    setIsProcessing(true);
-    const success = await resolveDispute(tradeId, action === 'refund_buyer');
-    setIsProcessing(false);
-    
-    if (success) {
-      setResolvedTrade('104');
-      setSelectedDispute(false);
+  const loadDisputes = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await signedFetch('/api/escrow?disputes=1');
+      if (res.ok) {
+        const data = await res.json();
+        setTrades(data);
+        if (data.length > 0 && !selectedId) {
+          setSelectedId(data[0].id);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Failed to load disputes");
+    } finally {
+      setLoading(false);
     }
+  }, [selectedId]);
+
+  useEffect(() => {
+    loadDisputes();
+  }, [loadDisputes]);
+
+  const selectedTrade = trades.find((t) => t.id === selectedId) || null;
+
+  const handleResolve = async (action: 'refund' | 'release') => {
+    if (!selectedTrade) return;
+    if (selectedTrade.blockchainTradeId == null) {
+      setError("This trade is not on-chain yet — cannot execute an on-chain ruling.");
+      return;
+    }
+    setProcessingAction(action);
+    setIsProcessing(true);
+    setError(null);
+    try {
+      const refundBuyer = action === 'refund';
+      const success = await voteDispute(selectedTrade.blockchainTradeId, refundBuyer);
+      if (success) {
+        setResolvedId(selectedTrade.id);
+        await signedFetch(`/api/escrow/${selectedTrade.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            operationalStatus: "CONDITIONS_SATISFIED",
+            settlementStatus: refundBuyer ? "REFUNDED" : "RELEASED",
+          }),
+        });
+        await loadDisputes();
+      } else {
+        setError("On-chain vote failed. Connect an arbitrator wallet on Amoy and retry.");
+      }
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const getTranslation = (key: string) => {
+    const at: Record<string, { EN: string; DE: string; BG: string }> = {
+      title: { EN: "Dispute Resolution", DE: "Streitbeilegung", BG: "Арбитражен Център" },
+      panelTitle: { EN: "Active Arbitration Cases", DE: "Aktive Schiedsverfahren", BG: "Активни Арбитражни Дела" },
+      panelDesc: { EN: "Review immutable evidence and execute smart contract resolutions.", DE: "Überprüfen Sie unveränderliche Beweise und führen Sie Smart-Contract-Beschlüsse aus.", BG: "Преглед на неизменяеми доказателства и изпълнение на блокчейн резолюции." },
+      disputed: { EN: "DISPUTED", DE: "UMSTRITTEN", BG: "СПОР" },
+      locked: { EN: "Locked Value", DE: "Gesperrter Wert", BG: "Замразена Сума" },
+      evidence: { EN: "Trade Details", DE: "Handelsdetails", BG: "Детайли на сделката" },
+      decision: { EN: "Blockchain Resolution", DE: "Blockchain-Auflösung", BG: "Блокчейн Резолюция (Отсъждане)" },
+      refundBtn: { EN: "Refund Buyer", DE: "Käufer erstatten", BG: "Върни парите на Купувача" },
+      releaseBtn: { EN: "Release to Seller", DE: "An Verkäufer freigeben", BG: "Освободи към Продавача" },
+      resolvedTitle: { EN: "Dispute Resolved", DE: "Streitfall gelöst", BG: "Спорът е разрешен" },
+      resolvedText: { EN: "The smart contract has executed the resolution. Funds have been distributed accordingly.", DE: "Der Smart Contract hat die Auflösung ausgeführt. Die Gelder wurden entsprechend verteilt.", BG: "Смарт договорът изпълни резолюцията. Средствата бяха преведени автоматично." },
+    };
+    return at[key]?.[language] || at[key]?.EN || key;
   };
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-200 font-sans selection:bg-red-500/30">
       
-      {/* Top Navigation (Admin Theme) */}
+      {/* Top Navigation */}
       <nav className="border-b border-red-900/30 bg-zinc-950/80 backdrop-blur-md sticky w-full top-0 z-40">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <Link href="/" className="flex items-center gap-2 mr-4 opacity-50">
-              <Blocks className="w-4 h-4 text-zinc-400" />
-              <span className="text-sm font-bold text-zinc-400 tracking-tight">Kontor 21</span>
+            <Link href="/" className="flex items-center gap-2 mr-4">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-blue-400 flex items-center justify-center">
+                <Blocks className="w-5 h-5 text-white" />
+              </div>
+              <span className="text-lg font-bold text-white tracking-tight">Kontor 21</span>
             </Link>
             <div className="h-4 w-px bg-zinc-800"></div>
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded bg-gradient-to-tr from-red-600 to-red-400 flex items-center justify-center shadow-[0_0_10px_rgba(220,38,38,0.3)]">
                 <Gavel className="w-3.5 h-3.5 text-white" />
               </div>
-              <span className="text-sm font-semibold text-white tracking-wide uppercase">{t('arb.title')}</span>
+              <span className="text-sm font-semibold text-white tracking-wide uppercase">{getTranslation('title')}</span>
             </div>
           </div>
           
           <div className="flex items-center gap-4">
             <LanguageSwitcher />
             {address ? (
-              <div className="flex items-center gap-2 bg-red-900/20 border border-red-900/50 rounded-lg px-3 py-1.5">
-                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
-                <span className="text-xs font-medium text-red-400 font-mono">{formattedAddress}</span>
+              <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5">
+                <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                <span className="text-xs font-medium text-zinc-300 font-mono">{formattedAddress}</span>
               </div>
             ) : (
-              <button 
+              <button
                 onClick={connect}
                 disabled={isConnecting}
                 className="flex items-center gap-2 bg-red-600/10 border border-red-500/20 text-red-400 hover:bg-red-600/20 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
               >
-                <LogOut className="w-3.5 h-3.5" />
-                {isConnecting ? t('nav.connecting') : t('arb.login')}
+                <Wallet className="w-3.5 h-3.5" />
+                {isConnecting ? "Connecting..." : "Connect Arbitrator"}
               </button>
             )}
           </div>
@@ -71,135 +153,206 @@ export default function ArbitrationDashboard() {
       <main className="max-w-6xl mx-auto px-6 py-10">
         
         <div className="mb-10">
-          <h1 className="text-2xl font-semibold text-white tracking-tight mb-2">{t('arb.panelTitle')}</h1>
-          <p className="text-sm text-zinc-500">{t('arb.panelDesc')}</p>
+          <h1 className="text-3xl font-bold text-white tracking-tight mb-2">{getTranslation('panelTitle')}</h1>
+          <p className="text-sm text-zinc-400 max-w-2xl">{getTranslation('panelDesc')}</p>
         </div>
+
+        {error && (
+          <div className="mb-6 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-sm p-4">
+            {error}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
-          {/* Dispute List */}
-          <div className="lg:col-span-5 space-y-4">
+          {/* Dispute List (Sidebar) */}
+          <div className="lg:col-span-4 space-y-4">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-[10px] font-medium text-zinc-500 uppercase tracking-widest">{t('arb.activeDisputes')} (1)</h3>
+              <h3 className="text-[10px] font-medium text-zinc-500 uppercase tracking-widest">
+                {loading ? "Loading..." : `Queue (${trades.length})`}
+              </h3>
             </div>
             
-            {resolvedTrade !== '104' && (
-              <motion.div 
-                whileHover={{ scale: 1.01 }}
-                onClick={() => setSelectedDispute(true)}
-                className={`p-5 rounded-xl border cursor-pointer transition-all ${selectedDispute ? 'bg-red-950/40 border-red-500/50 shadow-[0_0_20px_rgba(220,38,38,0.1)]' : 'bg-zinc-900/40 border-zinc-800/80 hover:border-red-900/50'}`}
-              >
-                <div className="flex justify-between items-start mb-3">
-                  <span className="text-xs font-mono text-zinc-400 flex items-center gap-1.5">
-                    <ShieldAlert className="w-3.5 h-3.5 text-red-500" /> Trade #104
-                  </span>
-                  <span className="text-[10px] font-bold bg-red-500 text-white px-2 py-0.5 rounded uppercase tracking-wider">{t('arb.disputed')}</span>
-                </div>
-                <h4 className="text-base font-semibold text-white mb-1">Sunflower Seeds, 50 t</h4>
-                <div className="flex justify-between items-end mt-4">
-                  <p className="text-xs text-red-400 font-medium">{t('arb.locked')}: 75,000 USDC</p>
-                  <span className="text-[10px] text-zinc-500">{t('arb.timeAgo')}</span>
-                </div>
-              </motion.div>
-            )}
-
-            {resolvedTrade === '104' && (
-              <div className="p-5 rounded-xl bg-zinc-950 border border-zinc-800/80 opacity-50">
-                <div className="flex justify-between items-start mb-2">
-                  <span className="text-xs font-mono text-zinc-500">Trade #104</span>
-                  <span className="text-[10px] bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded">{t('arb.resolved')}</span>
-                </div>
-                <h4 className="text-sm font-medium text-zinc-400">Sunflower Seeds, 50 t</h4>
-                <p className="text-xs text-zinc-600 mt-1">{t('arb.resolvedDesc')}</p>
+            {loading ? (
+              <div className="p-6 rounded-2xl bg-zinc-900/40 border border-zinc-800 text-center text-sm text-zinc-500">
+                Loading disputes...
               </div>
+            ) : trades.length === 0 ? (
+              <div className="p-6 rounded-2xl bg-zinc-900/40 border border-zinc-800 text-center text-sm text-zinc-500">
+                No active disputes.
+              </div>
+            ) : (
+              trades.map((trade) => {
+                const isResolved = resolvedId === trade.id;
+                const total = parseFloat(trade.quantity) * parseFloat(trade.priceUsdc);
+                return (
+                  <div 
+                    key={trade.id}
+                    onClick={() => {
+                      if (!isResolved) {
+                        setSelectedId(trade.id);
+                        setError(null);
+                      }
+                    }}
+                    className={`p-5 rounded-2xl border-2 cursor-pointer transition-all ${
+                      isResolved
+                        ? 'bg-zinc-900/20 border-emerald-900/30 opacity-60'
+                        : selectedId === trade.id
+                          ? 'bg-red-950/40 border-red-500/50 shadow-[0_0_30px_rgba(220,38,38,0.15)]'
+                          : 'bg-zinc-900/40 border-zinc-800 hover:border-red-900/50'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start mb-4">
+                      <span className={`text-sm font-mono flex items-center gap-2 font-bold ${isResolved ? 'text-zinc-400 line-through' : 'text-white'}`}>
+                        <ShieldAlert className="w-4 h-4 text-red-500" />
+                        {trade.blockchainTradeId != null ? `Trade #${trade.blockchainTradeId}` : `Draft ${trade.id.slice(0, 6)}`}
+                      </span>
+                      {isResolved ? (
+                        <span className="text-[10px] bg-emerald-900/50 text-emerald-400 px-2 py-1 rounded uppercase">RESOLVED</span>
+                      ) : (
+                        <span className="text-[10px] font-bold bg-red-500 text-white px-2 py-1 rounded uppercase tracking-wider">{getTranslation('disputed')}</span>
+                      )}
+                    </div>
+                    <h4 className="text-sm font-medium text-zinc-300 mb-1">{trade.productName}</h4>
+                    <p className="text-xs text-zinc-500 mb-4">Volume: {parseFloat(trade.quantity)} {trade.unit}</p>
+                    
+                    <div className="bg-black/50 rounded-lg p-3 border border-zinc-800">
+                      <p className="text-xs text-zinc-500 mb-1">{getTranslation('locked')}</p>
+                      <p className="text-lg text-red-400 font-mono font-bold">{total.toLocaleString()} USDC</p>
+                    </div>
+                  </div>
+                );
+              })
             )}
           </div>
 
-          {/* Dispute Details Panel */}
-          <div className="lg:col-span-7">
-            {selectedDispute ? (
-              <motion.div 
-                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-6 md:p-8 backdrop-blur-sm"
-              >
-                <div className="flex items-center gap-3 mb-6 border-b border-zinc-800/50 pb-6">
-                  <div className="p-3 rounded-xl bg-red-500/10 text-red-500">
-                    <MessageSquareWarning className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-semibold text-white">{t('arb.invTitle')}</h2>
-                    <p className="text-xs text-zinc-500 mt-1">{t('arb.invDesc')}</p>
-                  </div>
-                </div>
-
-                <div className="space-y-6 mb-8">
-                  <div>
-                    <h3 className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-3">{t('arb.claim')} (0x3A2...9B1)</h3>
-                    <div className="bg-zinc-950 border border-zinc-800/80 rounded-xl p-4 text-sm text-zinc-300 leading-relaxed">
-                      {t('arb.claimText')}
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-3">{t('arb.evidence')}</h3>
-                    <div className="flex gap-4">
-                      <div className="flex-1 flex items-center gap-3 bg-zinc-950 border border-zinc-800 rounded-xl p-3 cursor-pointer hover:border-zinc-700 transition-colors">
-                        <FileWarning className="w-8 h-8 text-yellow-500" />
-                        <div>
-                          <p className="text-xs font-medium text-white">{t('arb.photo')}</p>
-                          <p className="text-[10px] text-zinc-500">IPFS: QmX7c...</p>
-                        </div>
-                      </div>
-                      <div className="flex-1 flex items-center gap-3 bg-zinc-950 border border-zinc-800 rounded-xl p-3 cursor-pointer hover:border-zinc-700 transition-colors">
-                        <CheckCircle2 className="w-8 h-8 text-emerald-500" />
-                        <div>
-                          <p className="text-xs font-medium text-white">SGS Certificate</p>
-                          <p className="text-[10px] text-zinc-500">{t('arb.certValid')}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-red-950/20 border border-red-900/30 rounded-xl p-6">
-                  <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-                    <Gavel className="w-4 h-4 text-red-400" /> {t('arb.decision')}
-                  </h3>
+          {/* Dispute Details Panel (Main) */}
+          <div className="lg:col-span-8">
+            <AnimatePresence mode="wait">
+              {selectedTrade && resolvedId === selectedTrade.id ? (
+                <motion.div 
+                  key="resolved"
+                  initial={{ opacity: 0, scale: 0.95 }} 
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="bg-emerald-950/20 border border-emerald-900/50 rounded-3xl p-12 text-center flex flex-col items-center justify-center h-full"
+                >
+                  <CheckCircle2 className="w-20 h-20 text-emerald-500 mb-6 drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
+                  <h2 className="text-2xl font-bold text-white mb-2">{getTranslation('resolvedTitle')}</h2>
+                  <p className="text-zinc-400 max-w-md">{getTranslation('resolvedText')}</p>
+                </motion.div>
+              ) : selectedTrade ? (
+                <motion.div 
+                  key="active"
+                  initial={{ opacity: 0, y: 10 }} 
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-zinc-900/40 border border-zinc-800/80 rounded-3xl p-8 backdrop-blur-sm shadow-2xl relative overflow-hidden"
+                >
+                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-500 via-orange-500 to-red-600"></div>
                   
-                  {!address ? (
-                     <p className="text-xs text-red-400/80 bg-red-950/50 p-3 rounded-lg border border-red-900/50">
-                       {t('arb.reqWallet')}
-                     </p>
-                  ) : (
-                    <div className="flex flex-col sm:flex-row gap-4">
-                      <button 
-                        onClick={() => handleResolve('refund_buyer')}
-                        disabled={isProcessing}
-                        className="flex-1 bg-red-600 hover:bg-red-500 text-white py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-[0_0_15px_rgba(220,38,38,0.2)] disabled:opacity-50 flex items-center justify-center gap-2"
-                      >
-                        <Undo2 className="w-4 h-4" />
-                        {t('arb.refundBtn')}
-                      </button>
-                      <button 
-                        onClick={() => handleResolve('release_seller')}
-                        disabled={isProcessing}
-                        className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white py-3 px-4 rounded-xl border border-zinc-700 text-sm font-semibold transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-                      >
-                        {t('arb.releaseBtn')} <ArrowRight className="w-4 h-4" />
-                      </button>
+                  <div className="flex items-center gap-4 mb-8 border-b border-zinc-800/50 pb-6">
+                    <div className="p-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 shadow-[0_0_15px_rgba(220,38,38,0.2)]">
+                      <MessageSquareWarning className="w-6 h-6" />
                     </div>
-                  )}
+                    <div>
+                      <h2 className="text-2xl font-bold text-white">
+                        {selectedTrade.productName}
+                      </h2>
+                      <div className="flex items-center gap-2 mt-1 text-xs text-zinc-400 font-mono">
+                        <span>Buyer: {selectedTrade.buyer?.companyName || selectedTrade.buyer?.walletAddress?.slice(0, 10)}</span>
+                        <span>•</span>
+                        <span>Seller: {selectedTrade.seller?.companyName || selectedTrade.seller?.walletAddress?.slice(0, 10)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-8 mb-10">
+                    {/* The Trade */}
+                    <div>
+                      <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                        <Gavel className="w-4 h-4 text-red-400" /> {getTranslation('evidence')}
+                      </h3>
+                      <div className="bg-red-950/20 border border-red-900/30 rounded-2xl p-5 space-y-3 text-sm shadow-inner">
+                        <div className="flex justify-between">
+                          <span className="text-zinc-400">Product</span>
+                          <span className="text-white font-medium">{selectedTrade.productName}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-zinc-400">Volume</span>
+                          <span className="text-white font-medium">{parseFloat(selectedTrade.quantity)} {selectedTrade.unit}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-zinc-400">Locked Value</span>
+                          <span className="text-red-400 font-mono font-bold">{(parseFloat(selectedTrade.quantity) * parseFloat(selectedTrade.priceUsdc)).toLocaleString()} USDC</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-zinc-400">Status</span>
+                          <span className="text-white font-mono">{selectedTrade.operationalStatus} / {selectedTrade.settlementStatus}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-zinc-400">On-chain ID</span>
+                          <span className="text-white font-mono">{selectedTrade.blockchainTradeId ?? "Not deployed"}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Resolution Action */}
+                  <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6">
+                    <h3 className="text-sm font-semibold text-white mb-5 flex items-center gap-2">
+                      <Gavel className="w-4 h-4 text-purple-400" /> {getTranslation('decision')}
+                    </h3>
+                    
+                    {selectedTrade.blockchainTradeId == null ? (
+                      <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-sm p-4">
+                        This trade is not deployed on-chain. Deploy the smart contract from the trade view before executing a ruling.
+                      </div>
+                    ) : (
+                      <div className="flex flex-col sm:flex-row gap-4">
+                        <button 
+                          onClick={() => handleResolve('refund')}
+                          disabled={isProcessing}
+                          className={`flex-1 py-4 px-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                            isProcessing && processingAction === 'refund' 
+                              ? 'bg-red-600/50 text-white cursor-not-allowed' 
+                              : 'bg-red-600 hover:bg-red-500 text-white shadow-[0_0_20px_rgba(220,38,38,0.3)] disabled:opacity-50'
+                          }`}
+                        >
+                          {isProcessing && processingAction === 'refund' ? (
+                            <><Loader2 className="w-5 h-5 animate-spin" /> Deploying...</>
+                          ) : (
+                            <>{getTranslation('refundBtn')}</>
+                          )}
+                        </button>
+                        
+                        <button 
+                          onClick={() => handleResolve('release')}
+                          disabled={isProcessing}
+                          className={`flex-1 py-4 px-4 rounded-xl border border-zinc-700 text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                            isProcessing && processingAction === 'release' 
+                              ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' 
+                              : 'bg-zinc-900 hover:bg-zinc-800 text-white disabled:opacity-50'
+                          }`}
+                        >
+                          {isProcessing && processingAction === 'release' ? (
+                            <><Loader2 className="w-5 h-5 animate-spin" /> Deploying...</>
+                          ) : (
+                            <>{getTranslation('releaseBtn')} <ArrowRight className="w-4 h-4" /></>
+                          )}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center text-center p-12 border-2 border-zinc-800/50 border-dashed rounded-3xl bg-zinc-900/10">
+                  <ShieldAlert className="w-16 h-16 text-zinc-800 mb-6" />
+                  <h3 className="text-xl font-bold text-zinc-500 mb-2">No Dispute Selected</h3>
+                  <p className="text-sm text-zinc-600 max-w-sm">
+                    Select a case from the queue to review the details and execute a ruling.
+                  </p>
                 </div>
-              </motion.div>
-            ) : (
-              <div className="h-full flex flex-col items-center justify-center text-center p-12 border border-zinc-800/50 border-dashed rounded-2xl bg-zinc-900/20">
-                <ShieldAlert className="w-12 h-12 text-zinc-700 mb-4" />
-                <h3 className="text-lg font-medium text-zinc-400 mb-2">{t('arb.select')}</h3>
-                <p className="text-xs text-zinc-600 max-w-sm">
-                  {t('arb.selectDesc')}
-                </p>
-              </div>
-            )}
+              )}
+            </AnimatePresence>
           </div>
 
         </div>

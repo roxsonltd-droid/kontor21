@@ -1,5 +1,18 @@
 {
-  "testUSDC": "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9",
-  "kontorEscrow": "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
-  "arbitrator": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+  "testUSDC": "0x1d01314fD9cE3dd52233Bbf86e4f54D7E2221c1C",
+  "kontorEscrow": "0x5774e6A53A18AD2A7eD2D62e82dF09f364C58eCB",
+  "timelock": "0xf6d4bc36764A8d2AdB99117b6d04A80ad64e8a95",
+  "arbitrator1": "0x5468E5a38D75FbF905E23A49B18bbfb024f1b47d",
+  "arbitrator2": "0x57143cB41c089b78b61E072E24340Aa53aA99ADc",
+  "arbitrator3": "0x26B0dF3c0a73ca473883bc579c741E5C4947B545",
+  "governance": {
+    "timelock": "0xf6d4bc36764A8d2AdB99117b6d04A80ad64e8a95",
+    "minDelaySeconds": 172800,
+    "proposers": [
+      "0x57143cB41c089b78b61E072E24340Aa53aA99ADc",
+      "0x26B0dF3c0a73ca473883bc579c741E5C4947B545"
+    ],
+    "executor": "0x5468E5a38D75FbF905E23A49B18bbfb024f1b47d",
+    "deployer": "0x5468E5a38D75FbF905E23A49B18bbfb024f1b47d"
+  }
 }

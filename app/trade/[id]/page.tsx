@@ -1,52 +1,186 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import { ShieldCheck, Truck, Clock, FileText, Download, CheckCircle, ArrowRight, ShieldAlert, CircleAlert, Wallet } from 'lucide-react';
 import { useKontorEscrow } from '@/hooks/useKontorEscrow';
+import { CONTRACT_ADDRESSES } from '@/lib/abis';
 import { motion } from 'framer-motion';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { useParams } from 'next/navigation';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+import { signedFetch } from '@/lib/signedFetch';
+
+type TradeMetadata = {
+  id: string;
+  blockchainTradeId: number | null;
+  productName: string;
+  quantity: string | number;
+  unit: string;
+  priceUsdc: string | number;
+  operationalStatus: string;
+  settlementStatus: string;
+  buyer: { walletAddress: string; companyName: string | null };
+  seller: { walletAddress: string; companyName: string | null };
+  oracle?: { walletAddress: string; companyName: string | null } | null;
+  conditions?: { parameter: string; operator: string; value: string; unit: string | null; providerRole: string }[];
+};
 
 export default function TradeView() {
   const { t } = useLanguage();
-  const params = useParams();
-  const tradeId = params.id ? parseInt(params.id as string) : 1;
-
+  const params = useParams<{ id: string }>();
+  const [trade, setTrade] = useState<TradeMetadata | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isFunded, setIsFunded] = useState(false);
   const [isDisputed, setIsDisputed] = useState(false);
-  const [tradeData, setTradeData] = useState<any>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [contractError, setContractError] = useState<string | null>(null);
+  const { address, formattedAddress, isConnecting, connect, createTrade, fundTrade, raiseDispute } = useKontorEscrow();
+  const blockchainTradeId = trade?.blockchainTradeId ?? null;
+  const quantityNum = trade ? parseFloat(trade.quantity.toString()) : 0;
+  const priceNum = trade ? parseFloat(trade.priceUsdc.toString()) : 0;
+  const totalUsdc = quantityNum * priceNum;
+  const [isExporting, setIsExporting] = useState(false);
 
-  const { address, formattedAddress, isConnecting, connect, fundTrade, raiseDispute, getTrade } = useKontorEscrow();
-
-  React.useEffect(() => {
-    if (address) {
-      getTrade(tradeId).then(data => {
-        if (data) {
-          setTradeData(data);
-          setIsFunded(data.status >= 1); // 1 = FUNDED, 2 = COMPLETED
-          setIsDisputed(data.status === 3); // 3 = DISPUTED
-        }
+  const loadTrade = async () => {
+    try {
+      const response = await signedFetch(`/api/escrow/${encodeURIComponent(params.id)}`, {
+        cache: "no-store",
       });
+      const data = (await response.json()) as TradeMetadata & { error?: string };
+      if (!response.ok) throw new Error(data.error || "Failed to load trade");
+      setTrade(data);
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "Failed to load trade");
     }
-  }, [address, getTrade, tradeId]);
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      if (!address) return;
+      try {
+        const response = await signedFetch(`/api/escrow/${encodeURIComponent(params.id)}`, {
+          cache: "no-store",
+        });
+        const data = (await response.json()) as TradeMetadata & { error?: string };
+        if (!response.ok) throw new Error(data.error || "Failed to load trade");
+        if (!cancelled) setTrade(data);
+      } catch (error) {
+        if (!cancelled) {
+          setLoadError(error instanceof Error ? error.message : "Failed to load trade");
+        }
+      }
+    };
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [params.id, address]);
+
+  const handleCreateContract = async () => {
+    if (!trade || !address) return;
+    setContractError(null);
+    setIsCreating(true);
+    try {
+      const oracleAddress =
+        trade.oracle?.walletAddress ||
+        CONTRACT_ADDRESSES.arbitrator1 ||
+        CONTRACT_ADDRESSES.arbitrator;
+      if (!oracleAddress) {
+        setContractError("No oracle wallet is configured for this trade.");
+        return;
+      }
+      const tradeId = await createTrade(
+        trade.buyer.walletAddress,
+        oracleAddress,
+        totalUsdc,
+        CONTRACT_ADDRESSES.testUSDC
+      );
+      if (tradeId == null) {
+        setContractError("createTrade failed — check wallet and network (Amoy).");
+        return;
+      }
+      const res = await signedFetch(`/api/escrow/${trade.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ blockchainTradeId: tradeId }),
+      });
+      if (!res.ok) {
+        setContractError("Linked on-chain but failed to save draft — refresh the page.");
+        return;
+      }
+      await loadTrade();
+    } catch (error) {
+      setContractError(error instanceof Error ? error.message : "Failed to create contract");
+    } finally {
+      setIsCreating(false);
+    }
+  };
 
   const handleFundEscrow = async () => {
-    const success = await fundTrade(tradeId);
+    if (blockchainTradeId == null) return;
+    const success = await fundTrade(blockchainTradeId);
     if (success) {
       setIsFunded(true);
-      if (tradeData) setTradeData({ ...tradeData, status: 1 });
+      await signedFetch(`/api/escrow/${trade?.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ settlementStatus: "FUNDED" }),
+      });
+      await loadTrade();
     }
   };
 
   const handleRaiseDispute = async () => {
-    const success = await raiseDispute(tradeId);
+    if (blockchainTradeId == null) return;
+    const success = await raiseDispute(blockchainTradeId);
     if (success) {
       setIsDisputed(true);
-      if (tradeData) setTradeData({ ...tradeData, status: 3 });
+      await signedFetch(`/api/escrow/${trade?.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ operationalStatus: "DISPUTED", settlementStatus: "DISPUTED" }),
+      });
+      await loadTrade();
     }
   };
+
+  const exportPDF = async () => {
+    setIsExporting(true);
+    const element = document.getElementById("trade-pdf-content");
+    if (element) {
+      try {
+        const canvas = await html2canvas(element, { backgroundColor: '#09090b', scale: 2 });
+        const imgData = canvas.toDataURL("image/png");
+        const pdf = new jsPDF("p", "mm", "a4");
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+        pdf.save(`Trade_Contract_${trade?.id.slice(0, 8)}.pdf`);
+      } catch (error) {
+        console.error("PDF export failed", error);
+      }
+    }
+    setIsExporting(false);
+  };
+
+  if (loadError) {
+    return (
+      <main className="min-h-screen bg-zinc-950 p-8 text-zinc-200">
+        <div className="mx-auto max-w-xl rounded-2xl border border-red-500/30 bg-red-500/10 p-6">
+          <h1 className="text-xl font-bold text-white">Escrow draft unavailable</h1>
+          <p className="mt-2 text-red-200">{loadError}</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (!trade) {
+    return <main className="min-h-screen bg-zinc-950 p-8 text-zinc-400">Loading escrow draftΓÇª</main>;
+  }
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-200 font-sans selection:bg-emerald-500/30">
@@ -86,13 +220,32 @@ export default function TradeView() {
             <ShieldCheck className="w-5 h-5" />
             <span className="text-sm font-semibold tracking-wider uppercase">{t('trade.secured')}</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight mb-4">
-            {t('trade.title')} #{tradeId}
-          </h1>
-          <p className="text-lg text-zinc-400">{t('trade.pageDesc')}</p>
+          <div className="flex justify-between items-start">
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight">
+                  {t('trade.title')} #{blockchainTradeId ?? trade.id.slice(0, 8)}
+                </h1>
+                {blockchainTradeId == null && (
+                  <span className="bg-amber-500/10 border border-amber-500/40 text-amber-400 text-xs font-semibold px-2.5 py-1 rounded-full">
+                    Чернова (не на-chain)
+                  </span>
+                )}
+              </div>
+              <p className="text-lg text-zinc-400">{t('trade.pageDesc')}</p>
+            </div>
+            <button 
+              onClick={exportPDF}
+              disabled={isExporting}
+              className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
+            >
+              <Download className="w-4 h-4" />
+              {isExporting ? "Експорт..." : "Изтегли PDF"}
+            </button>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8" id="trade-pdf-content">
           <div className="lg:col-span-8 space-y-6">
             
             <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-6 md:p-8 backdrop-blur-sm">
@@ -100,19 +253,37 @@ export default function TradeView() {
               <div className="space-y-4">
                 <div className="flex justify-between py-2 border-b border-zinc-800/50">
                   <span className="text-zinc-500">{t('trade.product')}</span>
-                  <span className="text-white font-medium">Слънчоглед (Високоолеинов)</span>
+                  <span className="text-white font-medium">{trade.productName}</span>
                 </div>
                 <div className="flex justify-between py-2 border-b border-zinc-800/50">
                   <span className="text-zinc-500">{t('trade.quantity')}</span>
-                  <span className="text-white font-medium">50 Тона</span>
+                  <span className="text-white font-medium">{trade.quantity.toString()} {trade.unit}</span>
                 </div>
                 <div className="flex justify-between py-2 border-b border-zinc-800/50">
                   <span className="text-zinc-500">{t('trade.seller')}</span>
-                  <span className="text-emerald-400 font-mono text-sm">0x9D4...1F2</span>
+                  <span className="text-emerald-400 font-mono text-sm">{trade.seller.walletAddress}</span>
                 </div>
-                <div className="flex justify-between py-2">
-                  <span className="text-zinc-500">{t('trade.terms')}</span>
-                  <span className="text-white font-medium">FOB Варна</span>
+                <div className="flex justify-between py-2 border-b border-zinc-800/50">
+                  <span className="text-zinc-500">Logistics Status</span>
+                  <span className="text-emerald-400 font-medium">{trade.operationalStatus}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-zinc-800/50">
+                  <span className="text-zinc-500">Financial Status</span>
+                  <span className="text-emerald-400 font-medium">{trade.settlementStatus}</span>
+                </div>
+                <div className="py-2">
+                  <span className="text-zinc-500 block mb-2">{t('trade.terms')} (Rules Engine)</span>
+                  {trade.conditions && trade.conditions.length > 0 ? (
+                    <div className="space-y-1">
+                      {trade.conditions.map((c, i) => (
+                        <div key={i} className="text-xs bg-zinc-800/50 p-2 rounded text-zinc-300">
+                          <span className="font-semibold text-emerald-400">{c.providerRole}</span> verifies: {c.parameter} {c.operator} {c.value}{c.unit}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-white font-medium">—</span>
+                  )}
                 </div>
               </div>
             </div>
@@ -191,7 +362,7 @@ export default function TradeView() {
               <div className="mb-8">
                 <p className="text-sm text-zinc-500 mb-1">{t('trade.value')}</p>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-4xl font-bold text-white">75,000</span>
+                  <span className="text-4xl font-bold text-white">{totalUsdc.toLocaleString()}</span>
                   <span className="text-lg text-zinc-400">USDC</span>
                 </div>
               </div>
@@ -231,16 +402,42 @@ export default function TradeView() {
 
               {!isFunded ? (
                 <div className="mt-8 pt-6 border-t border-zinc-800">
-                  <button 
-                    onClick={handleFundEscrow}
-                    disabled={!address}
-                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3.5 rounded-xl font-semibold transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                  >
-                    {!address ? t('nav.connect') : `${t('trade.lockFunds')} 75,000 USDC`} <ArrowRight className="w-4 h-4" />
-                  </button>
-                  <p className="text-[10px] text-zinc-500 text-center mt-3 flex items-center justify-center gap-1">
-                    <ShieldCheck className="w-3 h-3" /> {t('trade.guarantee')}
-                  </p>
+                  {blockchainTradeId == null ? (
+                    <div className="space-y-3">
+                      <div className="text-xs text-zinc-500 bg-zinc-800/40 border border-amber-500/20 rounded-lg p-3">
+                        Този escrow е все още чернова — не съществува на блокчейна. Продавачът трябва да създаде смарт договора, за да се отключат финансирането и верификацията.
+                      </div>
+                      <button
+                        onClick={handleCreateContract}
+                        disabled={!address || isCreating}
+                        className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3.5 rounded-xl font-semibold transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      >
+                        {!address
+                          ? t('nav.connect')
+                          : isCreating
+                            ? "Създаване на договор..."
+                            : "Създай Смарт Договор"} <ArrowRight className="w-4 h-4" />
+                      </button>
+                      {contractError && (
+                        <p className="text-[11px] text-red-400 text-center">{contractError}</p>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      <button
+                        onClick={handleFundEscrow}
+                        disabled={!address}
+                        className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3.5 rounded-xl font-semibold transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      >
+                        {!address
+                          ? t('nav.connect')
+                          : `${t('trade.lockFunds')} ${totalUsdc.toLocaleString()} USDC`} <ArrowRight className="w-4 h-4" />
+                      </button>
+                      <p className="text-[10px] text-zinc-500 text-center mt-3 flex items-center justify-center gap-1">
+                        <ShieldCheck className="w-3 h-3" /> {t('trade.guarantee')}
+                      </p>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className="mt-8 pt-6 border-t border-zinc-800 text-center">

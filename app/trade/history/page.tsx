@@ -1,4 +1,5 @@
 "use client";
+import { signedFetch } from "@/lib/signedFetch";
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -10,6 +11,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 
 type TradeRecord = {
   id: string;
+  shortId: string;
   product: string;
   amount: string;
   status: 'active' | 'completed' | 'disputed';
@@ -19,9 +21,12 @@ type TradeRecord = {
 
 const STATUS_MAP: Record<string, 'active' | 'completed' | 'disputed'> = {
   PENDING: 'active',
-  IN_TRANSIT: 'active',
-  COMPLETED: 'completed',
+  SHIPPED: 'active',
+  INSPECTED: 'active',
+  CONDITIONS_SATISFIED: 'active',
   DISPUTED: 'disputed',
+  COMPLETED: 'completed',
+  REFUNDED: 'completed',
 };
 
 const STATUS_ICONS: Record<string, React.ReactNode> = {
@@ -47,14 +52,15 @@ export default function TradeHistory() {
   useEffect(() => {
     const fetchTrades = async () => {
       try {
-        const res = await fetch('/api/escrow');
+        const res = await signedFetch('/api/escrow');
         if (!res.ok) throw new Error('Failed to fetch trades');
         const data = await res.json();
-        const mapped: TradeRecord[] = (data as any[]).map((t: any) => ({
-          id: t.id.slice(0, 8),
+        const mapped: TradeRecord[] = (data as { id: string; productName: string; priceUsdc: string; operationalStatus: string; createdAt: string; buyer?: { walletAddress: string }; seller?: { walletAddress: string } }[]).map((t) => ({
+          id: t.id,
+          shortId: t.id.slice(0, 8).toUpperCase(),
           product: t.productName,
           amount: Number(t.priceUsdc).toLocaleString(),
-          status: STATUS_MAP[t.status] || 'active',
+          status: STATUS_MAP[t.operationalStatus] || 'active',
           date: new Date(t.createdAt).toISOString().slice(0, 10),
           role: address
             ? t.buyer?.walletAddress?.toLowerCase() === address.toLowerCase()
@@ -169,7 +175,7 @@ export default function TradeHistory() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-mono text-zinc-500">#{trade.id}</span>
+                        <span className="text-sm font-mono text-zinc-500">#{trade.shortId}</span>
                         <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${STATUS_COLORS[trade.status]}`}>
                           {t(`history.${trade.status}`)}
                         </span>

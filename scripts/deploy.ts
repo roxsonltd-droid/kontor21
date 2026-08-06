@@ -12,6 +12,24 @@ async function main() {
   const [deployer] = await ethers.getSigners();
   console.log("Deploying with account:", deployer.address);
 
+  const configuredArbitrators = (process.env.ARBITRATOR_WALLETS || "")
+    .split(",")
+    .map((address) => address.trim())
+    .filter(Boolean);
+  const localSigners = await ethers.getSigners();
+  const arbitratorAddresses =
+    configuredArbitrators.length === 3
+      ? configuredArbitrators
+      : localSigners.slice(0, 3).map((signer) => signer.address);
+
+  if (arbitratorAddresses.length !== 3) {
+    throw new Error("Configure exactly three controlled wallets in ARBITRATOR_WALLETS");
+  }
+  const [arb1, arb2, arb3] = arbitratorAddresses;
+  if (new Set(arbitratorAddresses.map((address) => address.toLowerCase())).size !== 3) {
+    throw new Error("ARBITRATOR_WALLETS must contain three unique addresses");
+  }
+
   const TestUSDC = await ethers.getContractFactory("TestUSDC");
   const usdc = await TestUSDC.deploy();
   await usdc.waitForDeployment();
@@ -22,7 +40,18 @@ async function main() {
   console.log("Minted 1,000,000 USDC to deployer");
 
   const KontorEscrow = await ethers.getContractFactory("KontorEscrow");
-  const escrow = await KontorEscrow.deploy(deployer.address);
+  const feeTreasury = deployer.address; // For demo, deployer is treasury
+  const feeBasisPoints = 25; // 0.25%
+  
+  // Pass 3 arbitrators instead of 1
+  const escrow = await KontorEscrow.deploy(
+    arb1,
+    arb2,
+    arb3,
+    feeTreasury,
+    feeBasisPoints,
+    usdcAddress
+  );
   await escrow.waitForDeployment();
   const escrowAddress = await escrow.getAddress();
   console.log("KontorEscrow deployed to:", escrowAddress);
@@ -30,17 +59,24 @@ async function main() {
   const addresses = {
     testUSDC: usdcAddress,
     kontorEscrow: escrowAddress,
-    arbitrator: deployer.address,
+    arbitrator1: arb1,
+    arbitrator2: arb2,
+    arbitrator3: arb3,
   };
 
-  const dest = path.join(__dirname, "..", "src", "lib", "contract-addresses.json");
-  fs.writeFileSync(dest, JSON.stringify(addresses, null, 2));
-  console.log("\nAddresses written to", dest);
+  const destinations = [
+    path.join(__dirname, "..", "contract-addresses.json"),
+    path.join(__dirname, "..", "lib", "contract-addresses.json"),
+  ];
+  for (const destination of destinations) {
+    fs.writeFileSync(destination, JSON.stringify(addresses, null, 2));
+    console.log("\nAddresses written to", destination);
+  }
 
   console.log("\nDeployment Summary:");
   console.log("  TestUSDC:", usdcAddress);
   console.log("  KontorEscrow:", escrowAddress);
-  console.log("  Arbitrator/Owner:", deployer.address);
+  console.log("  Arbitrator 1 (Owner):", arb1);
 }
 
 main().catch((error) => {

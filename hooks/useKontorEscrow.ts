@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { BrowserProvider, Contract, parseUnits, formatUnits } from "ethers";
+import { BrowserProvider, Contract, parseUnits, formatUnits, keccak256, toUtf8Bytes } from "ethers";
 import {
   CONTRACT_ADDRESSES,
   KONTOR_ESCROW_ABI,
@@ -14,8 +14,8 @@ declare global {
   }
 }
 
-const HARDHAT_CHAIN_ID = "0x7a69";
-const HARDHAT_RPC = "http://127.0.0.1:8545";
+const AMOY_CHAIN_ID = "0x13882"; // 80002 in hex
+const AMOY_RPC = "https://rpc-amoy.polygon.technology";
 
 export function useKontorEscrow() {
   const [escrowContract, setEscrowContract] = useState<Contract | null>(null);
@@ -42,14 +42,14 @@ export function useKontorEscrow() {
     setSignerAddress(address);
   }, []);
 
-  const ensureHardhatNetwork = async () => {
+  const ensureAmoyNetwork = useCallback(async () => {
     if (!window.ethereum) return false;
     try {
       const chainId = await window.ethereum.request({ method: "eth_chainId" });
-      if (chainId !== HARDHAT_CHAIN_ID) {
+      if (chainId !== AMOY_CHAIN_ID) {
         await window.ethereum.request({
           method: "wallet_switchEthereumChain",
-          params: [{ chainId: HARDHAT_CHAIN_ID }],
+          params: [{ chainId: AMOY_CHAIN_ID }],
         });
       }
       return true;
@@ -60,10 +60,11 @@ export function useKontorEscrow() {
           await window.ethereum.request({
             method: "wallet_addEthereumChain",
             params: [{
-              chainId: HARDHAT_CHAIN_ID,
-              chainName: "Hardhat Localhost",
-              rpcUrls: [HARDHAT_RPC],
-              nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
+              chainId: AMOY_CHAIN_ID,
+              chainName: "Polygon Amoy Testnet",
+              rpcUrls: [AMOY_RPC],
+              nativeCurrency: { name: "MATIC", symbol: "MATIC", decimals: 18 },
+              blockExplorerUrls: ["https://amoy.polygonscan.com/"]
             }],
           });
           return true;
@@ -73,16 +74,16 @@ export function useKontorEscrow() {
       }
       return false;
     }
-  };
+  }, []);
 
-  const connect = async () => {
+  const connect = useCallback(async () => {
     if (!window.ethereum) {
       alert("Моля, инсталирайте MetaMask портфейл!");
       return null;
     }
     setIsConnecting(true);
     try {
-      const netOk = await ensureHardhatNetwork();
+      const netOk = await ensureAmoyNetwork();
       if (!netOk) {
         setIsConnecting(false);
         return null;
@@ -99,7 +100,7 @@ export function useKontorEscrow() {
       setIsConnecting(false);
       return null;
     }
-  };
+  }, [ensureAmoyNetwork, initContracts]);
 
   useEffect(() => {
     if (window.ethereum && CONTRACT_ADDRESSES.kontorEscrow) {
@@ -114,125 +115,247 @@ export function useKontorEscrow() {
     }
   }, [initContracts]);
 
-  const createTrade = async (
-    buyer: string,
-    oracle: string,
-    amount: number,
-    tokenAddress: string,
-    conditionDescription: string
-  ) => {
-    if (!escrowContract) return null;
-    try {
-      const amountWei = parseUnits(amount.toString(), 6);
-      const tx = await escrowContract.createTrade(
-        buyer,
-        oracle,
-        amountWei,
-        tokenAddress,
-        conditionDescription
-      );
-      const receipt = await tx.wait();
-      const tradeCreatedLog = receipt.logs.find(
-        (log: { fragment?: { name?: string } }) => log.fragment?.name === "TradeCreated"
-      );
-      const tradeId = tradeCreatedLog
-        ? Number(tradeCreatedLog.args[0])
-        : null;
-      return tradeId;
-    } catch (error) {
-      console.error("createTrade failed", error);
-      return null;
-    }
-  };
+  const createTrade = useCallback(
+    async (
+      buyer: string,
+      oracle: string,
+      amount: number,
+      tokenAddress: string
+    ) => {
+      if (!escrowContract) return null;
+      try {
+        const amountWei = parseUnits(amount.toString(), 6);
+        const tx = await escrowContract.createTrade(
+          buyer,
+          oracle,
+          amountWei,
+          tokenAddress
+        );
+        const receipt = await tx.wait();
+        const tradeCreatedLog = receipt.logs.find(
+          (log: { fragment?: { name?: string } }) => log.fragment?.name === "TradeCreated"
+        );
+        const tradeId = tradeCreatedLog
+          ? Number(tradeCreatedLog.args[0])
+          : null;
+        return tradeId;
+      } catch (error) {
+        console.error("createTrade failed", error);
+        return null;
+      }
+    },
+    [escrowContract]
+  );
 
-  const fundTrade = async (tradeId: number) => {
-    if (!escrowContract || !usdcContract) return false;
-    try {
-      const trade = await escrowContract.trades(tradeId);
-      const amountWei = trade.amount;
-      const approveTx = await usdcContract.approve(
-        CONTRACT_ADDRESSES.kontorEscrow,
-        amountWei
-      );
-      await approveTx.wait();
-      const tx = await escrowContract.fundTrade(tradeId);
-      await tx.wait();
-      return true;
-    } catch (error) {
-      console.error("fundTrade failed", error);
-      return false;
-    }
-  };
+  const fundTrade = useCallback(
+    async (tradeId: number) => {
+      if (!escrowContract || !usdcContract) return false;
+      try {
+        const trade = await escrowContract.trades(tradeId);
+        const amountWei = trade.totalAmount; // V2 uses totalAmount
+        const approveTx = await usdcContract.approve(
+          CONTRACT_ADDRESSES.kontorEscrow,
+          amountWei
+        );
+        await approveTx.wait();
+        const tx = await escrowContract.fundTrade(tradeId);
+        await tx.wait();
+        return true;
+      } catch (error) {
+        console.error("fundTrade failed", error);
+        return false;
+      }
+    },
+    [escrowContract, usdcContract]
+  );
 
-  const approveTradeByOracle = async (tradeId: number) => {
-    if (!escrowContract) return false;
-    try {
-      const tx = await escrowContract.approveTradeByOracle(tradeId);
-      await tx.wait();
-      return true;
-    } catch (error) {
-      console.error("approveTradeByOracle failed", error);
-      return false;
-    }
-  };
+  const proposeRelease = useCallback(
+    async (tradeId: number, milestoneHash: string, amount: number, evidenceCid: string) => {
+      if (!escrowContract) return false;
+      try {
+        const amountWei = parseUnits(amount.toString(), 6);
+        const evidenceRoot = keccak256(toUtf8Bytes(`ipfs://${evidenceCid}`));
+        const tx = await escrowContract.proposeRelease(
+          tradeId,
+          milestoneHash,
+          amountWei,
+          evidenceRoot
+        );
+        await tx.wait();
+        return true;
+      } catch (error) {
+        console.error("proposeRelease failed", error);
+        return false;
+      }
+    },
+    [escrowContract]
+  );
 
-  const raiseDispute = async (tradeId: number) => {
-    if (!escrowContract) return false;
-    try {
-      const tx = await escrowContract.raiseDispute(tradeId);
-      await tx.wait();
-      return true;
-    } catch (error) {
-      console.error("raiseDispute failed", error);
-      return false;
-    }
-  };
+  const proposeFullRelease = useCallback(
+    async (tradeId: number, milestoneHash: string, evidenceCid: string) => {
+      if (!escrowContract) return false;
+      try {
+        const trade = await escrowContract.trades(tradeId);
+        const remaining = trade.totalAmount - trade.releasedAmount;
+        if (remaining <= BigInt(0)) return false;
+        const evidenceRoot = keccak256(toUtf8Bytes(`ipfs://${evidenceCid}`));
+        const tx = await escrowContract.proposeRelease(
+          tradeId,
+          milestoneHash,
+          remaining,
+          evidenceRoot
+        );
+        await tx.wait();
+        return true;
+      } catch (error) {
+        console.error("proposeFullRelease failed", error);
+        return false;
+      }
+    },
+    [escrowContract]
+  );
 
-  const resolveDispute = async (tradeId: number, refundBuyer: boolean) => {
-    if (!escrowContract) return false;
-    try {
-      const tx = await escrowContract.resolveDispute(tradeId, refundBuyer);
-      await tx.wait();
-      return true;
-    } catch (error) {
-      console.error("resolveDispute failed", error);
-      return false;
-    }
-  };
+  const approveRelease = useCallback(
+    async (tradeId: number) => {
+      if (!escrowContract) return false;
+      try {
+        const proposalId = Number(await escrowContract.pendingProposalOf(tradeId));
+        if (proposalId <= 0) return false;
+        const proposal = await escrowContract.proposals(proposalId);
+        const pendingAmount = proposal.amount;
+        const pendingEvidenceRoot = proposal.evidenceRoot;
+        if (pendingAmount <= BigInt(0) || pendingEvidenceRoot === `0x${"0".repeat(64)}`) return false;
+        const tx = await escrowContract.approveRelease(
+          proposalId,
+          pendingAmount,
+          pendingEvidenceRoot
+        );
+        await tx.wait();
+        return true;
+      } catch (error) {
+        console.error("approveRelease failed", error);
+        return false;
+      }
+    },
+    [escrowContract]
+  );
 
-  const getTrade = async (tradeId: number) => {
-    if (!escrowContract) return null;
-    try {
-      const trade = await escrowContract.trades(tradeId);
-      return {
-        buyer: trade[0],
-        seller: trade[1],
-        oracle: trade[2],
-        amount: formatUnits(trade[3], 6),
-        token: trade[4],
-        status: Number(trade[5]),
-        conditionDescription: trade[6],
-      };
-    } catch (error) {
-      console.error("getTrade failed", error);
-      return null;
-    }
-  };
+  const cancelRelease = useCallback(
+    async (proposalId: number) => {
+      if (!escrowContract) return false;
+      try {
+        const tx = await escrowContract.cancelRelease(proposalId);
+        await tx.wait();
+        return true;
+      } catch (error) {
+        console.error("cancelRelease failed", error);
+        return false;
+      }
+    },
+    [escrowContract]
+  );
 
-  const getUsdcBalance = async (address: string) => {
-    if (!usdcContract) return "0";
-    try {
-      const bal = await usdcContract.balanceOf(address);
-      return formatUnits(bal, 6);
-    } catch {
-      return "0";
-    }
-  };
+  const claimTimeoutRefund = useCallback(
+    async (tradeId: number) => {
+      if (!escrowContract) return false;
+      try {
+        const tx = await escrowContract.claimTimeoutRefund(tradeId);
+        await tx.wait();
+        return true;
+      } catch (error) {
+        console.error("claimTimeoutRefund failed", error);
+        return false;
+      }
+    },
+    [escrowContract]
+  );
 
-  const formatAddress = (addr: string | null) => {
+  const claimDisputeTimeoutRefund = useCallback(
+    async (tradeId: number) => {
+      if (!escrowContract) return false;
+      try {
+        const tx = await escrowContract.claimDisputeTimeoutRefund(tradeId);
+        await tx.wait();
+        return true;
+      } catch (error) {
+        console.error("claimDisputeTimeoutRefund failed", error);
+        return false;
+      }
+    },
+    [escrowContract]
+  );
+
+  const raiseDispute = useCallback(
+    async (tradeId: number) => {
+      if (!escrowContract) return false;
+      try {
+        const tx = await escrowContract.raiseDispute(tradeId);
+        await tx.wait();
+        return true;
+      } catch (error) {
+        console.error("raiseDispute failed", error);
+        return false;
+      }
+    },
+    [escrowContract]
+  );
+
+  const voteDispute = useCallback(
+    async (tradeId: number, refundBuyer: boolean) => {
+      if (!escrowContract) return false;
+      try {
+        const tx = await escrowContract.voteDispute(tradeId, refundBuyer);
+        await tx.wait();
+        return true;
+      } catch (error) {
+        console.error("voteDispute failed", error);
+        return false;
+      }
+    },
+    [escrowContract]
+  );
+
+  const getTrade = useCallback(
+    async (tradeId: number) => {
+      if (!escrowContract) return null;
+      try {
+        const trade = await escrowContract.trades(tradeId);
+        return {
+          buyer: trade[0],
+          seller: trade[1],
+          oracle: trade[2],
+          amount: formatUnits(trade[3], 6),
+          releasedAmount: formatUnits(trade[4], 6),
+          token: trade[5],
+          status: Number(trade[6]),
+          votesForBuyer: Number(trade[7]),
+          votesForSeller: Number(trade[8]),
+        };
+      } catch (error) {
+        console.error("getTrade failed", error);
+        return null;
+      }
+    },
+    [escrowContract]
+  );
+
+  const getUsdcBalance = useCallback(
+    async (address: string) => {
+      if (!usdcContract) return "0";
+      try {
+        const bal = await usdcContract.balanceOf(address);
+        return formatUnits(bal, 6);
+      } catch {
+        return "0";
+      }
+    },
+    [usdcContract]
+  );
+
+  const formatAddress = useCallback((addr: string | null) => {
     if (!addr) return "";
     return `${addr.substring(0, 5)}...${addr.substring(addr.length - 4)}`;
-  };
+  }, []);
 
   return {
     address: signerAddress,
@@ -241,9 +364,14 @@ export function useKontorEscrow() {
     connect,
     createTrade,
     fundTrade,
-    approveTradeByOracle,
+    proposeRelease,
+    proposeFullRelease,
+    approveRelease,
+    cancelRelease,
+    claimTimeoutRefund,
+    claimDisputeTimeoutRefund,
     raiseDispute,
-    resolveDispute,
+    voteDispute,
     getTrade,
     getUsdcBalance,
   };

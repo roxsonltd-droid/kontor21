@@ -6,15 +6,17 @@ import { ShieldCheck, Activity, ArrowRight, Wallet, Blocks, Zap } from 'lucide-r
 import Link from 'next/link';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { useLanguage } from '@/contexts/LanguageContext';
+import OnboardingTour from '@/components/OnboardingTour';
 
 export default function Home() {
   const { t } = useLanguage();
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-200 selection:bg-blue-500/30 font-sans">
+    <>
+      <div className="min-h-screen bg-zinc-950 text-zinc-200 selection:bg-blue-500/30 font-sans">
       
       {/* Navigation */}
       <nav className="border-b border-zinc-800/50 bg-zinc-950/80 backdrop-blur-md fixed w-full top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 sm:h-20 flex items-center justify-between gap-3">
           <Link href="/" className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-blue-400 flex items-center justify-center">
               <Blocks className="w-5 h-5 text-white" />
@@ -23,10 +25,11 @@ export default function Home() {
           </Link>
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-zinc-400">
             <a href="#features" className="hover:text-white transition-colors">{t('hero.howItWorks')}</a>
+            <Link href="/trust" className="hover:text-white transition-colors">{t('trust.nav')}</Link>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <LanguageSwitcher />
-            <Link href="/trade/123" className="px-5 py-2.5 rounded-lg bg-white text-zinc-950 font-semibold hover:bg-zinc-200 transition-colors text-sm">
+            <Link href="/demo" className="px-3 sm:px-5 py-2.5 rounded-lg bg-white text-zinc-950 font-semibold hover:bg-zinc-200 transition-colors text-xs sm:text-sm whitespace-nowrap">
               {t('nav.demo')}
             </Link>
           </div>
@@ -34,7 +37,7 @@ export default function Home() {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative pt-40 pb-32 overflow-hidden">
+      <section className="relative pt-32 pb-20 sm:pt-40 sm:pb-32 overflow-hidden">
         {/* Background glow */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-600/20 rounded-full blur-[120px] -z-10 pointer-events-none"></div>
         
@@ -48,20 +51,20 @@ export default function Home() {
               <Zap className="w-4 h-4" />
               {t('hero.badge')}
             </div>
-            <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-8 max-w-4xl mx-auto leading-tight">
+            <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold tracking-tight text-white mb-8 max-w-4xl mx-auto leading-tight">
               {t('hero.title')}
             </h1>
             <p className="text-lg md:text-xl text-zinc-400 max-w-2xl mx-auto mb-10 leading-relaxed">
               {t('hero.subtitle')}
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link href="/trade/123" className="px-8 py-4 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-500 transition-colors flex items-center gap-2 shadow-[0_0_20px_rgba(37,99,235,0.3)]">
+              <Link href="/trade/new" className="px-8 py-4 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-500 transition-colors flex items-center gap-2 shadow-[0_0_20px_rgba(37,99,235,0.3)]">
                 {t('hero.startTrade')}
                 <ArrowRight className="w-5 h-5" />
               </Link>
-              <button className="px-8 py-4 rounded-xl bg-zinc-900 text-white font-semibold border border-zinc-800 hover:bg-zinc-800 transition-colors">
+              <Link href="/demo" className="px-8 py-4 rounded-xl bg-zinc-900 text-white font-semibold border border-zinc-800 hover:bg-zinc-800 transition-colors">
                 {t('nav.team')}
-              </button>
+              </Link>
             </div>
           </motion.div>
         </div>
@@ -75,13 +78,13 @@ export default function Home() {
             <p className="text-zinc-400">{t('features.subtitle')}</p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             <motion.div 
               whileHover={{ y: -5 }}
               className="p-8 rounded-2xl bg-zinc-900/40 border border-zinc-800/80 backdrop-blur-sm"
             >
               <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center mb-6">
-                <Wallet className="w-6 h-6 text-blue-400" />
+                <Activity className="w-6 h-6 text-blue-400" />
               </div>
               <h3 className="text-xl font-semibold text-white mb-3">{t('features.step1Title')}</h3>
               <p className="text-zinc-400 text-sm leading-relaxed">{t('features.step1Desc')}</p>
@@ -92,7 +95,7 @@ export default function Home() {
               className="p-8 rounded-2xl bg-zinc-900/40 border border-zinc-800/80 backdrop-blur-sm"
             >
               <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-6">
-                <Activity className="w-6 h-6 text-emerald-400" />
+                <ShieldCheck className="w-6 h-6 text-emerald-400" />
               </div>
               <h3 className="text-xl font-semibold text-white mb-3">{t('features.step2Title')}</h3>
               <p className="text-zinc-400 text-sm leading-relaxed">{t('features.step2Desc')}</p>
@@ -102,8 +105,19 @@ export default function Home() {
               whileHover={{ y: -5 }}
               className="p-8 rounded-2xl bg-zinc-900/40 border border-zinc-800/80 backdrop-blur-sm"
             >
+              <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center mb-6">
+                <Blocks className="w-6 h-6 text-amber-400" />
+              </div>
+              <h3 className="text-xl font-semibold text-white mb-3">{t('evidence.title')}</h3>
+              <p className="text-zinc-400 text-sm leading-relaxed">{t('evidence.subtitle')}</p>
+            </motion.div>
+
+            <motion.div 
+              whileHover={{ y: -5 }}
+              className="p-8 rounded-2xl bg-zinc-900/40 border border-zinc-800/80 backdrop-blur-sm"
+            >
               <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center mb-6">
-                <ShieldCheck className="w-6 h-6 text-purple-400" />
+                <Wallet className="w-6 h-6 text-purple-400" />
               </div>
               <h3 className="text-xl font-semibold text-white mb-3">{t('features.step3Title')}</h3>
               <p className="text-zinc-400 text-sm leading-relaxed">{t('features.step3Desc')}</p>
@@ -167,7 +181,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="border-t border-zinc-800/50 py-12">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8 pb-8 border-b border-zinc-800/50">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8 pb-8 border-b border-zinc-800/50">
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <Blocks className="w-5 h-5 text-blue-500" />
@@ -178,10 +192,29 @@ export default function Home() {
               </p>
             </div>
             <div>
+              <h3 className="text-white font-semibold mb-4">Modules</h3>
+              <ul className="space-y-2 text-sm">
+                <li><Link href="/buyer/sourcing" className="text-zinc-400 hover:text-white transition-colors">1. Kontor21 Intelligence</Link></li>
+                <li><Link href="/oracle/dashboard" className="text-zinc-400 hover:text-white transition-colors">2. Independent Inspection</Link></li>
+                <li><Link href="/trade/new" className="text-zinc-400 hover:text-white transition-colors">3. Evidence Engine & Telemetry</Link></li>
+                <li><Link href="/buyer/dashboard" className="text-zinc-400 hover:text-white transition-colors">4. Escrow Dashboard</Link></li>
+                <li><Link href="/trust" className="text-zinc-400 hover:text-white transition-colors">5. Trust Center</Link></li>
+              </ul>
+            </div>
+            <div>
               <h3 className="text-white font-semibold mb-4">{t('demo.title')}</h3>
               <ul className="space-y-2 text-sm">
-                <li><Link href="/trade/123" className="text-zinc-400 hover:text-white transition-colors">{t('demo.buyer')}</Link></li>
-                <li><Link href="/oracle/dashboard" className="text-zinc-400 hover:text-white transition-colors">{t('demo.oracle')}</Link></li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => window.dispatchEvent(new Event("kontor21:open-onboarding"))}
+                    className="text-left text-zinc-400 hover:text-white transition-colors"
+                  >
+                    {t('onboarding.restartTour')}
+                  </button>
+                </li>
+                <li><Link href="/trade/history" className="text-zinc-400 hover:text-white transition-colors">{t('demo.buyer')}</Link></li>
+                <li><Link href="/notifications" className="text-zinc-400 hover:text-white transition-colors">{t('demo.oracle')}</Link></li>
                 <li><Link href="/admin/accounting" className="text-zinc-400 hover:text-white transition-colors">{t('demo.accounting')}</Link></li>
                 <li><Link href="/admin/arbitration" className="text-zinc-400 hover:text-white transition-colors">{t('demo.arbitration')}</Link></li>
               </ul>
@@ -202,7 +235,9 @@ export default function Home() {
           </div>
         </div>
       </footer>
-    </div>
+      </div>
+      <OnboardingTour />
+    </>
   );
 }
 

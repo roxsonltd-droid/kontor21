@@ -4,8 +4,8 @@ import * as dotenv from "dotenv";
 
 dotenv.config();
 
-const AMOY_RPC_URL = process.env.AMOY_RPC_URL || "https://rpc-amoy.polygon.technology/";
-const DEPLOYER_PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY || "0000000000000000000000000000000000000000000000000000000000000000";
+const AMOY_RPC_URL = process.env.AMOY_RPC_URL || "https://polygon-amoy.drpc.org";
+const DEPLOYER_PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY;
 
 const config: HardhatUserConfig = {
   solidity: "0.8.24",
@@ -28,7 +28,7 @@ const config: HardhatUserConfig = {
         network: "amoy",
         chainId: 80002,
         urls: {
-          apiURL: "https://amoy.polygonscan.com/api",
+          apiURL: "https://api.etherscan.io/v2/api?chainid=80002",
           browserURL: "https://amoy.polygonscan.com",
         },
       },

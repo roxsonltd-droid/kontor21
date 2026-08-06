@@ -12,6 +12,11 @@
 
 # testing
 /coverage
+/artifacts
+/cache
+/typechain-types
+/test-results/
+/playwright-report/
 
 # next.js
 /.next/
@@ -23,6 +28,13 @@
 # misc
 .DS_Store
 *.pem
+*.metadata.json
+/dev.log
+/dev.err
+/node.log
+/node.err
+/theirs.tsx
+/theirs2.tsx
 
 # debug
 npm-debug.log*
@@ -43,3 +55,4 @@ prisma/*.db-journal
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+

@@ -2,23 +2,39 @@
   "name": "kontor21",
   "version": "0.1.0",
   "private": true,
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "postinstall": "prisma generate",
-    "build": "npx next build",
-    "start": "node_modules/.bin/prisma db push && npx next start",
+    "build": "npx hardhat compile && npx next build",
+    "start": "next start",
+    "db:migrate": "prisma migrate deploy",
     "dev": "next dev",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run test:contracts && npm run test:unit",
+    "test:contracts": "hardhat test test/kontor-escrow.test.ts test/kontor-governance.test.ts",
+"test:unit": "hardhat test test/api-auth-message.test.ts test/internal-auth.test.ts test/organization.test.ts test/trade-transition-auth.test.ts test/chain-indexer.test.ts test/money.test.ts test/milestone-rules.test.ts test/notifications.test.ts test/evidence-provider.test.ts test/document-extraction.test.ts",
+    "test:e2e:local": "hardhat run scripts/e2e-test.ts --network localhost",
+    "test:e2e": "playwright test",
     "node": "npx hardhat node",
     "deploy": "npx hardhat run scripts/deploy.ts --network localhost",
     "deploy:amoy": "npx hardhat run scripts/deploy.ts --network amoy",
-    "deploy:verify": "npx hardhat verify --network amoy"
+    "deploy:verify": "npx hardhat verify --network amoy",
+    "deploy:governance": "npx hardhat run scripts/deploy-governance.ts --network amoy",
+    "chain:sync": "npx hardhat run scripts/sync-chain.ts --network amoy",
+    "dlq:alert": "npx ts-node --compiler-options \"{\\\"module\\\":\\\"commonjs\\\"}\" scripts/dead-letter-alert.ts"
   },
   "dependencies": {
     "@prisma/client": "5.22.0",
     "dotenv": "^17.4.2",
     "ethers": "^6.17.0",
+    "fp-ts": "^2.16.11",
     "framer-motion": "^12.43.0",
+    "html2canvas": "^1.4.1",
+    "io-ts": "^2.2.22",
+    "jspdf": "^4.2.1",
     "lucide-react": "^1.27.0",
     "next": "15.5.22",
     "react": "19.2.4",
@@ -27,6 +43,7 @@
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^6.1.2",
     "@openzeppelin/contracts": "^5.6.1",
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -38,5 +55,9 @@
     "tailwindcss": "^4",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
+  },
+  "overrides": {
+    "postcss": "8.5.24",
+    "sharp": "0.35.0"
   }
 }

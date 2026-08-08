@@ -93,6 +93,13 @@ enum MembershipStatus {
   REVOKED
 }
 
+enum KybStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
 enum MilestoneStatus {
   DRAFT
   ACTIVE
@@ -150,6 +157,16 @@ model Organization {
   name      String
   slug      String   @unique
   vatNumber String?  @unique
+  // Nexus Core: Know Your Business verification lifecycle. Submission is done
+  // by an owner/admin; review is a platform-grade decision that records the
+  // reviewer wallet and timestamp. REJECTED can be resubmitted.
+  kybStatus       KybStatus  @default(UNVERIFIED)
+  kybCountry      String? // Country of legal registration
+  kybVerifiedAt   DateTime?
+  kybVerifiedBy   String? // Wallet that approved the verification
+  kybRejectedAt   DateTime?
+  kybRejectedBy   String? // Wallet that rejected the submission
+  kybRejectionReason String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

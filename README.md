@@ -110,6 +110,9 @@ Implemented:
   milestone.manage, settlement.approve, evidence.submit, member.manage);
 - organization invitation flow: members are invited with a pending status and
   the invited wallet accepts, rejects, or has the manager cancel it;
+- organization KYB: an owner/admin submits the organization for verification
+  and a platform reviewer approves or rejects it with a recorded reason, wallet,
+  and timestamp (UNVERIFIED / PENDING / VERIFIED / REJECTED);
 - in-app trade notifications generated from escrow and milestone events, with
   opt-in email/webhook delivery when a delivery endpoint is configured;
 - trade milestones, milestone evidence links, and settlement proposal records
@@ -153,7 +156,7 @@ Prototype or presentation-only:
   the parameter values automatically, recording how the value was derived);
 - outbound email and push notification providers (in-app delivery is
   implemented; email/webhook require a configured endpoint);
-- legal, KYC/KYB, accounting, and tax integrations.
+- legal, user-level KYC, and tax integrations (organization KYB is implemented);
 
 Do not describe the current system as fully decentralized or mathematically
 verifying the truth of manually supplied evidence.
@@ -231,6 +234,7 @@ All routes below require the same one-time wallet signature described above.
 | `GET`, `POST` | `/api/organizations` | List memberships or create an organization |
 | `GET`, `POST` | `/api/organizations/:id/members` | List members or invite a new member (pending) |
 | `PATCH` | `/api/organizations/:id/members/:membershipId` | Resolve an invitation: accept/reject (invitee) or cancel (manager) |
+| `PATCH` | `/api/organizations/:id/kyb` | Submit for KYB review or approve/reject a pending submission |
 | `GET`, `PATCH` | `/api/notifications` | List in-app trade notifications or mark them read |
 | `GET`, `POST` | `/api/escrow/:id/milestones` | List or allocate pre-funding milestones |
 | `PATCH` | `/api/escrow/:id/milestones/:milestoneId` | Update a milestone rules policy (new immutable version) |
@@ -344,8 +348,8 @@ above only after verifying the deployment.
 - Milestone rules policies are versioned and immutable after funding, and a
   rules engine evaluates uploaded evidence against a policy version; there is
   no on-chain verification of each evidence provider signature.
-- Organization roles and invitation acceptance are implemented, but KYB and
-  fine-grained custom permission policies are not.
+- Fine-grained custom permission policies are not implemented (role capabilities
+  and the KYB submission/review lifecycle are).
 - The indexer is scheduled/polling and must be invoked by Render Cron or an
   equivalent scheduler; it is not a continuously running dedicated worker.
 - Reconciliation compares trade settlement state, pending release proposals

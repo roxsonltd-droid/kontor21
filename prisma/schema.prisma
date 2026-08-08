@@ -132,6 +132,16 @@ enum ReconciliationIssueStatus {
   IGNORED
 }
 
+// Nexus Core: Token-accounting ledger derived from escrow chain events.
+// One row per token movement: buyer escrow deposits, releases to sellers (fee
+// separated), and refunds back to buyers. Micro-unit integers avoid float drift.
+enum LedgerCategory {
+  DEPOSIT
+  RELEASE
+  FEE
+  REFUND
+}
+
 model User {
   id            String   @id @default(uuid())
   walletAddress String   @unique
@@ -480,21 +490,44 @@ model DeadLetterEvent {
 }
 
 model ReconciliationIssue {
-  id              String                    @id @default(uuid())
-  network         String
-  contractAddress String
-  tradeId         String?
+  id                String                    @id @default(uuid())
+  network           String
+  contractAddress   String
+  tradeId           String?
   blockchainTradeId Int
-  field           String
-  databaseValue   String?
-  chainValue      String
-  status          ReconciliationIssueStatus @default(OPEN)
-  detectedAt      DateTime                  @default(now())
-  resolvedAt      DateTime?
-  details         Json?
+  field             String
+  databaseValue     String?
+  chainValue        String
+  status            ReconciliationIssueStatus @default(OPEN)
+  detectedAt        DateTime                  @default(now())
+  resolvedAt        DateTime?
+  details           Json?
 
   @@index([status, detectedAt])
   @@index([blockchainTradeId, status])
+}
+
+model LedgerEntry {
+  id               String   @id @default(uuid())
+  network          String
+  transactionHash  String
+  chainEventId     String
+  category         LedgerCategory
+  blockchainTradeId Int?
+  tradeId          String?
+  amountMicros     BigInt
+  amountUsdc       Decimal  @db.Decimal(20, 6)
+  feeMicros        BigInt   @default(0)
+  feeBasisPoints   Int?
+  from             String?
+  to               String?
+  blockNumber      BigInt
+  createdAt        DateTime @default(now())
+
+  @@index([tradeId])
+  @@index([blockchainTradeId])
+  @@index([chainEventId])
+  @@index([network, blockNumber])
 }
 
 model RateLimitBucket {

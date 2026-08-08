@@ -4,6 +4,10 @@ import prisma from "./prisma";
 import { KONTOR_ESCROW_ABI } from "./abis";
 import { operationalLog } from "./logger";
 import { applyEscrowEvent } from "./chain-events";
+import {
+  applyEscrowLedgerEntries,
+  type LedgerContext,
+} from "./token-ledger";
 
 const escrowInterface = new Interface(KONTOR_ESCROW_ABI);
 
@@ -40,7 +44,8 @@ function parsedPayload(log: Log) {
 async function processLog(
   log: Log,
   network: string,
-  contractAddress: string
+  contractAddress: string,
+  ledgerCtx: LedgerContext
 ) {
   const parsed = parsedPayload(log);
   if (!parsed) return;
@@ -73,6 +78,17 @@ async function processLog(
         parsed.eventName,
         parsed.payload,
         log.transactionHash
+      );
+      await applyEscrowLedgerEntries(
+        tx,
+        ledgerCtx,
+        parsed.eventName,
+        parsed.payload,
+        {
+          transactionHash: log.transactionHash,
+          chainEventId: chainEvent.id,
+          blockNumber: BigInt(log.blockNumber),
+        }
       );
       await tx.chainEvent.update({
         where: { id: chainEvent.id },
@@ -108,7 +124,11 @@ async function processLog(
   }
 }
 
-async function retryDeadLetters(network: string, contractAddress: string) {
+async function retryDeadLetters(
+  network: string,
+  contractAddress: string,
+  ledgerCtx: LedgerContext
+) {
   const deadLetters = await prisma.deadLetterEvent.findMany({
     where: {
       resolvedAt: null,
@@ -128,6 +148,17 @@ async function retryDeadLetters(network: string, contractAddress: string) {
           deadLetter.chainEvent.eventName,
           deadLetter.chainEvent.payload as Record<string, Prisma.InputJsonValue>,
           deadLetter.chainEvent.transactionHash
+        );
+        await applyEscrowLedgerEntries(
+          tx,
+          ledgerCtx,
+          deadLetter.chainEvent.eventName,
+          deadLetter.chainEvent.payload as Record<string, Prisma.InputJsonValue>,
+          {
+            transactionHash: deadLetter.chainEvent.transactionHash,
+            chainEventId: deadLetter.chainEventId,
+            blockNumber: deadLetter.chainEvent.blockNumber,
+          }
         );
         await tx.chainEvent.update({
           where: { id: deadLetter.chainEventId },
@@ -158,7 +189,15 @@ export async function runEscrowIndexer(options: IndexerOptions) {
   const confirmations = options.confirmations ?? 12;
   const batchSize = options.batchSize ?? 1000;
   const contractAddress = options.contractAddress.toLowerCase();
-  const recoveredDeadLetters = await retryDeadLetters(options.network, contractAddress);
+  const ledgerCtx: LedgerContext = {
+    network: options.network,
+    feeBasisPoints: Number(process.env.ESCROW_FEE_BASIS_POINTS || 25),
+  };
+  const recoveredDeadLetters = await retryDeadLetters(
+    options.network,
+    contractAddress,
+    ledgerCtx
+  );
   const latestBlock = await options.provider.getBlockNumber();
   const safeBlock = latestBlock - confirmations;
   if (safeBlock < 0) return { processedTo: 0, logs: 0 };
@@ -181,7 +220,7 @@ export async function runEscrowIndexer(options: IndexerOptions) {
       toBlock,
     });
     for (const log of logs) {
-      await processLog(log, options.network, contractAddress);
+      await processLog(log, options.network, contractAddress, ledgerCtx);
       logCount++;
     }
     await prisma.chainCursor.upsert({

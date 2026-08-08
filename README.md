@@ -137,6 +137,10 @@ Implemented:
   signature over the document CID, condition, verified value, and signing
   timestamp; the server recovers the signer, rejects mismatches, and stores the
   signature and timestamp with the evidence;
+- historical token-accounting ledger: the chain indexer records token movements
+  (buyer deposits, seller releases with fee separation, and buyer refunds) as
+  integer micro-unit entries derived from escrow events, bound to the in-app
+  trade for exact non-float accounting;
 - confirmed escrow-event indexing with durable cursors and idempotent event keys;
 - automatic trade-state reconciliation, dead-letter retries (with an operational
   dead-letter alert), and internal metrics;
@@ -360,8 +364,10 @@ above only after verifying the deployment.
   equivalent scheduler; it is not a continuously running dedicated worker.
 - Reconciliation compares trade settlement state, pending release proposals
   (`proposalId`, milestone hash, amount, evidence root, proposal status), and
-  flags stale database proposals missing on-chain. Production-grade historical
-  token accounting still requires an external archival data source.
+  flags stale database proposals missing on-chain. The token-accounting ledger
+  records deposits, releases, fees, and refunds from escrow events; fully
+  independent historical token accounting for arbitrary external transfers
+  (outside escrow) still requires an external archival data source.
 - No independent security audit, formal verification, bug bounty, or SLA.
 
 ## Security reporting

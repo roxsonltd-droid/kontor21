@@ -388,6 +388,11 @@ model Evidence {
   providerId     String?  // Registered evidence provider (nullable for legacy rows)
   verifiedValue  String?  // The extracted value (e.g. "4.8" for moisture)
   extractionMeta Json? // How verifiedValue was derived (OCR_AUTO vs MANUAL), for audit
+  // Nexus Core: Off-chain EIP-712 evidence attestation. The provider signs its
+  // claim (document hash + condition + value + timestamp) and the server
+  // recovers + verifies the signer against the registered provider wallets.
+  attestationSignature String? // typed-data signature from the evidence provider
+  attestedAt DateTime? // timestamp the provider signed (recovered from the signature)
   validationStatus EvidenceValidationStatus @default(PENDING)
   milestoneId     String?
   createdAt      DateTime @default(now())

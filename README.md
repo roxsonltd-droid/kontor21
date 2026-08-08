@@ -133,6 +133,10 @@ Implemented:
 - text-based document extraction: the evidence upload accepts OCR output or
   document metadata and auto-fills the verified value by parameter, recording
   whether the value was handed in manually or derived automatically;
+- off-chain EIP-712 evidence attestation: a provider may attach a typed-data
+  signature over the document CID, condition, verified value, and signing
+  timestamp; the server recovers the signer, rejects mismatches, and stores the
+  signature and timestamp with the evidence;
 - confirmed escrow-event indexing with durable cursors and idempotent event keys;
 - automatic trade-state reconciliation, dead-letter retries (with an operational
   dead-letter alert), and internal metrics;
@@ -346,8 +350,10 @@ above only after verifying the deployment.
   the timelock is still recommended for any non-demo deployment.
 - Arbitration resolves the remaining balance entirely to buyer or seller.
 - Milestone rules policies are versioned and immutable after funding, and a
-  rules engine evaluates uploaded evidence against a policy version; there is
-  no on-chain verification of each evidence provider signature.
+  rules engine evaluates uploaded evidence against a policy version. Providers
+  attach an EIP-712 signature over the evidence (document hash, condition,
+  verified value, and timestamp) that the server recovers and binds to the
+  registered provider wallet; there is no on-chain allowlist of providers.
 - Fine-grained custom permission policies are not implemented (role capabilities
   and the KYB submission/review lifecycle are).
 - The indexer is scheduled/polling and must be invoked by Render Cron or an

@@ -4,6 +4,9 @@ import { authenticateWalletRequest, isConfiguredArbitrator } from "@/lib/api-aut
 import { findActiveEvidenceProvider } from "@/lib/evidence-provider-db";
 import { extractFieldValue, extractionMetaFor, type ExtractionMeta } from "@/lib/document-extraction";
 import { evaluateCondition } from "@/lib/rules-engine";
+import { getAddress } from "ethers";
+import { evidenceDomainFor, recoverEvidenceAttestationSigner } from "@/lib/evidence-attestation";
+import { CONTRACT_ADDRESSES } from "@/lib/abis";
 type RouteContext = {
   params: Promise<{ id: string }>;
 };
@@ -47,12 +50,51 @@ export async function POST(req: NextRequest, context: RouteContext) {
     }
     const body = JSON.parse(rawBody);
 
-    const { documentHash, providerWallet, verifiedValue, conditionId, milestoneId, documentText } = body;
+    const { documentHash, providerWallet, verifiedValue, conditionId, milestoneId, documentText, providerSignature, attestedAtMs } = body;
     if (!documentHash || !providerWallet) {
       return NextResponse.json({ error: "Missing documentHash or providerWallet" }, { status: 400 });
     }
     if (providerWallet.toLowerCase() !== actorWallet.toLowerCase()) {
       return NextResponse.json({ error: "Provider wallet must sign the request" }, { status: 403 });
+    }
+
+    // Off-chain EIP-712 evidence attestation: when a provider supplies a typed
+    // signature, recover the signer from it and bind it to the request wallet.
+    // A mismatch rejects the submission before any rows are written.
+    let attestationData: { attestationSignature?: string; attestedAt?: Date } = {};
+    if (providerSignature) {
+      if (typeof providerSignature !== "string" || attestedAtMs == null) {
+        return NextResponse.json({ error: "providerSignature and attestedAtMs are required together" }, { status: 400 });
+      }
+      const attestedDate = new Date(Number(attestedAtMs));
+      if (Number.isNaN(attestedDate.getTime()) || Math.abs(Date.now() - attestedDate.getTime()) > 5 * 60 * 1000) {
+        return NextResponse.json({ error: "Attestation timestamp is invalid or too old" }, { status: 400 });
+      }
+      const chainId = Number(process.env.API_CHAIN_ID || 80002);
+      const verifyingContract =
+        (process.env.KONTOR_ESCROW_ADDRESS || CONTRACT_ADDRESSES.kontorEscrow)?.toLowerCase();
+      if (!verifyingContract) {
+        return NextResponse.json({ error: "On-chain configuration is not set" }, { status: 503 });
+      }
+      let signerAddress: string;
+      try {
+        signerAddress = recoverEvidenceAttestationSigner(
+          evidenceDomainFor(chainId, verifyingContract),
+          {
+            documentHash: documentHash.toLowerCase(),
+            conditionId: conditionId || null,
+            verifiedValue: verifiedValue || null,
+            attestedAtMs: Number(attestedAtMs),
+          },
+          providerSignature
+        );
+      } catch {
+        return NextResponse.json({ error: "Attestation signature is invalid" }, { status: 400 });
+      }
+      if (getAddress(signerAddress) !== getAddress(actorWallet)) {
+        return NextResponse.json({ error: "Attestation signer does not match the request wallet" }, { status: 403 });
+      }
+      attestationData = { attestationSignature: providerSignature, attestedAt: attestedDate };
     }
 
     const trade = await prisma.tradeMetadata.findUnique({
@@ -132,6 +174,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
         providerId: registeredProvider?.id || null,
         verifiedValue: resolvedVerifiedValue || null,
         ...(extractionMeta ? { extractionMeta: extractionMeta as unknown as object } : {}),
+        ...attestationData,
         validationStatus: isValid === true ? "VALID" : isValid === false ? "INVALID" : "PENDING",
         milestoneId: resolvedMilestoneId,
       }

@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import type { OrganizationRole } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { authenticateWalletRequest } from "@/lib/api-auth";
-import { hasCapability, ORGANIZATION_ROLES } from "@/lib/organization";
+import { hasEffectiveCapability, ORGANIZATION_ROLES } from "@/lib/organization";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
   }
   const { id } = await context.params;
   const manager = await managerMembership(id, actorWallet);
-  if (!manager || !hasCapability(manager.role, "member.manage")) {
+  if (!manager || !hasEffectiveCapability(manager, "member.manage")) {
     return NextResponse.json({ error: "Organization owner or admin required" }, { status: 403 });
   }
 

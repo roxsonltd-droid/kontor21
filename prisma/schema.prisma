@@ -252,6 +252,11 @@ model OrganizationMembership {
   userId         String
   role           OrganizationRole
   status         MembershipStatus @default(ACTIVE)
+  // Nexus Core: Fine-grained capability overrides layered over the role's
+  // default capability set. grant adds capabilities beyond the role; deny
+  // removes them. Primitive names mirror `lib/organization.ts` capabilities.
+  grantedCapabilities String[]     @default([])
+  revokedCapabilities String[]     @default([])
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
 

@@ -108,6 +108,9 @@ Implemented:
 - organization memberships with owner, admin, trader, accountant, signer, and
   viewer roles mapped to granular capabilities (trade.create, trade.sign,
   milestone.manage, settlement.approve, evidence.submit, member.manage);
+- fine-grained per-member capability overrides: a manager can grant or revoke
+  individual capabilities on a membership beyond the role defaults, vetted
+  against the known capability set and enforced by every permission check;
 - organization invitation flow: members are invited with a pending status and
   the invited wallet accepts, rejects, or has the manager cancel it;
 - organization KYB: an owner/admin submits the organization for verification
@@ -358,10 +361,8 @@ above only after verifying the deployment.
   attach an EIP-712 signature over the evidence (document hash, condition,
   verified value, and timestamp) that the server recovers and binds to the
   registered provider wallet; there is no on-chain allowlist of providers.
-- Fine-grained custom permission policies are not implemented (role capabilities
-  and the KYB submission/review lifecycle are).
 - The indexer is scheduled/polling and must be invoked by Render Cron or an
-  equivalent scheduler; it is not a continuously running dedicated worker.
+  equivalent scheduler; it is not a continuous dedicated worker.
 - Reconciliation compares trade settlement state, pending release proposals
   (`proposalId`, milestone hash, amount, evidence root, proposal status), and
   flags stale database proposals missing on-chain. The token-accounting ledger

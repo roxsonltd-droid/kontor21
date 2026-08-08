@@ -17,6 +17,21 @@ export type Capability =
   | "evidence.submit"
   | "member.manage";
 
+// Ordered declaration of every capability; used for stable
+// effective-capability listing and input validation.
+export const ALL_CAPABILITIES = [
+  "trade.create",
+  "trade.sign",
+  "milestone.manage",
+  "settlement.approve",
+  "evidence.submit",
+  "member.manage",
+] as const satisfies readonly Capability[];
+
+export function isCapability(value: string): value is Capability {
+  return (ALL_CAPABILITIES as readonly string[]).includes(value);
+}
+
 const ROLE_CAPABILITIES: Record<OrganizationRole, readonly Capability[]> = {
   OWNER: [
     "trade.create",
@@ -44,8 +59,63 @@ export function hasCapability(role: OrganizationRole, capability: Capability) {
   return ROLE_CAPABILITIES[role].includes(capability);
 }
 
-// Backward-compatible conveniences expressed through capabilities.
-// Operating a trade means being able to create or sign one.
+// Nexus Core: Fine-grained custom permission policies.
+// A membership carries per-member capability overrides layered over the role's
+// default capability set: `grantedCapabilities` adds capabilities, and
+// `revokedCapabilities` removes them. Pure + unit-testable without a database.
+export function effectiveCapabilities(params: {
+  role: OrganizationRole;
+  grantedCapabilities?: readonly string[];
+  revokedCapabilities?: readonly string[];
+}): Capability[] {
+  const granted = (params.grantedCapabilities ?? []).filter(isCapability);
+  const revoked = new Set((params.revokedCapabilities ?? []).filter(isCapability));
+  const effective = new Set<Capability>([...ROLE_CAPABILITIES[params.role], ...granted]);
+  for (const capability of revoked) effective.delete(capability);
+  return ALL_CAPABILITIES.filter((capability) => effective.has(capability));
+}
+
+export function hasEffectiveCapability(
+  member: {
+    role: OrganizationRole;
+    grantedCapabilities?: readonly string[];
+    revokedCapabilities?: readonly string[];
+  },
+  capability: Capability
+) {
+  return effectiveCapabilities(member).includes(capability);
+}
+
+// Validates a desired override and returns either the new capability arrays or
+// a rejection reason. Rejects unknown names and capabilities denied outright.
+export type CapabilityOverrideResolution =
+  | { ok: true; grantedCapabilities: string[]; revokedCapabilities: string[] }
+  | { ok: false; status: number; error: string };
+
+export function resolveCapabilityOverrides(params: {
+  grant?: unknown;
+  revoke?: unknown;
+}): CapabilityOverrideResolution {
+  const invalid = (value: unknown) =>
+    !Array.isArray(value) || value.some((item) => typeof item !== "string" || !isCapability(item));
+  if (params.grant !== undefined && invalid(params.grant)) {
+    return { ok: false, status: 400, error: "grant must be an array of known capabilities" };
+  }
+  if (params.revoke !== undefined && invalid(params.revoke)) {
+    return { ok: false, status: 400, error: "revoke must be an array of known capabilities" };
+  }
+  const grant = [...(params.grant as string[] | undefined ?? [])];
+  const revoke = [...(params.revoke as string[] | undefined ?? [])];
+  if (new Set(grant).size !== grant.length || new Set(revoke).size !== revoke.length) {
+    return { ok: false, status: 400, error: "Capability lists cannot contain duplicates" };
+  }
+  const overlapping = grant.find((capability) => revoke.includes(capability));
+  if (overlapping) {
+    return { ok: false, status: 400, error: `Capability ${overlapping} cannot be granted and revoked together` };
+  }
+  return { ok: true, grantedCapabilities: grant, revokedCapabilities: revoke };
+}
+
 export function canManageTrades(role: OrganizationRole) {
   return hasCapability(role, "trade.create") || hasCapability(role, "trade.sign");
 }

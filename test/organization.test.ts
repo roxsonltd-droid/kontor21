@@ -2,8 +2,12 @@ import { expect } from "chai";
 import {
   canManageMembers,
   canManageTrades,
+  effectiveCapabilities,
   hasCapability,
+  hasEffectiveCapability,
+  isCapability,
   normalizeOrganizationSlug,
+  resolveCapabilityOverrides,
   resolveInvitationAction,
 } from "../lib/organization.ts";
 
@@ -66,6 +70,60 @@ describe("organization domain helpers", function () {
     ] as const) {
       expect(hasCapability("VIEWER", capability)).to.equal(false);
     }
+  });
+});
+
+describe("fine-grained capability overrides", function () {
+  it("grants capabilities beyond the role defaults", function () {
+    const viewer = effectiveCapabilities({
+      role: "VIEWER",
+      grantedCapabilities: ["trade.sign"],
+      revokedCapabilities: [],
+    });
+    expect(viewer).to.include("trade.sign");
+    expect(hasEffectiveCapability(
+      { role: "VIEWER", grantedCapabilities: ["trade.sign"], revokedCapabilities: [] },
+      "trade.sign"
+    )).to.equal(true);
+    // granted does not add other role capabilities
+    expect(viewer).not.to.include("member.manage");
+  });
+
+  it("revokes a role-default capability", function () {
+    expect(hasEffectiveCapability(
+      { role: "ADMIN", grantedCapabilities: [], revokedCapabilities: ["member.manage"] },
+      "member.manage"
+    )).to.equal(false);
+    expect(hasEffectiveCapability(
+      { role: "ADMIN", grantedCapabilities: [], revokedCapabilities: ["member.manage"] },
+      "trade.create"
+    )).to.equal(true);
+  });
+
+  it("ignores unknown capabilities in overrides", function () {
+    const capped = effectiveCapabilities({
+      role: "VIEWER",
+      grantedCapabilities: ["trade.sign", "not.a.capability"],
+      revokedCapabilities: ["also.invalid"],
+    });
+    expect(capped).to.deep.equal(["trade.sign"]);
+  });
+
+  it("validates capability names", function () {
+    expect(isCapability("trade.sign")).to.equal(true);
+    expect(isCapability("admin.*")).to.equal(false);
+  });
+
+  it("rejects unknown, duplicated, or overlapping override lists", function () {
+    const lists = [undefined, [], ["member.manage", "trade.create"], ["trade.create"]];
+    expect(resolveCapabilityOverrides({ grant: undefined, revoke: undefined }).ok).to.equal(true);
+    expect(resolveCapabilityOverrides({ grant: lists[0], revoke: undefined }).ok).to.equal(true);
+    const unknown = resolveCapabilityOverrides({ grant: ["trade.bogus"], revoke: undefined });
+    expect(unknown.ok).to.equal(false);
+    const dup = resolveCapabilityOverrides({ revoke: ["trade.sign", "trade.sign"] });
+    expect(dup.ok).to.equal(false);
+    const overlap = resolveCapabilityOverrides({ grant: ["trade.sign"], revoke: ["trade.sign"] });
+    expect(overlap.ok).to.equal(false);
   });
 });
 

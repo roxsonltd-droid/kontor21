@@ -3,7 +3,7 @@ import prisma from "@/lib/prisma";
 import { authenticateWalletRequest, isConfiguredArbitrator } from "@/lib/api-auth";
 import { getAddress, isAddress } from "ethers";
 import { ConditionOperator, ProviderRole } from "@prisma/client";
-import { hasCapability } from "@/lib/organization";
+import { hasEffectiveCapability } from "@/lib/organization";
 import { ensureOwnedOrganizationForUser } from "@/lib/organization-backfill";
 import { parsePositiveDecimalString } from "@/lib/money";
 import { dispatchNotifications, recipientsFromParticipants } from "@/lib/notifications";
@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
           status: "ACTIVE",
         },
       });
-      if (!membership || !hasCapability(membership.role, "trade.create")) {
+      if (!membership || !hasEffectiveCapability(membership, "trade.create")) {
         return NextResponse.json({ error: "Seller trading permission required" }, { status: 403 });
       }
       sellerOrganizationId = body.sellerOrganizationId;
@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
           status: "ACTIVE",
         },
       });
-      if (!membership || !hasCapability(membership.role, "trade.sign")) {
+      if (!membership || !hasEffectiveCapability(membership, "trade.sign")) {
         return NextResponse.json({ error: "Buyer signer permission required" }, { status: 403 });
       }
       buyerOrganizationId = body.buyerOrganizationId;

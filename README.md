@@ -117,6 +117,9 @@ Implemented:
 - versioned milestone rules policies: every policy revision appends an immutable
   rules snapshot (version, authoring wallet, change note) that is immutable
   once the trade is funded;
+- a rules engine that evaluates uploaded evidence against a policy condition,
+  handling numeric comparisons with comma/dot decimal separators and
+  case-insensitive string equality;
 - an accredited evidence provider registry with a canonical accreditation issuer
   reference (SGS, Bureau Veritas, ...), validity window, jurisdiction, status,
   and multiple authorized wallets;
@@ -338,12 +341,11 @@ above only after verifying the deployment.
 - Owner is enforced on-chain as a two-day timelock on staging; a multisig before
   the timelock is still recommended for any non-demo deployment.
 - Arbitration resolves the remaining balance entirely to buyer or seller.
-- No on-chain verification of each evidence provider signature.
+- Milestone rules policies are versioned and immutable after funding, and a
+  rules engine evaluates uploaded evidence against a policy version; there is
+  no on-chain verification of each evidence provider signature.
 - Organization roles and invitation acceptance are implemented, but KYB and
   fine-grained custom permission policies are not.
-- Milestone rules policies are versioned and immutable after funding, but the
-  rules engine that evaluates evidence against a policy version is not
-  implemented yet.
 - The indexer is scheduled/polling and must be invoked by Render Cron or an
   equivalent scheduler; it is not a continuously running dedicated worker.
 - Reconciliation compares trade settlement state, pending release proposals
